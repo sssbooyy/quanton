@@ -1,0 +1,45 @@
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+
+// https://vite.dev/config/
+export default defineConfig(() => ({
+  plugins: [react()],
+  base: "/",
+  appType: "spa",
+
+  server: {
+    host: true,
+    port: 5173,
+    strictPort: false,
+    // Tunnels (ngrok, cloudflared, etc.) without editing this file each time
+    allowedHosts: true,
+  },
+
+  preview: {
+    host: true,
+    port: 4173,
+    strictPort: false,
+    allowedHosts: true,
+  },
+
+  build: {
+    target: "es2020",
+    outDir: "dist",
+    assetsDir: "assets",
+    emptyOutDir: true,
+    sourcemap: false,
+    minify: "esbuild",
+    cssMinify: true,
+    reportCompressedSize: true,
+    chunkSizeWarningLimit: 700,
+    modulePreload: { polyfill: true },
+    cssCodeSplit: true,
+    rollupOptions: {
+      output: {
+        assetFileNames: "assets/[name]-[hash][extname]",
+        chunkFileNames: "assets/[name]-[hash].js",
+        entryFileNames: "assets/[name]-[hash].js",
+      },
+    },
+  },
+}));

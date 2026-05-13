@@ -41,18 +41,6 @@ function formatSignedPct(n) {
   return `${n}%`;
 }
 
-function giftInitials(name) {
-  const s = name?.trim();
-  if (!s) return "";
-  const parts = s.split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) {
-    const a = parts[0][0] || "";
-    const b = parts[1][0] || "";
-    return (a + b).toUpperCase().slice(0, 2);
-  }
-  return s.slice(0, 2).toUpperCase();
-}
-
 function statusBadgeClass(status) {
   if (status === "pending") return "badgeStatus badgeStatus-pending";
   if (status === "approved") return "badgeStatus badgeStatus-approved";
@@ -583,39 +571,58 @@ function GiftCard({ gift, lang, tk }) {
   const [imgFailed, setImgFailed] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
 
+  const imageUrl = typeof gift.image === "string" ? gift.image.trim() : "";
+
   useEffect(() => {
     setImgFailed(false);
     setImgLoaded(false);
-  }, [gift.image, gift.id]);
+  }, [imageUrl, gift.id]);
 
-  const showImg = Boolean(gift.image?.trim()) && !imgFailed;
-  const initialsRaw = giftInitials(gift.name);
-  const initials = initialsRaw || (tk("giftPlaceholder").slice(0, 2).toUpperCase() || "?");
+  const showRealImage = Boolean(imageUrl) && !imgFailed;
+  const showSkeleton = showRealImage && !imgLoaded;
+  const showFallback = !imageUrl || imgFailed;
 
   return (
-    <article className={`card cardGlass ${signalClass(gift.signal)}`}>
-      <div className="cardMedia">
-        {showImg ? (
-          <img
-            src={gift.image}
-            alt={gift.name}
-            className={`cardImg ${imgLoaded ? "cardImg--loaded" : ""}`}
-            loading="lazy"
-            decoding="async"
-            onLoad={() => setImgLoaded(true)}
-            onError={() => setImgFailed(true)}
-          />
-        ) : null}
-        {!showImg ? (
-          <div className="cardImageFallback" role="img" aria-label={gift.name}>
-            <span className="cardImageFallbackRing" aria-hidden="true" />
-            <span className="cardImageFallbackInitials" aria-hidden="true">
-              {initials}
-            </span>
-            <span className="cardImageFallbackLabel">{tk("giftPlaceholder")}</span>
-          </div>
-        ) : null}
-        <div className="cardMediaShade" aria-hidden="true" />
+    <article className={`card cardGlass card--gift ${signalClass(gift.signal)}`}>
+      <div className="cardMedia" aria-busy={showSkeleton}>
+        <div className="cardMediaFrame">
+          {showSkeleton ? (
+            <div className="cardImgSkeleton" aria-hidden="true" />
+          ) : null}
+          {showRealImage ? (
+            <img
+              src={imageUrl}
+              alt=""
+              width={640}
+              height={640}
+              className={`cardImg ${imgLoaded ? "cardImg--loaded" : ""}`}
+              loading="lazy"
+              decoding="async"
+              sizes="(max-width: 480px) 92vw, (max-width: 900px) 45vw, 300px"
+              onLoad={() => setImgLoaded(true)}
+              onError={() => {
+                console.warn("[GiftCard] image load failed", {
+                  id: gift.id,
+                  name: gift.name,
+                  url: imageUrl,
+                });
+                setImgFailed(true);
+                setImgLoaded(false);
+              }}
+            />
+          ) : null}
+          {showFallback ? (
+            <div className="cardImageFallback cardImageFallback--hero" role="img" aria-label={gift.name}>
+              <div className="cardImageFallbackGlow" aria-hidden="true" />
+              <span className="cardImageFallbackRing" aria-hidden="true" />
+              <span className="cardImageFallbackName">{gift.name}</span>
+              <span className="cardImageFallbackBrand" aria-hidden="true">
+                {tk("fallbackBrand")}
+              </span>
+            </div>
+          ) : null}
+          <div className="cardMediaShade" aria-hidden="true" />
+        </div>
       </div>
 
       <div className="cardBadgeRow">

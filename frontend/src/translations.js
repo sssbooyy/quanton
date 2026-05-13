@@ -95,6 +95,7 @@ export const translations = {
     tagRiskHigh: "High risk",
     tagRiskUnknown: "Unknown risk",
     giftPlaceholder: "Gift",
+    fallbackBrand: "Quanton",
 
     signalStrongBuy: "Strong Buy",
     signalWatch: "Watch",
@@ -196,6 +197,7 @@ export const translations = {
     tagRiskHigh: "Высокий риск",
     tagRiskUnknown: "Риск неизв.",
     giftPlaceholder: "Лот",
+    fallbackBrand: "Quanton",
 
     signalStrongBuy: "Сильная покупка",
     signalWatch: "Наблюдение",

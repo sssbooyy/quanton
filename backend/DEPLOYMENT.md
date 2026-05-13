@@ -2,6 +2,15 @@
 
 This service is an Express API (`backend/server.js`) with optional Telegram bot polling and a JSON file store for listings.
 
+## Production pairing (current)
+
+| Service | URL |
+|---------|-----|
+| SPA (Vercel) | `https://quanton-nine.vercel.app` |
+| API (Render) | `https://quanton.onrender.com` |
+
+The backend **always** allows the Vercel origin above in CORS (merged with `CORS_ORIGINS` / `FRONTEND_URL`). The frontend defaults to the Render API URL when `VITE_API_URL` is unset at build time (`frontend/src/config.js` and `frontend/vercel.json`).
+
 ## 1. Create a Web Service
 
 1. In [Render](https://render.com), **New → Web Service**, connect your repo.
@@ -11,19 +20,18 @@ This service is an Express API (`backend/server.js`) with optional Telegram bot 
 5. **Start command**: `npm start`
 6. **Health check path**: `/health`
 
-Render sets `PORT` and typically `NODE_ENV=production` for Web Services.
+Render injects **`PORT`**; **`NODE_ENV`** is typically `production` for Web Services.
 
 ## 2. Environment variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `CORS_ORIGINS` | **Yes (prod)** | Comma-separated SPA origins, e.g. `https://app.vercel.app`. Browser requests from other origins are rejected. |
-| `FRONTEND_URL` | Optional | Single origin; used only if `CORS_ORIGINS` is empty (legacy). |
+| `PORT` | Auto on Render | Set by Render; do not override unless you know what you are doing. |
+| `CORS_ORIGINS` | Recommended | Comma-separated SPA origins. Example: `https://quanton-nine.vercel.app`. Extra preview domains can be appended. The Vercel production URL above is also built into `backend/middleware/cors.js` as a default. |
+| `FRONTEND_URL` | Optional | Single origin; merged if `CORS_ORIGINS` is empty (legacy). Example: `https://quanton-nine.vercel.app`. |
 | `BOT_TOKEN` | Optional | Telegram bot token; if omitted, the API runs without the bot. |
 | `ADMIN_CHAT_ID` | For alerts | Telegram chat id for `/alerts/test` and desk messages. |
-| `MINI_APP_URL` | For Web App button | Public **HTTPS** URL of your Mini App (same host you register with BotFather). |
-| `DATA_DIR` | Recommended on Render | Absolute path to a **writable** directory for `gifts.json` (see Disk below). |
-| `GIFTS_JSON_PATH` | Optional | Full path to the JSON file instead of `DATA_DIR/gifts.json`. |
+| `MINI_APP_URL` | For Web App button | Public **HTTPS** URL of the Mini App. Example: `https://quanton-nine.vercel.app`. |
 
 Copy `backend/.env.example` as a checklist. Do not commit real secrets.
 
@@ -43,13 +51,15 @@ The app creates the directory and `gifts.json` if missing. Writes use a temp fil
 
 ## 4. CORS and the Mini App
 
-The Telegram Mini App loads your SPA from **your** origin (e.g. Vercel). API calls send `Origin: https://your-spa…`. That exact origin must appear in `CORS_ORIGINS` (include preview URLs if you use them).
+The Mini App loads your SPA from **your** Vercel origin. Browser `fetch`/`axios` calls send `Origin: https://quanton-nine.vercel.app`. That origin must be allowed (built-in default + `CORS_ORIGINS` / `FRONTEND_URL`).
 
-`curl` and server-side calls send no `Origin` and are still allowed.
+CORS is configured with **`credentials: true`** so you can add cookies or credentialed requests later; the allowed origin is reflected explicitly (never `*`).
+
+`curl` and server-side calls often send no `Origin` header and are still allowed.
 
 ## 5. Frontend (`VITE_API_URL`)
 
-Point the React app at your Render service URL, e.g. `https://quanton-api.onrender.com` (no trailing slash). Configure this in Vercel env as `VITE_API_URL`.
+Production builds target **`https://quanton.onrender.com`** by default (`frontend/src/config.js`). `frontend/vercel.json` sets `build.env.VITE_API_URL` so Vercel builds work without manual env setup. Override in the Vercel dashboard if the API host changes.
 
 ## 6. Telegram production notes
 
@@ -60,8 +70,8 @@ Point the React app at your Render service URL, e.g. `https://quanton-api.onrend
 ## 7. Smoke test after deploy
 
 ```bash
-curl -sS "https://YOUR-SERVICE.onrender.com/health"
-curl -sS "https://YOUR-SERVICE.onrender.com/gifts"
+curl -sS "https://quanton.onrender.com/health"
+curl -sS "https://quanton.onrender.com/gifts"
 ```
 
 Expect `health.ok === true` and `storage.giftsWritable === true` once a Disk (or writable path) is configured.

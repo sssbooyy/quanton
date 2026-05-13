@@ -5,13 +5,31 @@ const baseURL = getApiBaseUrl();
 
 /** Shared client so every call uses the same origin and defaults. */
 const client = axios.create({
-  baseURL: baseURL || undefined,
+  baseURL,
   timeout: 30_000,
   headers: {
     Accept: "application/json",
     "Content-Type": "application/json",
   },
 });
+
+client.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    const method = (err.config?.method || "GET").toUpperCase();
+    const path = err.config?.url || "";
+    const full = `${baseURL}${path.startsWith("/") ? "" : "/"}${path}`;
+    const status = err.response?.status;
+    const data = err.response?.data;
+    console.error("[api]", method, full, {
+      status,
+      message: err.message,
+      code: err.code,
+      responseData: data,
+    });
+    return Promise.reject(err);
+  }
+);
 
 export async function getGifts() {
   const res = await client.get("/gifts");

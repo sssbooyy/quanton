@@ -11,7 +11,7 @@ export default defineConfig(() => ({
     host: true,
     port: 5173,
     strictPort: false,
-    // Tunnels (ngrok, cloudflared, etc.) without editing this file each time
+    // Dev tunnels (e.g. cloudflared) without editing this file each time
     allowedHosts: true,
   },
 

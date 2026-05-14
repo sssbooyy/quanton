@@ -303,14 +303,16 @@
   flex: 0 1 auto;
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  gap: 4px;
-  padding: 6px 9px 8px;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 7px 11px 9px;
   min-width: 0;
+  width: 100%;
 }
 
 .nftCardTitle {
   margin: 0;
+  width: 100%;
   font-size: clamp(14px, 3.5vw, 16px);
   font-weight: 800;
   letter-spacing: -0.03em;
@@ -326,6 +328,7 @@
 
 .nftCardSubline {
   margin: 0;
+  width: 100%;
   font-size: clamp(10px, 2.6vw, 11px);
   font-weight: 500;
   letter-spacing: 0.02em;
@@ -351,16 +354,20 @@
 
 .nftCardPriceRail {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-top: 3px;
-  padding: 0 2px;
+  justify-content: flex-start;
+  align-items: flex-start;
+  width: 100%;
+  margin-top: 0;
+  padding: 0;
 }
 
 .nftCardPricePill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  width: fit-content;
+  max-width: 100%;
   gap: 5px;
   padding: 5px 14px;
   border-radius: 9999px;
@@ -390,10 +397,11 @@
 }
 
 .nftCardStatusRow {
-  margin-top: 4px;
+  margin-top: 0;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  width: 100%;
 }
 
 .nftCardStatus {

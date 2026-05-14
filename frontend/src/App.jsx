@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { addGift, getGifts, sendTestAlert } from "./api";
 import GiftAnimatedHero from "./GiftAnimatedHero.jsx";
-import { cardImageSources, detailStaticRaster, giftMediaFit, stackedPosterUrl } from "./giftVisual.js";
+import { cardRasterSources, detailRasterWhileUpscale, giftMediaFit, stackedPosterUrl } from "./giftVisual.js";
 import {
   LANG_STORAGE_KEY,
   deskNote,
@@ -551,7 +551,7 @@ function GiftCard({ gift, lang, tk, onOpen }) {
   const [imgFailed, setImgFailed] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
 
-  const { src: imageUrl, srcSet } = cardImageSources(gift);
+  const { src: imageUrl, srcSet, pending: upscalePending } = cardRasterSources(gift);
   const renderable = isRenderableImageUrl(imageUrl);
   const fit = giftMediaFit(gift);
   const fitClass = fit === "cover" ? "nftCardImg--cover" : "nftCardImg--contain";
@@ -612,6 +612,11 @@ function GiftCard({ gift, lang, tk, onOpen }) {
             {tk("animHintShort")}
           </span>
         ) : null}
+        {upscalePending ? (
+          <span className="nftCardUpscaleHint" title={tk("badgeUpscalingTitle")}>
+            {tk("badgeUpscalingShort")}
+          </span>
+        ) : null}
       </div>
 
       <div className="nftCardMeta">
@@ -643,7 +648,7 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
   const volTone =
     gift.volumeGrowth > 0 ? "text-bull" : gift.volumeGrowth < 0 ? "text-bear" : "text-muted";
 
-  const heroRaster = detailStaticRaster(gift);
+  const heroRaster = detailRasterWhileUpscale(gift);
   const posterStack = stackedPosterUrl(gift);
   const posterRenderable =
     (isRenderableImageUrl(posterStack) && posterStack) ||
@@ -652,7 +657,7 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
   const mediaFit = giftMediaFit(gift);
 
   useEffect(() => {
-    const href = detailStaticRaster(gift);
+    const href = heroRaster;
     if (!isRenderableImageUrl(href)) return undefined;
     const link = document.createElement("link");
     link.rel = "preload";
@@ -663,6 +668,8 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
       link.remove();
     };
   }, [gift.id, heroRaster]);
+
+  const showEnhancedBadge = Boolean(gift.imageUpscaled);
 
   return (
     <div className="nftDetailOverlay" role="presentation">
@@ -709,6 +716,16 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
             <span className={`badgeSignal ${signalClass(gift.signal)}`}>{translateSignal(lang, gift.signal)}</span>
             {gift.status ? (
               <span className={statusBadgeClass(gift.status)}>{translateStatus(lang, gift.status)}</span>
+            ) : null}
+            {gift.imageUpscaleStatus === "pending" ? (
+              <span className="nftDetailChip nftDetailChip--pending" title={tk("badgeUpscalingTitle")}>
+                {tk("badgeUpscalingDetail")}
+              </span>
+            ) : null}
+            {showEnhancedBadge ? (
+              <span className="nftDetailChip nftDetailChip--enhanced" title={tk("badgeEnhancedTitle")}>
+                {tk("badgeEnhancedShort")}
+              </span>
             ) : null}
           </div>
 

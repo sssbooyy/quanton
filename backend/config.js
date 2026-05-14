@@ -37,6 +37,11 @@ export const GIFT_ASSET_AUTH_HEADER = process.env.GIFT_ASSET_AUTH_HEADER?.trim()
 /** Optional shared secret for POST /gifts/metadata/sync-stale */
 export const METADATA_SYNC_SECRET = process.env.METADATA_SYNC_SECRET?.trim() || "";
 
+const _floorTtl = Number.parseInt(process.env.FLOOR_CACHE_TTL_MS, 10);
+/** In-memory + request coalescing TTL for Gift Asset floor rows (60s–180s). */
+export const FLOOR_CACHE_TTL_MS =
+  Number.isFinite(_floorTtl) && _floorTtl >= 60_000 && _floorTtl <= 180_000 ? _floorTtl : 120_000;
+
 /** Replicate API token (preferred). Falls back to legacy `AI_UPSCALER_API_KEY`. */
 export const REPLICATE_API_TOKEN =
   process.env.REPLICATE_API_TOKEN?.trim() || process.env.AI_UPSCALER_API_KEY?.trim() || "";

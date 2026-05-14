@@ -665,6 +665,13 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
   const volTone =
     gift.volumeGrowth > 0 ? "text-bull" : gift.volumeGrowth < 0 ? "text-bear" : "text-muted";
 
+  const liveFloorTon = (() => {
+    const r = Number(gift.realFloorTon);
+    if (Number.isFinite(r) && r > 0) return r;
+    const f = Number(gift.floorTon);
+    return Number.isFinite(f) && f > 0 ? f : 0;
+  })();
+
   const heroPoster = detailHeroPosterUrl(gift);
   const staticRaster = bestStaticRasterUrl(gift);
   const mediaFit = giftMediaFit(gift);
@@ -861,8 +868,17 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
                 <span className="nftDetailStatValue">{gift.priceTon} TON</span>
               </div>
               <div className="nftDetailStat">
-                <span className="nftDetailStatLabel">{tk("fieldRefFloor")}</span>
-                <span className="nftDetailStatValue">{gift.floorTon} TON</span>
+                <span className="nftDetailStatLabel">{tk("detailLiveFloor")}</span>
+                <span className="nftDetailStatValue nftDetailFloorValueRow">
+                  {gift.floorIsLive ? (
+                    <span
+                      className="nftDetailLiveFloorDot"
+                      title={tk("detailFloorLiveHint")}
+                      aria-label={tk("livePill")}
+                    />
+                  ) : null}
+                  {liveFloorTon} TON
+                </span>
               </div>
               <div className="nftDetailStat">
                 <span className="nftDetailStatLabel">{tk("fieldDepth")}</span>

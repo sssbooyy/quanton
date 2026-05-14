@@ -15,12 +15,21 @@ import fs from "fs";
 import axios from "axios";
 import { fileURLToPath } from "url";
 import path from "path";
-import { GIFTS_FILE_PATH, GIFT_ASSET_API_KEY, GIFT_ASSET_AUTH_HEADER, GIFT_ASSET_BASE_URL } from "../config.js";
+import { GIFTS_FILE_PATH, GIFT_ASSET_API_KEY } from "../config.js";
 import { fetchOpenGraphMeta } from "./openGraphResolve.js";
+import { fetchGiftAssetByName } from "./giftAssetClient.js";
 import {
   openGraphRasterVariants,
   pickGiftAssetRasterLayers,
 } from "./giftImageAssets.js";
+import {
+  extractBestCollectionFloorTon,
+  extractLegacyMarketFloorTon,
+} from "./floorProvider.js";
+import {
+  normalizeCollectionFloorKeyFromGiftAssetName,
+  normalizeCollectionFloorKeyFromLabel,
+} from "./floorNormalization.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -268,30 +277,6 @@ function trimCachePayload(payload) {
 }
 
 /**
- * @param {string} name Gift Asset `name` (e.g. EasterEgg-1)
- * @returns {Promise<object | null>}
- */
-export async function fetchGiftAssetByName(name) {
-  if (!GIFT_ASSET_API_KEY) return null;
-  const base = GIFT_ASSET_BASE_URL.replace(/\/+$/, "");
-  const url = `${base}/api/v1/gifts/get_gift_by_name`;
-  try {
-    const res = await axios.get(url, {
-      params: { name },
-      headers: { [GIFT_ASSET_AUTH_HEADER]: GIFT_ASSET_API_KEY },
-      timeout: 18_000,
-      validateStatus: () => true,
-    });
-    if (res.status !== 200 || !res.data || typeof res.data !== "object") return null;
-    if (res.data.code && res.data.message) return null;
-    return res.data;
-  } catch (e) {
-    console.warn("[metadataProvider] Gift Asset request failed:", e?.message || e);
-    return null;
-  }
-}
-
-/**
  * Map Gift Asset API document → resolver result used by Mongo + GET /gifts.
  * @param {object} payload
  * @param {string} giftAssetName
@@ -309,11 +294,11 @@ export function mapGiftAssetPayloadToResult(payload, giftAssetName) {
     String(payload.telegram_gift_title || "").trim() || displayName || giftAssetName;
   const collection = derivedCollection;
 
-  const floorTon = floorTonFromPayload(payload);
-  const sales24h = aggregateSales24h(payload.providers);
-  const liquidity = liquidityFromSales24h(sales24h);
-  const risk = riskFromRarityIndex(Number(payload.rarity_index));
-  const rarity = rarityFromPayload(payload);
+  const floorLegacy = floorTonFromPayload(payload);
+  const floorBest = extractBestCollectionFloorTon(payload);
+  const floorAlt = extractLegacyMarketFloorTon(payload);
+  const floorTon =
+    floorBest > 0 ? floorBest : floorAlt > 0 ? floorAlt : floorLegacy > 0 ? floorLegacy : 0;
 
   const image = hiRes || thumbRaw;
 
@@ -338,6 +323,10 @@ export function mapGiftAssetPayloadToResult(payload, giftAssetName) {
     giftAssetName,
     ownerInfo: null,
     cachePayload: trimCachePayload(payload),
+    collectionFloorKey:
+      normalizeCollectionFloorKeyFromGiftAssetName(giftAssetName) ||
+      normalizeCollectionFloorKeyFromLabel(collection),
+    __giftAssetPayload: payload,
   };
 }
 
@@ -402,6 +391,8 @@ export async function resolveGiftMetadata(giftLink) {
         giftAssetName: "",
         ownerInfo: null,
         cachePayload: null,
+        collectionFloorKey: normalizeCollectionFloorKeyFromLabel(String(row.collection ?? "Telegram Gifts")),
+        __giftAssetPayload: null,
       };
     }
   }
@@ -453,6 +444,10 @@ export async function resolveGiftMetadata(giftLink) {
         cachePayload: {
           opengraph: { title: og.title, image: og.image, imageUpgraded: hi, siteName: og.siteName },
         },
+        collectionFloorKey:
+          normalizeCollectionFloorKeyFromGiftAssetName(nftSlug) ||
+          normalizeCollectionFloorKeyFromLabel(collection),
+        __giftAssetPayload: null,
       };
     }
 
@@ -504,6 +499,13 @@ export function applyResolvedMetadataToGiftDocument(doc, resolved) {
   doc.imageFit = resolved.mediaFit === "cover" ? "cover" : "contain";
   doc.animationUrl = resolved.animation || "";
   doc.floorTon = resolved.floorTon;
+  doc.collectionFloorKey = String(resolved.collectionFloorKey || "").trim();
+  const rf = Number(resolved.resolvedFloorTon);
+  doc.resolvedFloorTon = Number.isFinite(rf) && rf >= 0 ? rf : 0;
+  doc.resolvedFloorSource = String(resolved.resolvedFloorSource || "").trim();
+  const ru = resolved.resolvedFloorUpdatedAt;
+  doc.resolvedFloorUpdatedAt =
+    ru instanceof Date ? ru : ru ? new Date(ru) : null;
   doc.rarity = resolved.rarity;
   doc.sales24h = resolved.sales24h ?? 0;
   doc.volumeGrowth = resolved.volumeGrowth ?? 0;
@@ -516,3 +518,5 @@ export function applyResolvedMetadataToGiftDocument(doc, resolved) {
   doc.metadataSyncedAt = new Date();
   if (resolved.ownerInfo !== undefined) doc.ownerInfo = resolved.ownerInfo;
 }
+
+export { fetchGiftAssetByName };

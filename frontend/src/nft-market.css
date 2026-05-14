@@ -743,6 +743,21 @@
   word-break: break-word;
 }
 
+.nftDetailFloorValueRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.nftDetailLiveFloorDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--bull);
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.45);
+  flex-shrink: 0;
+}
+
 .nftDetailBar {
   height: 5px;
   border-radius: 999px;

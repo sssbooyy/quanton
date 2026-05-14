@@ -49,6 +49,12 @@ const giftSchema = new mongoose.Schema(
     animationUrl: { type: String, default: "", trim: true },
     priceTon: { type: Number, required: true },
     floorTon: { type: Number, required: true },
+    /** Normalized key for cross-alias floor cache (e.g. freshsocks / fresh-socks). */
+    collectionFloorKey: { type: String, default: "", trim: true, index: true },
+    /** Best-known collection floor (live provider → Mongo stale → resolver seed). */
+    resolvedFloorTon: { type: Number, default: 0 },
+    resolvedFloorSource: { type: String, default: "", trim: true },
+    resolvedFloorUpdatedAt: { type: Date, default: null },
     rarity: { type: Number, required: true, min: 1, max: 100 },
     sales24h: { type: Number, default: 0 },
     volumeGrowth: { type: Number, default: 0 },
@@ -89,6 +95,9 @@ function computeAiScoreForDoc(doc) {
     image: doc.image,
     priceTon: doc.priceTon,
     floorTon: doc.floorTon,
+    resolvedFloorTon: doc.resolvedFloorTon ?? 0,
+    resolvedFloorSource: doc.resolvedFloorSource ?? "",
+    resolvedFloorUpdatedAt: doc.resolvedFloorUpdatedAt ?? null,
     rarity: doc.rarity,
     sales24h: doc.sales24h ?? 0,
     volumeGrowth: doc.volumeGrowth ?? 0,

@@ -1,5 +1,6 @@
 import fs from "fs";
 import { calculateAiScore } from "./aiScore.js";
+import { computeRealFloorTon, computeFloorIsLive, finalizeResolvedFloorMetadata } from "./floorProvider.js";
 import { Gift } from "../models/Gift.js";
 import { User } from "../models/User.js";
 import { GIFTS_FILE_PATH, isProduction } from "../config.js";
@@ -70,7 +71,25 @@ export function giftToApiResponse(doc) {
     base.imageSrcSet = `${th} 1x, ${hi} 2x`;
   }
 
-  return { ...base, ...calculateAiScore(base) };
+  const ru = plain.resolvedFloorUpdatedAt;
+  if (ru instanceof Date) {
+    base.floorUpdatedAt = ru.toISOString();
+  } else if (ru) {
+    base.floorUpdatedAt = new Date(ru).toISOString();
+  }
+
+  base.realFloorTon = computeRealFloorTon(plain);
+  base.floorSource = String(plain.resolvedFloorSource || "");
+  base.floorIsLive = computeFloorIsLive(plain);
+
+  const scoreInput = {
+    ...base,
+    resolvedFloorTon: plain.resolvedFloorTon ?? 0,
+    resolvedFloorSource: plain.resolvedFloorSource ?? "",
+    resolvedFloorUpdatedAt: plain.resolvedFloorUpdatedAt ?? null,
+  };
+
+  return { ...base, ...calculateAiScore(scoreInput) };
 }
 
 export async function listGiftsForApi() {
@@ -148,6 +167,7 @@ export async function createGiftFromBody(body, listingIdSuffix = "") {
     };
   }
 
+  await finalizeResolvedFloorMetadata(resolved, {});
   const resolvedName = String(resolved.name ?? "").trim();
   const resolvedImage = String(resolved.imageHiRes || resolved.image || "").trim();
   if (!resolvedName || !resolvedImage) {
@@ -250,6 +270,10 @@ export async function seedGiftsFromJsonIfEmpty() {
         metadataSource: "seed-catalog",
         cachedMetadata: null,
         metadataSyncedAt: null,
+        collectionFloorKey: "",
+        resolvedFloorTon: 0,
+        resolvedFloorSource: "",
+        resolvedFloorUpdatedAt: null,
         ownerInfo: null,
         telegramUserId: null,
         telegramUserSnapshot: row.telegramUser ?? null,

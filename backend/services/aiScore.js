@@ -1,5 +1,7 @@
+import { computeRealFloorTon } from "./floorProvider.js";
+
 export function calculateAiScore(gift) {
-  const floorTon = Number(gift.floorTon) || 0;
+  const floorTon = computeRealFloorTon(gift);
   const floorGapPercent =
     floorTon > 0 ? ((floorTon - gift.priceTon) / floorTon) * 100 : 0;
 

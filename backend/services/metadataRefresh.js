@@ -1,5 +1,6 @@
 import { Gift } from "../models/Gift.js";
 import { resolveGiftMetadata, applyResolvedMetadataToGiftDocument } from "./metadataProvider.js";
+import { finalizeResolvedFloorMetadata } from "./floorProvider.js";
 import { scheduleGiftImageUpscale, syncUpscaleMetadataFields } from "./imageUpscaler.js";
 
 /**
@@ -21,6 +22,11 @@ export async function refreshGiftByListingId(listingId) {
   if (!resolved.ok) {
     return { error: { status: 400, body: { error: resolved.error || "Refresh failed." } } };
   }
+  await finalizeResolvedFloorMetadata(resolved, {
+    previousResolvedFloorTon: doc.resolvedFloorTon,
+    previousResolvedFloorSource: doc.resolvedFloorSource,
+    previousResolvedFloorUpdatedAt: doc.resolvedFloorUpdatedAt,
+  });
   if (!String((resolved.imageHiRes || resolved.image) ?? "").trim()) {
     return {
       error: { status: 422, body: { error: "Refreshed metadata is missing an image URL." } },

@@ -771,6 +771,45 @@ h1 {
   cursor: not-allowed;
 }
 
+.giftForm textarea.formTextarea {
+  width: 100%;
+  min-height: 88px;
+  resize: vertical;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(5, 8, 16, 0.85);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.45;
+  transition:
+    border-color 0.18s,
+    box-shadow 0.18s;
+}
+
+.giftForm textarea.formTextarea::placeholder {
+  color: var(--text-faint);
+}
+
+.giftForm textarea.formTextarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-glow);
+}
+
+.giftForm textarea.formTextarea:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.formHint {
+  margin: -4px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-faint);
+}
+
 .formError {
   margin: 0;
   font-size: 12px;

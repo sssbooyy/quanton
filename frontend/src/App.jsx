@@ -13,12 +13,9 @@ import {
 } from "./translations";
 
 const emptyGiftForm = {
-  name: "",
-  collection: "",
-  image: "",
+  giftLink: "",
   priceTon: "",
-  floorTon: "",
-  rarity: "",
+  sellerNote: "",
 };
 
 function getTelegramUser() {
@@ -147,45 +144,23 @@ export default function App() {
     e.preventDefault();
     setGiftFormError(null);
 
-    const nameTrim = giftForm.name.trim();
-    const collectionTrim = giftForm.collection.trim();
-    const imageTrim = giftForm.image.trim();
+    const giftLinkTrim = giftForm.giftLink.trim();
+    const sellerNoteTrim = giftForm.sellerNote.trim();
     const priceTon = Number(giftForm.priceTon);
-    const floorTon = Number(giftForm.floorTon);
-    const rarityNum = Number(giftForm.rarity);
 
-    if (!nameTrim) {
-      setGiftFormError(t(lang, "errNameRequired"));
-      return;
-    }
-    if (!collectionTrim) {
-      setGiftFormError(t(lang, "errCollectionRequired"));
-      return;
-    }
-    if (!imageTrim) {
-      setGiftFormError(t(lang, "errImageRequired"));
+    if (!giftLinkTrim) {
+      setGiftFormError(t(lang, "errGiftLinkRequired"));
       return;
     }
     if (!Number.isFinite(priceTon) || priceTon <= 0) {
       setGiftFormError(t(lang, "errPricePositive"));
       return;
     }
-    if (!Number.isFinite(floorTon) || floorTon <= 0) {
-      setGiftFormError(t(lang, "errFloorPositive"));
-      return;
-    }
-    if (!Number.isInteger(rarityNum) || rarityNum < 1 || rarityNum > 100) {
-      setGiftFormError(t(lang, "errRarityInt"));
-      return;
-    }
 
     const payload = {
-      name: nameTrim,
-      collection: collectionTrim,
-      image: imageTrim,
+      giftLink: giftLinkTrim,
       priceTon,
-      floorTon,
-      rarity: rarityNum,
+      sellerNote: sellerNoteTrim,
     };
     const tgUser = getTelegramUser();
     if (tgUser) {
@@ -462,84 +437,44 @@ export default function App() {
             <div className="modalBody">
               <form className="giftForm" onSubmit={handleAddGift} noValidate>
                 <label className="formField formFieldGrow">
-                  <span className="formLabel">{tk("formListingName")}</span>
+                  <span className="formLabel">{tk("formGiftLink")}</span>
                   <input
                     type="text"
-                    name="name"
+                    name="giftLink"
                     autoComplete="off"
-                    value={giftForm.name}
-                    onChange={(ev) => updateGiftField("name", ev.target.value)}
-                    placeholder={tk("phListingName")}
+                    value={giftForm.giftLink}
+                    onChange={(ev) => updateGiftField("giftLink", ev.target.value)}
+                    placeholder={tk("phGiftLink")}
+                    disabled={giftSubmitting}
+                  />
+                </label>
+                <p className="formHint mono">{tk("hintGiftResolver")}</p>
+                <label className="formField formFieldGrow">
+                  <span className="formLabel">{tk("formPriceTon")}</span>
+                  <input
+                    type="number"
+                    name="priceTon"
+                    inputMode="decimal"
+                    min="0"
+                    step="any"
+                    value={giftForm.priceTon}
+                    onChange={(ev) => updateGiftField("priceTon", ev.target.value)}
                     disabled={giftSubmitting}
                   />
                 </label>
                 <label className="formField formFieldGrow">
-                  <span className="formLabel">{tk("formCollection")}</span>
-                  <input
-                    type="text"
-                    name="collection"
+                  <span className="formLabel">{tk("formSellerNote")}</span>
+                  <textarea
+                    name="sellerNote"
+                    rows={3}
+                    className="formTextarea"
                     autoComplete="off"
-                    value={giftForm.collection}
-                    onChange={(ev) => updateGiftField("collection", ev.target.value)}
-                    placeholder={tk("phCollection")}
+                    value={giftForm.sellerNote}
+                    onChange={(ev) => updateGiftField("sellerNote", ev.target.value)}
+                    placeholder={tk("phSellerNote")}
                     disabled={giftSubmitting}
                   />
                 </label>
-                <label className="formField formFieldGrow">
-                  <span className="formLabel">{tk("formImageUrl")}</span>
-                  <input
-                    type="url"
-                    name="image"
-                    autoComplete="off"
-                    value={giftForm.image}
-                    onChange={(ev) => updateGiftField("image", ev.target.value)}
-                    placeholder={tk("phImageUrl")}
-                    disabled={giftSubmitting}
-                  />
-                </label>
-                <div className="formRow">
-                  <label className="formField">
-                    <span className="formLabel">{tk("formPriceTon")}</span>
-                    <input
-                      type="number"
-                      name="priceTon"
-                      inputMode="decimal"
-                      min="0"
-                      step="any"
-                      value={giftForm.priceTon}
-                      onChange={(ev) => updateGiftField("priceTon", ev.target.value)}
-                      disabled={giftSubmitting}
-                    />
-                  </label>
-                  <label className="formField">
-                    <span className="formLabel">{tk("formFloorTon")}</span>
-                    <input
-                      type="number"
-                      name="floorTon"
-                      inputMode="decimal"
-                      min="0"
-                      step="any"
-                      value={giftForm.floorTon}
-                      onChange={(ev) => updateGiftField("floorTon", ev.target.value)}
-                      disabled={giftSubmitting}
-                    />
-                  </label>
-                  <label className="formField">
-                    <span className="formLabel">{tk("formRarity")}</span>
-                    <input
-                      type="number"
-                      name="rarity"
-                      inputMode="numeric"
-                      min="1"
-                      max="100"
-                      step="1"
-                      value={giftForm.rarity}
-                      onChange={(ev) => updateGiftField("rarity", ev.target.value)}
-                      placeholder={tk("phRarity")}
-                      disabled={giftSubmitting}
-                    />
-                  </label>
-                </div>
                 {giftFormError && (
                   <p className="formError mono" role="alert">
                     {giftFormError}

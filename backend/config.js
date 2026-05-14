@@ -37,13 +37,32 @@ export const GIFT_ASSET_AUTH_HEADER = process.env.GIFT_ASSET_AUTH_HEADER?.trim()
 /** Optional shared secret for POST /gifts/metadata/sync-stale */
 export const METADATA_SYNC_SECRET = process.env.METADATA_SYNC_SECRET?.trim() || "";
 
-/** Optional AI upscaling for low-res OpenGraph images — see services/imageUpscaler.js */
+/** Replicate API token (preferred). Falls back to legacy `AI_UPSCALER_API_KEY`. */
+export const REPLICATE_API_TOKEN =
+  process.env.REPLICATE_API_TOKEN?.trim() || process.env.AI_UPSCALER_API_KEY?.trim() || "";
+
+function parseBoolEnv(v) {
+  const s = String(v ?? "")
+    .trim()
+    .toLowerCase();
+  return s === "1" || s === "true" || s === "yes" || s === "on";
+}
+
+/** Master switch for server-side Real-ESRGAN upscaling (see services/imageUpscaler.js). */
+export const AI_UPSCALER_ENABLED = parseBoolEnv(process.env.AI_UPSCALER_ENABLED);
+
+/** Legacy provider string (`replicate` | `cloudinary` | `none`). Prefer `AI_UPSCALER_ENABLED` + `REPLICATE_API_TOKEN`. */
 export const AI_UPSCALER_PROVIDER = (process.env.AI_UPSCALER_PROVIDER || "none").toLowerCase().trim();
 export const AI_UPSCALER_API_KEY = process.env.AI_UPSCALER_API_KEY?.trim() || "";
-/** Replicate model **version** hash (required for replicate provider). */
+/** Overrides default Real-ESRGAN Replicate version id. */
 export const AI_UPSCALER_MODEL = process.env.AI_UPSCALER_MODEL?.trim() || "";
-/** Cloudinary cloud name (required for cloudinary provider). */
 export const AI_UPSCALER_CLOUD_NAME = process.env.AI_UPSCALER_CLOUD_NAME?.trim() || "";
+
+/** nightmareai/real-esrgan — default Replicate **version** id (override with `REPLICATE_REAL_ESRGAN_VERSION` or `AI_UPSCALER_MODEL`). */
+export const REPLICATE_REAL_ESRGAN_VERSION =
+  process.env.REPLICATE_REAL_ESRGAN_VERSION?.trim() ||
+  process.env.AI_UPSCALER_MODEL?.trim() ||
+  "f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa";
 
 const _minEdge = Number.parseInt(process.env.AI_UPSCALER_MIN_EDGE_PX, 10);
 export const AI_UPSCALER_MIN_EDGE_PX =

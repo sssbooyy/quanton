@@ -1,16 +1,17 @@
 /**
- * Optional AI / CDN image upscaling for low-res OpenGraph Telegram NFT previews.
- * Never throws to callers — failures are logged and listings keep the original raster.
+ * Production Real-ESRGAN upscaling via Replicate (low-res Telegram gift rasters).
+ * Controlled by `AI_UPSCALER_ENABLED` + `REPLICATE_API_TOKEN` (see config.js).
+ * Never throws to callers — failures are logged; listings keep the original raster.
  */
 
 import crypto from "crypto";
 import axios from "axios";
 import sizeOf from "image-size";
 import {
+  REPLICATE_API_TOKEN,
+  AI_UPSCALER_ENABLED,
   AI_UPSCALER_PROVIDER,
-  AI_UPSCALER_API_KEY,
-  AI_UPSCALER_MODEL,
-  AI_UPSCALER_CLOUD_NAME,
+  REPLICATE_REAL_ESRGAN_VERSION,
   AI_UPSCALER_MIN_EDGE_PX,
   AI_UPSCALER_MAX_DOWNLOAD_BYTES,
   AI_UPSCALER_DOWNLOAD_TIMEOUT_MS,
@@ -55,16 +56,20 @@ function cacheSet(hash, url, provider) {
   upscaleUrlCache.set(hash, { url, provider, expires: Date.now() + CACHE_TTL_MS });
 }
 
-export function isUpscalerConfigured() {
-  const p = AI_UPSCALER_PROVIDER.toLowerCase();
-  if (p === "none" || !p) return false;
-  if (p === "replicate") {
-    return Boolean(AI_UPSCALER_API_KEY && AI_UPSCALER_MODEL);
-  }
-  if (p === "cloudinary") {
-    return Boolean(AI_UPSCALER_CLOUD_NAME);
-  }
+const UPSCALE_METADATA_SOURCES = new Set(["opengraph", "gift-asset"]);
+
+/** Replicate Real-ESRGAN is on when explicitly enabled, or legacy `AI_UPSCALER_PROVIDER=replicate`. */
+export function isReplicateUpscalerReady() {
+  if (!REPLICATE_API_TOKEN) return false;
+  if (!REPLICATE_REAL_ESRGAN_VERSION) return false;
+  if (AI_UPSCALER_ENABLED) return true;
+  if (AI_UPSCALER_PROVIDER === "replicate") return true;
   return false;
+}
+
+/** @deprecated use isReplicateUpscalerReady */
+export function isUpscalerConfigured() {
+  return isReplicateUpscalerReady();
 }
 
 /**
@@ -75,7 +80,7 @@ export function isUpscalerConfigured() {
  */
 export function syncUpscaleMetadataFields(doc, resolved) {
   const source = String(resolved.source || "");
-  if (source !== "opengraph") {
+  if (!UPSCALE_METADATA_SOURCES.has(source)) {
     doc.imageOriginal = "";
     doc.imageUpscaleStatus = "none";
     doc.imageUpscaled = false;
@@ -84,10 +89,18 @@ export function syncUpscaleMetadataFields(doc, resolved) {
     return false;
   }
 
-  const og = String(resolved.imageHiRes || resolved.image || "").trim();
-  doc.imageOriginal = og;
+  const raster = String(resolved.imageHiRes || resolved.image || "").trim();
+  doc.imageOriginal = raster;
 
-  if (!isUpscalerConfigured()) {
+  if (!raster.startsWith("http")) {
+    doc.imageUpscaleStatus = "skipped";
+    doc.imageUpscaled = false;
+    doc.imageUpscaleProvider = "";
+    doc.imageUpscaledAt = null;
+    return false;
+  }
+
+  if (!isReplicateUpscalerReady()) {
     doc.imageUpscaleStatus = "skipped";
     doc.imageUpscaled = false;
     doc.imageUpscaleProvider = "";
@@ -185,9 +198,9 @@ function needsUpscale(width, height) {
 /**
  * @param {string} imageUrl
  */
-async function upscaleWithReplicate(imageUrl) {
-  const token = AI_UPSCALER_API_KEY;
-  const version = AI_UPSCALER_MODEL;
+async function upscaleWithReplicateRealEsrgan(imageUrl) {
+  const token = REPLICATE_API_TOKEN;
+  const version = REPLICATE_REAL_ESRGAN_VERSION;
 
   const input = { image: imageUrl };
   const create = await axios.post(
@@ -237,17 +250,6 @@ async function upscaleWithReplicate(imageUrl) {
 }
 
 /**
- * Cloudinary fetch transformation (quality / sharpen). Not a generative model but improves perceived sharpness.
- * @param {string} imageUrl
- */
-function upscaleWithCloudinaryFetch(imageUrl) {
-  const cloud = AI_UPSCALER_CLOUD_NAME;
-  const transforms = AI_UPSCALER_MODEL?.trim() || "f_auto,q_auto:best,e_sharpen:60";
-  const enc = encodeURIComponent(imageUrl);
-  return `https://res.cloudinary.com/${cloud}/image/fetch/${transforms}/${enc}`;
-}
-
-/**
  * @param {string} originalUrl
  * @returns {Promise<{ ok: true; enhancedUrl: string; provider: string } | { ok: false; reason: string }>}
  */
@@ -255,8 +257,7 @@ export async function tryUpscaleRemoteImage(originalUrl) {
   const url = String(originalUrl || "").trim();
   if (!url.startsWith("http")) return { ok: false, reason: "bad_url" };
 
-  const provider = AI_UPSCALER_PROVIDER.toLowerCase();
-  if (provider === "none" || !provider || !isUpscalerConfigured()) {
+  if (!isReplicateUpscalerReady()) {
     return { ok: false, reason: "not_configured" };
   }
 
@@ -277,19 +278,12 @@ export async function tryUpscaleRemoteImage(originalUrl) {
   }
 
   try {
-    if (provider === "replicate") {
-      const enhancedUrl = await upscaleWithReplicate(url);
-      cacheSet(hash, enhancedUrl, "replicate");
-      return { ok: true, enhancedUrl, provider: "replicate" };
-    }
-    if (provider === "cloudinary") {
-      const enhancedUrl = upscaleWithCloudinaryFetch(url);
-      cacheSet(hash, enhancedUrl, "cloudinary");
-      return { ok: true, enhancedUrl, provider: "cloudinary" };
-    }
-    return { ok: false, reason: "unknown_provider" };
+    const enhancedUrl = await upscaleWithReplicateRealEsrgan(url);
+    const provider = "replicate/real-esrgan";
+    cacheSet(hash, enhancedUrl, provider);
+    return { ok: true, enhancedUrl, provider };
   } catch (e) {
-    console.warn("[imageUpscaler] provider error:", provider, e?.message || e);
+    console.warn("[imageUpscaler] Replicate Real-ESRGAN error:", e?.message || e);
     return { ok: false, reason: String(e?.message || "provider_error") };
   }
 }
@@ -301,7 +295,8 @@ export async function tryUpscaleRemoteImage(originalUrl) {
 export async function runGiftUpscaleJob(listingId) {
   const doc = await Gift.findOne({ listingId });
   if (!doc) return;
-  if (String(doc.metadataSource || "") !== "opengraph") return;
+  const src = String(doc.metadataSource || "");
+  if (!UPSCALE_METADATA_SOURCES.has(src)) return;
   if (doc.imageUpscaleStatus !== "pending") return;
 
   const originalUrl = String(doc.imageOriginal || doc.imageHiRes || doc.image || "").trim();

@@ -160,6 +160,22 @@ export default function App() {
     }
   }
 
+  const anyUpscalePending = useMemo(
+    () => gifts.some((g) => String(g.imageUpscaleStatus) === "pending"),
+    [gifts]
+  );
+
+  /** Background listings already show; poll lightly until Replicate finishes so cards/sheet pick up `imageHiRes`. */
+  useEffect(() => {
+    if (!anyUpscalePending) return undefined;
+    const id = window.setInterval(() => {
+      getGifts()
+        .then((data) => setGifts(data))
+        .catch((err) => console.error(err));
+    }, 4500);
+    return () => window.clearInterval(id);
+  }, [anyUpscalePending]);
+
   function updateGiftField(field, value) {
     setGiftForm((prev) => ({ ...prev, [field]: value }));
   }
@@ -566,7 +582,7 @@ function GiftCard({ gift, lang, tk, onOpen }) {
   const [imgLoaded, setImgLoaded] = useState(false);
   const { primary: cardTitle, secondary: cardSub } = giftCardTitleLines(gift);
 
-  const { src: imageUrl, srcSet, pending: upscalePending } = cardRasterSources(gift);
+  const { src: imageUrl, srcSet } = cardRasterSources(gift);
   const renderable = isRenderableImageUrl(imageUrl);
   const fit = giftMediaFit(gift);
   const fitClass = fit === "cover" ? "nftCardImg--cover" : "nftCardImg--contain";
@@ -625,11 +641,6 @@ function GiftCard({ gift, lang, tk, onOpen }) {
         {gift.animationUrl ? (
           <span className="nftCardAnimHint" title={tk("animHintTitle")}>
             {tk("animHintShort")}
-          </span>
-        ) : null}
-        {upscalePending ? (
-          <span className="nftCardUpscaleHint" title={tk("badgeUpscalingTitle")}>
-            {tk("badgeUpscalingShort")}
           </span>
         ) : null}
       </div>

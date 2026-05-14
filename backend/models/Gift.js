@@ -27,6 +27,14 @@ const giftSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     collection: { type: String, required: true, trim: true },
     image: { type: String, required: true, trim: true },
+    /** Largest static raster URL (Gift Asset / upgraded OG); primary quality source. */
+    imageHiRes: { type: String, default: "", trim: true },
+    /** Smaller raster for marketplace grid (optional; falls back to imageHiRes). */
+    imageThumb: { type: String, default: "", trim: true },
+    /** Poster / first frame for video or Lottie while loading. */
+    animationPosterUrl: { type: String, default: "", trim: true },
+    /** `contain` for sticker-like transparent gifts; `cover` for photo-like OG previews. */
+    imageFit: { type: String, enum: ["contain", "cover"], default: "contain" },
     /** Fragment / Telegram lottie JSON URL when available */
     animationUrl: { type: String, default: "", trim: true },
     priceTon: { type: Number, required: true },

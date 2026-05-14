@@ -17,6 +17,9 @@ export function giftToApiResponse(doc) {
     name: plain.name,
     collection: plain.collection,
     image: plain.image,
+    imageHiRes: plain.imageHiRes || plain.image,
+    imageThumb: plain.imageThumb || "",
+    imageFit: plain.imageFit === "cover" ? "cover" : "contain",
     priceTon: plain.priceTon,
     floorTon: plain.floorTon,
     rarity: plain.rarity,
@@ -38,6 +41,7 @@ export function giftToApiResponse(doc) {
   if (plain.metadataSource) base.metadataSource = plain.metadataSource;
   if (plain.animationUrl) base.animationUrl = plain.animationUrl;
   if (plain.giftAssetName) base.giftAssetName = plain.giftAssetName;
+  if (plain.animationPosterUrl) base.animationPosterUrl = plain.animationPosterUrl;
   if (plain.metadataSyncedAt instanceof Date) {
     base.metadataSyncedAt = plain.metadataSyncedAt.toISOString();
   } else if (plain.metadataSyncedAt) {
@@ -48,6 +52,12 @@ export function giftToApiResponse(doc) {
   }
   if (plain.ownerInfo && typeof plain.ownerInfo === "object") {
     base.ownerInfo = plain.ownerInfo;
+  }
+
+  const th = String(plain.imageThumb || "").trim();
+  const hi = String(plain.imageHiRes || plain.image || "").trim();
+  if (th && hi && th !== hi) {
+    base.imageSrcSet = `${th} 1x, ${hi} 2x`;
   }
 
   return { ...base, ...calculateAiScore(base) };
@@ -129,7 +139,7 @@ export async function createGiftFromBody(body, listingIdSuffix = "") {
   }
 
   const resolvedName = String(resolved.name ?? "").trim();
-  const resolvedImage = String(resolved.image ?? "").trim();
+  const resolvedImage = String(resolved.imageHiRes || resolved.image || "").trim();
   if (!resolvedName || !resolvedImage) {
     return {
       error: {
@@ -203,6 +213,10 @@ export async function seedGiftsFromJsonIfEmpty() {
         name: String(row.name),
         collection: String(row.collection ?? "Telegram Gifts"),
         image: imageStr,
+        imageHiRes: imageStr,
+        imageThumb: "",
+        animationPosterUrl: imageStr,
+        imageFit: "contain",
         animationUrl: "",
         priceTon: Number(row.priceTon) || 0,
         floorTon: Number(row.floorTon) || 0,

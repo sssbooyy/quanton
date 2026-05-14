@@ -25,7 +25,7 @@ function isLottieAnimationUrl(u) {
  * Detail hero: Lottie JSON (Gift Asset `lottie_anim`), muted looping video, or static image.
  * Listing cards should omit `animationUrl` so the Mini App does not run many players at once.
  */
-export default function GiftAnimatedHero({ animationUrl, posterUrl, alt }) {
+export default function GiftAnimatedHero({ animationUrl, posterUrl, alt, mediaFit = "contain" }) {
   const lottieHostRef = useRef(null);
   const [preferRaster, setPreferRaster] = useState(false);
   const [imgFailed, setImgFailed] = useState(false);
@@ -35,6 +35,9 @@ export default function GiftAnimatedHero({ animationUrl, posterUrl, alt }) {
   const anim = typeof animationUrl === "string" ? animationUrl.trim() : "";
   const poster = typeof posterUrl === "string" ? posterUrl.trim() : "";
   const rasterUrl = isRenderableImageUrl(poster) ? poster : "";
+
+  const fitCover = mediaFit === "cover";
+  const lottiePar = fitCover ? "xMidYMid slice" : "xMidYMid meet";
 
   const reduceMotion =
     typeof window !== "undefined" &&
@@ -73,7 +76,7 @@ export default function GiftAnimatedHero({ animationUrl, posterUrl, alt }) {
         autoplay: true,
         path: anim,
         rendererSettings: {
-          preserveAspectRatio: "xMidYMid slice",
+          preserveAspectRatio: lottiePar,
           className: "giftLottieSvg",
           hideOnTransparent: true,
         },
@@ -111,17 +114,20 @@ export default function GiftAnimatedHero({ animationUrl, posterUrl, alt }) {
         /* ignore */
       }
     };
-  }, [anim, preferRaster, reduceMotion]);
+  }, [anim, preferRaster, reduceMotion, lottiePar]);
 
   const useAnim = Boolean(anim && !preferRaster && !reduceMotion);
   const showVideo = useAnim && isVideoAnimationUrl(anim);
   const showLottie = useAnim && isLottieAnimationUrl(anim);
 
+  const imgFitClass = fitCover ? "nftHeroImg--cover" : "nftHeroImg--contain";
+  const vidFitClass = fitCover ? "giftAnimVideo--cover" : "giftAnimVideo--contain";
+
   if (showVideo) {
     return (
       <div className="giftAnimHeroRoot">
         <video
-          className={`giftAnimVideo nftHeroImg ${imgLoaded ? "nftHeroImg--loaded" : ""}`}
+          className={`giftAnimVideo nftHeroImg ${vidFitClass} ${imgLoaded ? "nftHeroImg--loaded" : ""}`}
           src={anim}
           poster={rasterUrl || undefined}
           autoPlay
@@ -153,11 +159,12 @@ export default function GiftAnimatedHero({ animationUrl, posterUrl, alt }) {
               alt={alt}
               width={640}
               height={640}
-              className={`nftHeroImg giftAnimPoster ${imgLoaded ? "nftHeroImg--loaded" : ""} ${
+              className={`nftHeroImg giftAnimPoster ${imgFitClass} ${imgLoaded ? "nftHeroImg--loaded" : ""} ${
                 lottieReady ? "giftAnimPoster--hidden" : ""
               }`}
               loading="eager"
               decoding="async"
+              fetchPriority="high"
               referrerPolicy="no-referrer"
               onLoad={() => setImgLoaded(true)}
               onError={() => setImgFailed(true)}
@@ -171,9 +178,10 @@ export default function GiftAnimatedHero({ animationUrl, posterUrl, alt }) {
           alt={alt}
           width={640}
           height={640}
-          className={`nftHeroImg giftAnimPoster ${imgLoaded ? "nftHeroImg--loaded" : ""}`}
+          className={`nftHeroImg giftAnimPoster ${imgFitClass} ${imgLoaded ? "nftHeroImg--loaded" : ""}`}
           loading="eager"
           decoding="async"
+          fetchPriority="high"
           referrerPolicy="no-referrer"
           onLoad={() => setImgLoaded(true)}
           onError={() => {

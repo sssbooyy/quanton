@@ -3,6 +3,7 @@ import { calculateAiScore } from "./aiScore.js";
 import { Gift } from "../models/Gift.js";
 import { User } from "../models/User.js";
 import { GIFTS_FILE_PATH } from "../config.js";
+import { resolveGiftMetadata } from "./resolveGiftMetadata.js";
 
 /** Map a stored gift document to the public API shape (includes live AI fields). */
 export function giftToApiResponse(doc) {
@@ -30,6 +31,11 @@ export function giftToApiResponse(doc) {
         ? plain.createdAt.toISOString()
         : plain.createdAt ?? new Date().toISOString(),
   };
+
+  if (plain.giftLink) base.giftLink = plain.giftLink;
+  if (plain.sellerNote) base.sellerNote = plain.sellerNote;
+  if (Array.isArray(plain.traits) && plain.traits.length) base.traits = plain.traits;
+  if (plain.metadataSource) base.metadataSource = plain.metadataSource;
 
   return { ...base, ...calculateAiScore(base) };
 }
@@ -76,32 +82,16 @@ async function upsertTelegramUser(telegramUser) {
 }
 
 export async function createGiftFromBody(body, listingIdSuffix = "") {
-  const {
-    name,
-    collection,
-    image,
-    priceTon,
-    floorTon,
-    rarity,
-    telegramUser,
-  } = body;
+  const { giftLink, priceTon, sellerNote, telegramUser } = body;
 
-  const nameTrim = typeof name === "string" ? name.trim() : "";
-  const collectionTrim = typeof collection === "string" ? collection.trim() : "";
-  const imageTrim = typeof image === "string" ? image.trim() : "";
-
+  const giftLinkTrim = typeof giftLink === "string" ? giftLink.trim() : "";
+  const sellerNoteTrim = typeof sellerNote === "string" ? sellerNote.trim() : "";
   const priceNum = Number(priceTon);
-  const floorNum = Number(floorTon);
-  const rarityNum = Number(rarity);
 
-  if (!nameTrim) {
-    return { error: { status: 400, body: { error: "Gift name is required." } } };
-  }
-  if (!collectionTrim) {
-    return { error: { status: 400, body: { error: "Collection is required." } } };
-  }
-  if (!imageTrim) {
-    return { error: { status: 400, body: { error: "Image URL is required." } } };
+  if (!giftLinkTrim) {
+    return {
+      error: { status: 400, body: { error: "Gift link or gift ID is required." } },
+    };
   }
   if (!Number.isFinite(priceNum) || priceNum <= 0) {
     return {
@@ -111,38 +101,35 @@ export async function createGiftFromBody(body, listingIdSuffix = "") {
       },
     };
   }
-  if (!Number.isFinite(floorNum) || floorNum <= 0) {
+
+  const resolved = await resolveGiftMetadata(giftLinkTrim);
+  if (!resolved.ok) {
     return {
-      error: {
-        status: 400,
-        body: { error: "Floor price in TON must be a number greater than 0." },
-      },
-    };
-  }
-  if (!Number.isInteger(rarityNum) || rarityNum < 1 || rarityNum > 100) {
-    return {
-      error: {
-        status: 400,
-        body: { error: "Rarity must be a whole number from 1 to 100." },
-      },
+      error: { status: 400, body: { error: resolved.error || "Could not resolve gift metadata." } },
     };
   }
 
   const userDoc = await upsertTelegramUser(telegramUser);
 
+  const traits = Array.isArray(resolved.traits) ? resolved.traits : [];
+
   const gift = await Gift.create({
     listingId: `gift_${Date.now()}${listingIdSuffix ? `_${listingIdSuffix}` : ""}`,
-    name: nameTrim,
-    collection: collectionTrim,
-    image: imageTrim,
+    giftLink: giftLinkTrim,
+    sellerNote: sellerNoteTrim,
+    name: resolved.name,
+    collection: resolved.collection,
+    image: resolved.image,
     priceTon: priceNum,
-    floorTon: floorNum,
-    rarity: rarityNum,
+    floorTon: resolved.floorTon,
+    rarity: resolved.rarity,
     sales24h: 0,
     volumeGrowth: 0,
     liquidity: "Unknown",
     risk: "Unknown",
     status: "pending",
+    traits,
+    metadataSource: resolved.source,
     telegramUserId: userDoc?._id ?? null,
     telegramUserSnapshot: telegramUser ?? null,
   });
@@ -179,6 +166,8 @@ export async function seedGiftsFromJsonIfEmpty() {
     try {
       await Gift.create({
         listingId: String(row.id),
+        giftLink: "",
+        sellerNote: "",
         name: String(row.name),
         collection: String(row.collection ?? "Telegram Gifts"),
         image: imageStr,
@@ -190,6 +179,8 @@ export async function seedGiftsFromJsonIfEmpty() {
         liquidity: String(row.liquidity ?? "Unknown"),
         risk: String(row.risk ?? "Unknown"),
         status: String(row.status ?? "pending"),
+        traits: [],
+        metadataSource: "seed-catalog",
         telegramUserId: null,
         telegramUserSnapshot: row.telegramUser ?? null,
         createdAt: row.createdAt ? new Date(row.createdAt) : undefined,

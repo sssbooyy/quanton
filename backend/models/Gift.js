@@ -1,6 +1,14 @@
 import mongoose from "mongoose";
 import { calculateAiScore } from "../services/aiScore.js";
 
+const traitEntrySchema = new mongoose.Schema(
+  {
+    key: { type: String, default: "" },
+    value: { type: String, default: "" },
+  },
+  { _id: false }
+);
+
 /**
  * Quanton listing. `listingId` is the stable public id returned as `id` in API JSON.
  * `aiScore` is denormalized from `calculateAiScore` for indexing and sorting; API responses
@@ -9,6 +17,10 @@ import { calculateAiScore } from "../services/aiScore.js";
 const giftSchema = new mongoose.Schema(
   {
     listingId: { type: String, required: true, unique: true, trim: true },
+    /** Pasted Telegram gift link or raw gift id (new listings). */
+    giftLink: { type: String, default: "", trim: true, index: true },
+    /** Optional note from seller (new listings). */
+    sellerNote: { type: String, default: "", trim: true },
     name: { type: String, required: true, trim: true },
     collection: { type: String, required: true, trim: true },
     image: { type: String, required: true, trim: true },
@@ -20,6 +32,9 @@ const giftSchema = new mongoose.Schema(
     liquidity: { type: String, default: "Unknown" },
     risk: { type: String, default: "Unknown" },
     status: { type: String, default: "pending" },
+    traits: { type: [traitEntrySchema], default: [] },
+    /** e.g. manual-resolver | seed-catalog */
+    metadataSource: { type: String, default: "manual-resolver", trim: true },
     telegramUserId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
     /** Exact payload echoed by GET /gifts for Mini App compatibility */
     telegramUserSnapshot: { type: mongoose.Schema.Types.Mixed, default: null },

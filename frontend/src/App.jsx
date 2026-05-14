@@ -237,7 +237,7 @@ export default function App() {
   }, [gifts]);
 
   return (
-    <div className="shell">
+    <div className="shell shell--miniapp">
       {successToast && (
         <div className="successToast" role="status" aria-live="polite">
           {successToast}
@@ -293,7 +293,7 @@ export default function App() {
               <span className="premiumTickerTitle">{tk("tickerTitle")}</span>
               <span className="mono premiumTickerHint">{tk("tickerHint")}</span>
             </div>
-            <div className="premiumTickerScroll" role="list">
+            <div className="premiumTickerGrid" role="list">
               {ticker.map((row) => (
                 <div key={row.id} className="tickerChip" role="listitem">
                   <span className="tickerChipRank mono">#{row.rank}</span>
@@ -397,7 +397,7 @@ export default function App() {
         ) : filteredGifts.length === 0 ? (
           <p className="empty mono">{tk("emptyFilter")}</p>
         ) : (
-          <section className="grid">
+          <section className="grid giftGrid">
             {filteredGifts.map((gift) => (
               <GiftCard key={gift.id} gift={gift} lang={lang} tk={tk} />
             ))}
@@ -542,7 +542,7 @@ function GiftCard({ gift, lang, tk }) {
               loading="lazy"
               decoding="async"
               referrerPolicy="no-referrer"
-              sizes="(max-width: 480px) 92vw, (max-width: 900px) 45vw, 300px"
+              sizes="(max-width: 767px) 96vw, 420px"
               draggable={false}
               onLoad={() => setImgLoaded(true)}
               onError={() => {
@@ -594,13 +594,13 @@ function GiftCard({ gift, lang, tk }) {
 
       <div className="cardBody">
         <div className="cardHead">
-          <div>
-            <h2>{gift.name}</h2>
-            <p className="collection mono">{gift.collection}</p>
+          <div className="cardHeadText">
+            <h2 className="giftTitle">{gift.name}</h2>
+            <p className="collection mono giftCollection">{gift.collection}</p>
           </div>
         </div>
 
-        <div className="priceRow">
+        <div className="priceRow giftStatGrid" role="group">
           <div>
             <span className="fieldLabel">{tk("fieldAsk")}</span>
             <span className="mono price">{gift.priceTon} TON</span>

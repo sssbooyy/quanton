@@ -5,6 +5,7 @@ const traitEntrySchema = new mongoose.Schema(
   {
     key: { type: String, default: "" },
     value: { type: String, default: "" },
+    media: { type: String, default: "" },
   },
   { _id: false }
 );
@@ -19,11 +20,15 @@ const giftSchema = new mongoose.Schema(
     listingId: { type: String, required: true, unique: true, trim: true },
     /** Pasted Telegram gift link or raw gift id (new listings). */
     giftLink: { type: String, default: "", trim: true, index: true },
+    /** Gift Asset `name` query (e.g. LushBouquet-6509) for refresh/sync. */
+    giftAssetName: { type: String, default: "", trim: true, index: true },
     /** Optional note from seller (new listings). */
     sellerNote: { type: String, default: "", trim: true },
     name: { type: String, required: true, trim: true },
     collection: { type: String, required: true, trim: true },
     image: { type: String, required: true, trim: true },
+    /** Fragment / Telegram lottie JSON URL when available */
+    animationUrl: { type: String, default: "", trim: true },
     priceTon: { type: Number, required: true },
     floorTon: { type: Number, required: true },
     rarity: { type: Number, required: true, min: 1, max: 100 },
@@ -33,8 +38,17 @@ const giftSchema = new mongoose.Schema(
     risk: { type: String, default: "Unknown" },
     status: { type: String, default: "pending" },
     traits: { type: [traitEntrySchema], default: [] },
-    /** e.g. manual-resolver | opengraph | seed-catalog */
-    metadataSource: { type: String, default: "manual-resolver", trim: true },
+    /**
+     * gift-asset | opengraph | catalog-json | seed-catalog
+     * (seed-catalog only from Mongo seed import)
+     */
+    metadataSource: { type: String, default: "gift-asset", trim: true },
+    /** Trimmed provider payload / OG snapshot for analytics & refresh */
+    cachedMetadata: { type: mongoose.Schema.Types.Mixed, default: null },
+    /** Last successful metadata sync */
+    metadataSyncedAt: { type: Date, default: null },
+    /** Owner / provenance from external providers (future wallet proofs) */
+    ownerInfo: { type: mongoose.Schema.Types.Mixed, default: null },
     telegramUserId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
     /** Exact payload echoed by GET /gifts for Mini App compatibility */
     telegramUserSnapshot: { type: mongoose.Schema.Types.Mixed, default: null },
@@ -47,6 +61,7 @@ const giftSchema = new mongoose.Schema(
 giftSchema.index({ name: 1 });
 giftSchema.index({ rarity: 1 });
 giftSchema.index({ aiScore: -1 });
+giftSchema.index({ metadataSyncedAt: 1 });
 
 function computeAiScoreForDoc(doc) {
   const base = {

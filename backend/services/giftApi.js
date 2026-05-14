@@ -3,7 +3,7 @@ import { calculateAiScore } from "./aiScore.js";
 import { Gift } from "../models/Gift.js";
 import { User } from "../models/User.js";
 import { GIFTS_FILE_PATH, isProduction } from "../config.js";
-import { resolveGiftMetadata } from "./resolveGiftMetadata.js";
+import { resolveGiftMetadata, applyResolvedMetadataToGiftDocument } from "./metadataProvider.js";
 
 /** Map a stored gift document to the public API shape (includes live AI fields). */
 export function giftToApiResponse(doc) {
@@ -36,6 +36,19 @@ export function giftToApiResponse(doc) {
   if (plain.sellerNote) base.sellerNote = plain.sellerNote;
   if (Array.isArray(plain.traits) && plain.traits.length) base.traits = plain.traits;
   if (plain.metadataSource) base.metadataSource = plain.metadataSource;
+  if (plain.animationUrl) base.animationUrl = plain.animationUrl;
+  if (plain.giftAssetName) base.giftAssetName = plain.giftAssetName;
+  if (plain.metadataSyncedAt instanceof Date) {
+    base.metadataSyncedAt = plain.metadataSyncedAt.toISOString();
+  } else if (plain.metadataSyncedAt) {
+    base.metadataSyncedAt = new Date(plain.metadataSyncedAt).toISOString();
+  }
+  if (plain.cachedMetadata && typeof plain.cachedMetadata === "object") {
+    base.cachedMetadata = plain.cachedMetadata;
+  }
+  if (plain.ownerInfo && typeof plain.ownerInfo === "object") {
+    base.ownerInfo = plain.ownerInfo;
+  }
 
   return { ...base, ...calculateAiScore(base) };
 }
@@ -88,7 +101,6 @@ export async function createGiftFromBody(body, listingIdSuffix = "") {
     };
   }
 
-  // Listing metadata always comes from resolveGiftMetadata(giftLink), never from client name fields.
   const { giftLink, priceTon, sellerNote, telegramUser } = body;
 
   const giftLinkTrim = typeof giftLink === "string" ? giftLink.trim() : "";
@@ -131,28 +143,18 @@ export async function createGiftFromBody(body, listingIdSuffix = "") {
 
   const userDoc = await upsertTelegramUser(telegramUser);
 
-  const traits = Array.isArray(resolved.traits) ? resolved.traits : [];
-
-  const gift = await Gift.create({
+  const gift = new Gift({
     listingId: `gift_${Date.now()}${listingIdSuffix ? `_${listingIdSuffix}` : ""}`,
     giftLink: giftLinkTrim,
     sellerNote: sellerNoteTrim,
-    name: resolvedName,
-    collection: String(resolved.collection ?? "Telegram Gifts").trim() || "Telegram Gifts",
-    image: resolvedImage,
     priceTon: priceNum,
-    floorTon: resolved.floorTon,
-    rarity: resolved.rarity,
-    sales24h: 0,
-    volumeGrowth: 0,
-    liquidity: "Unknown",
-    risk: "Unknown",
     status: "pending",
-    traits,
-    metadataSource: resolved.source,
     telegramUserId: userDoc?._id ?? null,
     telegramUserSnapshot: telegramUser ?? null,
   });
+
+  applyResolvedMetadataToGiftDocument(gift, resolved);
+  await gift.save();
 
   return { gift };
 }
@@ -196,10 +198,12 @@ export async function seedGiftsFromJsonIfEmpty() {
       await Gift.create({
         listingId: String(row.id),
         giftLink: "",
+        giftAssetName: "",
         sellerNote: "",
         name: String(row.name),
         collection: String(row.collection ?? "Telegram Gifts"),
         image: imageStr,
+        animationUrl: "",
         priceTon: Number(row.priceTon) || 0,
         floorTon: Number(row.floorTon) || 0,
         rarity: Number(row.rarity) || 1,
@@ -210,6 +214,9 @@ export async function seedGiftsFromJsonIfEmpty() {
         status: String(row.status ?? "pending"),
         traits: [],
         metadataSource: "seed-catalog",
+        cachedMetadata: null,
+        metadataSyncedAt: null,
+        ownerInfo: null,
         telegramUserId: null,
         telegramUserSnapshot: row.telegramUser ?? null,
         createdAt: row.createdAt ? new Date(row.createdAt) : undefined,

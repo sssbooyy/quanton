@@ -25,6 +25,18 @@ export const GIFTS_FILE_PATH = process.env.GIFTS_JSON_PATH?.trim()
   ? path.resolve(process.env.GIFTS_JSON_PATH.trim())
   : path.join(DATA_DIR, "gifts.json");
 
+/** Gift Asset API — https://github.com/GIFT-ASSET/gift_asset_api */
+export const GIFT_ASSET_BASE_URL = (process.env.GIFT_ASSET_BASE_URL || "https://giftasset.gifts").replace(
+  /\/+$/,
+  ""
+);
+export const GIFT_ASSET_API_KEY = process.env.GIFT_ASSET_API_KEY?.trim() || "";
+/** Header name for the API key (default matches common Gift Asset deployments). */
+export const GIFT_ASSET_AUTH_HEADER = process.env.GIFT_ASSET_AUTH_HEADER?.trim() || "X-API-Key";
+
+/** Optional shared secret for POST /gifts/metadata/sync-stale */
+export const METADATA_SYNC_SECRET = process.env.METADATA_SYNC_SECRET?.trim() || "";
+
 /**
  * CORS: comma-separated origins (scheme + host, no path).
  * Set CORS_ORIGINS=https://your-app.vercel.app,https://preview.vercel.app

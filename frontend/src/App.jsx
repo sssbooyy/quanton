@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { addGift, getGifts, sendTestAlert } from "./api";
 import GiftAnimatedHero from "./GiftAnimatedHero.jsx";
-import { cardRasterSources, detailRasterWhileUpscale, giftMediaFit, stackedPosterUrl } from "./giftVisual.js";
+import {
+  bestStaticRasterUrl,
+  cardRasterSources,
+  detailHeroPosterUrl,
+  giftImageFieldsForDebug,
+  giftMediaFit,
+  isImageDebugEnabled,
+  logGiftImageChoice,
+} from "./giftVisual.js";
 import {
   LANG_STORAGE_KEY,
   deskNote,
@@ -588,6 +596,10 @@ function GiftCard({ gift, lang, tk, onOpen }) {
   const fitClass = fit === "cover" ? "nftCardImg--cover" : "nftCardImg--contain";
 
   useEffect(() => {
+    logGiftImageChoice("card", gift, { src: imageUrl, srcSet });
+  }, [gift, imageUrl, srcSet]);
+
+  useEffect(() => {
     setImgFailed(false);
     setImgLoaded(false);
   }, [imageUrl, srcSet, gift.id]);
@@ -673,16 +685,23 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
   const volTone =
     gift.volumeGrowth > 0 ? "text-bull" : gift.volumeGrowth < 0 ? "text-bear" : "text-muted";
 
-  const heroRaster = detailRasterWhileUpscale(gift);
-  const posterStack = stackedPosterUrl(gift);
-  const posterRenderable =
-    (isRenderableImageUrl(posterStack) && posterStack) ||
-    (isRenderableImageUrl(heroRaster) && heroRaster) ||
-    "";
+  const heroPoster = detailHeroPosterUrl(gift);
+  const staticRaster = bestStaticRasterUrl(gift);
   const mediaFit = giftMediaFit(gift);
+  const showImageDebug = isImageDebugEnabled();
+  const debugFields = showImageDebug ? giftImageFieldsForDebug(gift) : null;
 
   useEffect(() => {
-    const href = heroRaster;
+    const card = cardRasterSources(gift);
+    logGiftImageChoice("detail", gift, {
+      src: card.src,
+      srcSet: card.srcSet,
+      heroPoster,
+    });
+  }, [gift, heroPoster]);
+
+  useEffect(() => {
+    const href = heroPoster || staticRaster;
     if (!isRenderableImageUrl(href)) return undefined;
     const link = document.createElement("link");
     link.rel = "preload";
@@ -692,9 +711,9 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
     return () => {
       link.remove();
     };
-  }, [gift.id, heroRaster]);
+  }, [gift.id, heroPoster, staticRaster]);
 
-  const showEnhancedBadge = Boolean(gift.imageUpscaled);
+  const showHdBadge = gift.imageUpscaled === true;
 
   return (
     <div className="nftDetailOverlay" role="presentation">
@@ -724,7 +743,7 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
           <div className="nftDetailHeroImg">
             <GiftAnimatedHero
               animationUrl={gift.animationUrl}
-              posterUrl={posterRenderable}
+              posterUrl={heroPoster}
               alt={gift.name}
               mediaFit={mediaFit}
             />
@@ -747,12 +766,112 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
                 {tk("badgeUpscalingDetail")}
               </span>
             ) : null}
-            {showEnhancedBadge ? (
+            {showHdBadge ? (
               <span className="nftDetailChip nftDetailChip--enhanced" title={tk("badgeEnhancedTitle")}>
                 {tk("badgeEnhancedShort")}
               </span>
             ) : null}
           </div>
+
+          {showImageDebug && debugFields ? (
+            <section
+              className="nftDetailSection"
+              style={{ borderTop: "1px dashed rgba(255,255,255,0.15)", paddingTop: 12 }}
+            >
+              <h3 className="nftDetailSectionTitle" style={{ color: "#fbbf24" }}>
+                Image debug (original vs upscaled)
+              </h3>
+              <p className="mono" style={{ fontSize: 11, opacity: 0.85, margin: "0 0 8px" }}>
+                Enable with <code>?imageDebug=1</code> or{" "}
+                <code>localStorage.setItem(&quot;quantonImageDebug&quot;,&quot;1&quot;)</code>
+              </p>
+              <div style={{ display: "grid", gap: 10, fontSize: 11 }}>
+                <div>
+                  <strong style={{ color: "#94a3b8" }}>image (API)</strong>
+                  <pre
+                    style={{
+                      margin: "4px 0 0",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-all",
+                      opacity: 0.95,
+                    }}
+                  >
+                    {debugFields.image || "—"}
+                  </pre>
+                </div>
+                <div>
+                  <strong style={{ color: "#94a3b8" }}>imageThumb</strong>
+                  <pre
+                    style={{
+                      margin: "4px 0 0",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-all",
+                      opacity: 0.95,
+                    }}
+                  >
+                    {debugFields.imageThumb || "—"}
+                  </pre>
+                </div>
+                <div>
+                  <strong style={{ color: "#94a3b8" }}>animationPosterUrl</strong>
+                  <pre
+                    style={{
+                      margin: "4px 0 0",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-all",
+                      opacity: 0.95,
+                    }}
+                  >
+                    {debugFields.animationPosterUrl || "—"}
+                  </pre>
+                </div>
+                <div>
+                  <strong style={{ color: "#94a3b8" }}>imageOriginal (OG / source)</strong>
+                  <pre
+                    style={{
+                      margin: "4px 0 0",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-all",
+                      opacity: 0.95,
+                    }}
+                  >
+                    {debugFields.imageOriginal || "—"}
+                  </pre>
+                </div>
+                <div>
+                  <strong style={{ color: "#94a3b8" }}>imageHiRes (API — should match Replicate after done)</strong>
+                  <pre
+                    style={{
+                      margin: "4px 0 0",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-all",
+                      opacity: 0.95,
+                    }}
+                  >
+                    {debugFields.imageHiRes || "—"}
+                  </pre>
+                </div>
+                <div>
+                  <strong style={{ color: "#94a3b8" }}>Rendered hero poster URL (cache-busted if HD)</strong>
+                  <pre
+                    style={{
+                      margin: "4px 0 0",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-all",
+                      opacity: 0.95,
+                    }}
+                  >
+                    {heroPoster || "—"}
+                  </pre>
+                </div>
+                <div className="mono" style={{ opacity: 0.9 }}>
+                  imageUpscaled: {String(debugFields.imageUpscaled)} · imageUpscaleStatus:{" "}
+                  {debugFields.imageUpscaleStatus || "—"} · provider:{" "}
+                  {String(gift.imageUpscaleProvider || "—")}
+                </div>
+              </div>
+            </section>
+          ) : null}
 
           <section className="nftDetailSection">
             <h3 className="nftDetailSectionTitle">{tk("detailSectionTape")}</h3>

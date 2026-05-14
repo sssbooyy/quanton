@@ -17,6 +17,7 @@ import {
   AI_UPSCALER_DOWNLOAD_TIMEOUT_MS,
   AI_UPSCALER_JOB_TIMEOUT_MS,
   AI_UPSCALER_MAX_RETRIES,
+  isProduction,
 } from "../config.js";
 import { Gift } from "../models/Gift.js";
 
@@ -196,11 +197,45 @@ function needsUpscale(width, height) {
 }
 
 /**
+ * Persist successful Replicate output. `imageUpscaleStatus` is **`done`** (legacy docs may still say `complete`).
+ * Clears `imageThumb` so the grid cannot keep showing a stale low-res thumbnail URL.
+ * @param {import("mongoose").Document} doc
+ * @param {string} enhancedUrl
+ * @param {string} provider
+ */
+function applyUpscaleSuccessToDoc(doc, enhancedUrl, provider) {
+  doc.imageHiRes = enhancedUrl;
+  doc.image = enhancedUrl;
+  doc.imageUpscaled = true;
+  doc.imageUpscaleProvider = provider;
+  doc.imageUpscaledAt = new Date();
+  doc.imageUpscaleStatus = "done";
+  doc.imageThumb = "";
+}
+
+function logUpscaleVerification(listingId, enhancedUrl, provider) {
+  if (isProduction) return;
+  const id = String(listingId || "").trim() || "?";
+  const u = String(enhancedUrl || "").trim();
+  console.log(
+    `[imageUpscaler] verified listing=${id} imageUpscaleStatus=done imageUpscaled=true provider=${provider} imageHiRes=${u.slice(0, 120)}${u.length > 120 ? "…" : ""}`
+  );
+}
+
+/**
  * @param {string} imageUrl
  */
 async function upscaleWithReplicateRealEsrgan(imageUrl) {
   const token = REPLICATE_API_TOKEN;
   const version = REPLICATE_REAL_ESRGAN_VERSION;
+
+  if (!isProduction) {
+    const v = String(version || "").trim();
+    console.debug("[imageUpscaler] Replicate create prediction", {
+      modelVersion: v ? `${v.slice(0, 16)}…` : "(missing)",
+      hint: "override with REPLICATE_REAL_ESRGAN_VERSION",
+    });
+  }
 
   const input = { image: imageUrl };
   const create = await axios.post(
@@ -309,25 +344,17 @@ export async function runGiftUpscaleJob(listingId) {
   const hash = sha256(originalUrl);
   const cached = cacheGet(hash);
   if (cached?.url) {
-    doc.imageHiRes = cached.url;
-    doc.image = cached.url;
-    doc.imageUpscaled = true;
-    doc.imageUpscaleProvider = cached.provider;
-    doc.imageUpscaledAt = new Date();
-    doc.imageUpscaleStatus = "complete";
+    applyUpscaleSuccessToDoc(doc, cached.url, cached.provider);
     await doc.save();
+    logUpscaleVerification(listingId, cached.url, cached.provider);
     return;
   }
 
   const result = await tryUpscaleRemoteImage(originalUrl);
   if (result.ok) {
-    doc.imageHiRes = result.enhancedUrl;
-    doc.image = result.enhancedUrl;
-    doc.imageUpscaled = true;
-    doc.imageUpscaleProvider = result.provider;
-    doc.imageUpscaledAt = new Date();
-    doc.imageUpscaleStatus = "complete";
+    applyUpscaleSuccessToDoc(doc, result.enhancedUrl, result.provider);
     await doc.save();
+    logUpscaleVerification(listingId, result.enhancedUrl, result.provider);
     return;
   }
 

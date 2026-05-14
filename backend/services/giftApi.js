@@ -66,7 +66,7 @@ export function giftToApiResponse(doc) {
 
   const th = String(plain.imageThumb || "").trim();
   const hi = String(plain.imageHiRes || plain.image || "").trim();
-  if (th && hi && th !== hi) {
+  if (!plain.imageUpscaled && th && hi && th !== hi) {
     base.imageSrcSet = `${th} 1x, ${hi} 2x`;
   }
 

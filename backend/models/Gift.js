@@ -42,7 +42,7 @@ const giftSchema = new mongoose.Schema(
     imageUpscaledAt: { type: Date, default: null },
     imageUpscaleStatus: {
       type: String,
-      enum: ["none", "pending", "skipped", "complete", "failed"],
+      enum: ["none", "pending", "skipped", "complete", "done", "failed"],
       default: "none",
     },
     /** Fragment / Telegram lottie JSON URL when available */

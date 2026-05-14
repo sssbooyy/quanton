@@ -2,7 +2,7 @@ import fs from "fs";
 import { calculateAiScore } from "./aiScore.js";
 import { Gift } from "../models/Gift.js";
 import { User } from "../models/User.js";
-import { GIFTS_FILE_PATH } from "../config.js";
+import { GIFTS_FILE_PATH, isProduction } from "../config.js";
 import { resolveGiftMetadata } from "./resolveGiftMetadata.js";
 
 /** Map a stored gift document to the public API shape (includes live AI fields). */
@@ -157,8 +157,17 @@ export async function createGiftFromBody(body, listingIdSuffix = "") {
   return { gift };
 }
 
-/** One-time import from `gifts.json` when the collection is empty (local + Render bootstrap). */
+/**
+ * Import demo rows from `gifts.json` into MongoDB when the collection is empty.
+ * Disabled in production (`NODE_ENV === "production"`) so Render/Atlas stays user-only.
+ * Resolver still reads the same JSON file from disk for `gift_starter_*` metadata.
+ */
 export async function seedGiftsFromJsonIfEmpty() {
+  if (isProduction) {
+    console.log("[mongo] skipping automatic demo gift seed (production)");
+    return { seeded: 0 };
+  }
+
   const count = await Gift.countDocuments();
   if (count > 0) return { seeded: 0 };
 

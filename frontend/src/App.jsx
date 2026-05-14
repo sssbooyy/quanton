@@ -12,14 +12,12 @@ import {
 } from "./giftVisual.js";
 import {
   LANG_STORAGE_KEY,
-  deskNote,
   getInitialLanguage,
   t,
   translateLiquidityRisk,
   translateServerMessage,
   translateSignal,
   translateStatus,
-  translations,
 } from "./translations";
 
 const emptyGiftForm = {
@@ -292,12 +290,11 @@ export default function App() {
         </div>
       )}
 
-      <header className="topbar">
+      <header className="topbar topbar--terminal">
         <div className="brand">
           <span className="brandMark" aria-hidden="true" />
           <div className="brandLockup">
-            <span className="brandQuanton">QUANTON</span>
-            <span className="brandTagline">{translations[lang].brandTagline}</span>
+            <span className="brandQuanton">Quanton</span>
           </div>
         </div>
         <div className="topbarRight">
@@ -319,79 +316,62 @@ export default function App() {
               {tk("langRu")}
             </button>
           </div>
-          <span className="livePill">
-            <span className="liveDot" aria-hidden="true" />
-            {tk("livePill")}
-          </span>
-          <span className="mono muted">{tk("restBadge")}</span>
         </div>
       </header>
 
-      <section className="liveMarketBand" aria-labelledby="live-market-heading">
-        <div className="liveMarketHeader">
-          <span className="liveMarketPill">{tk("liveMarketPill")}</span>
-          <h2 id="live-market-heading" className="liveMarketTitle">
-            {tk("liveMarketTitle")}
-          </h2>
-          <p className="liveMarketSub">{tk("liveMarketSub")}</p>
-        </div>
-        {ticker.length > 0 && (
-          <div className="premiumTicker">
-            <div className="premiumTickerHead">
-              <span className="premiumTickerTitle">{tk("tickerTitle")}</span>
-              <span className="mono premiumTickerHint">{tk("tickerHint")}</span>
-            </div>
-            <div className="premiumTickerGrid" role="list">
-              {ticker.map((row) => (
-                <div key={row.id} className="tickerChip" role="listitem">
-                  <span className="tickerChipRank mono">#{row.rank}</span>
-                  <span className="tickerChipName">{row.label}</span>
-                  <span className="mono tickerChipScore">{row.score}</span>
-                  <span
-                    className={`mono tickerChipGap ${row.gap >= 15 ? "text-bull" : "text-muted"}`}
-                  >
-                    {formatSignedPct(row.gap)} {tk("tickerEdge")}
+      <main className="app app--terminal">
+        <div className="feedHead">
+          <div className="feedHead__row">
+            <p className="feedHead__tagline">{tk("feedTagline")}</p>
+            <span className="feedHead__live">
+              <span className="liveDot liveDot--subtle" aria-hidden="true" />
+              {tk("livePill")}
+            </span>
+          </div>
+          <p className="feedHead__stats mono" aria-label={tk("metricsOverviewAria")}>
+            <span>
+              {gifts.length} {tk("statListings")}
+            </span>
+            <span className="feedHead__sep" aria-hidden="true">
+              ·
+            </span>
+            <span>
+              {tk("statAvg")} {aggregates.avgScore}
+            </span>
+            <span className="feedHead__sep" aria-hidden="true">
+              ·
+            </span>
+            <span className="text-bull">
+              {aggregates.strong} {tk("statStrong")}
+            </span>
+            <span className="feedHead__sep" aria-hidden="true">
+              ·
+            </span>
+            <span>
+              {aggregates.cheap} {tk("statGap")}
+            </span>
+            <span className="feedHead__sep" aria-hidden="true">
+              ·
+            </span>
+            <span>
+              {aggregates.totalVol} {tk("statPrints")}
+            </span>
+          </p>
+          {ticker.length > 0 ? (
+            <div className="tickerStrip" role="list" aria-label={tk("tickerAria")}>
+              <div className="tickerStrip__scroll">
+                {ticker.map((row) => (
+                  <span key={row.id} className="tickerStrip__chip mono" role="listitem" title={translateSignal(lang, row.signal)}>
+                    <span className="tickerStrip__rank">#{row.rank}</span>
+                    {row.label}
+                    <span className="tickerStrip__score">{row.score}</span>
+                    <span className={row.gap >= 15 ? "text-bull" : "text-muted"}>{formatSignedPct(row.gap)}</span>
                   </span>
-                  <span
-                    className={`tickerChipDot ${signalClass(row.signal)}`}
-                    title={translateSignal(lang, row.signal)}
-                  />
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
-      </section>
-
-      <main className="app">
-        <section className="hero">
-          <p className="eyebrow">{tk("heroEyebrow")}</p>
-          <h1>{tk("heroTitle")}</h1>
-          <p className="subtitle">{tk("heroSubtitle")}</p>
-        </section>
-
-        <section className="metricRibbon" aria-label={tk("metricsOverviewAria")}>
-          <div className="metricCell">
-            <span className="metricLabel">{tk("metricOpenListings")}</span>
-            <span className="metricValue mono">{gifts.length}</span>
-          </div>
-          <div className="metricCell">
-            <span className="metricLabel">{tk("metricAvgScore")}</span>
-            <span className="metricValue mono">{aggregates.avgScore}</span>
-          </div>
-          <div className="metricCell">
-            <span className="metricLabel">{tk("metricStrongTape")}</span>
-            <span className="metricValue mono text-bull">{aggregates.strong}</span>
-          </div>
-          <div className="metricCell">
-            <span className="metricLabel">{tk("metricFloorGap")}</span>
-            <span className="metricValue mono text-bull">{aggregates.cheap}</span>
-          </div>
-          <div className="metricCell">
-            <span className="metricLabel">{tk("metric24hPrints")}</span>
-            <span className="metricValue mono">{aggregates.totalVol}</span>
-          </div>
-        </section>
+          ) : null}
+        </div>
 
         <div className="toolbar">
           <div className="tabs" role="tablist" aria-label={tk("tabFilterAria")}>
@@ -874,8 +854,8 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
           ) : null}
 
           <section className="nftDetailSection">
-            <h3 className="nftDetailSectionTitle">{tk("detailSectionTape")}</h3>
-            <div className="nftDetailStatGrid">
+            <h3 className="nftDetailSectionTitle">{tk("detailSectionMarket")}</h3>
+            <div className="nftDetailStatGrid nftDetailStatGrid--dense">
               <div className="nftDetailStat">
                 <span className="nftDetailStatLabel">{tk("fieldAsk")}</span>
                 <span className="nftDetailStatValue">{gift.priceTon} TON</span>
@@ -888,19 +868,6 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
                 <span className="nftDetailStatLabel">{tk("fieldDepth")}</span>
                 <span className={`nftDetailStatValue ${spread >= 15 ? "text-bull" : ""}`}>{spread}%</span>
               </div>
-            </div>
-            <div className="nftDetailBar" aria-hidden="true" title={tk("depthBarTitle")}>
-              <div className="nftDetailBarFill" style={{ width: `${spread}%` }} />
-            </div>
-            <div className="tagRow" style={{ marginTop: 10 }}>
-              <span className="tag tagMuted">{translateLiquidityRisk(lang, gift.liquidity, "liq")}</span>
-              <span className="tag tagMuted">{translateLiquidityRisk(lang, gift.risk, "risk")}</span>
-            </div>
-          </section>
-
-          <section className="nftDetailSection">
-            <h3 className="nftDetailSectionTitle">{tk("detailSectionSignals")}</h3>
-            <div className="nftDetailStatGrid nftDetailStatGrid--pair">
               <div className="nftDetailStat">
                 <span className="nftDetailStatLabel">{tk("edgeTitle")}</span>
                 <span className="nftDetailStatValue">
@@ -911,12 +878,6 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
                 <span className="nftDetailStatLabel">{tk("metaRarity")}</span>
                 <span className="nftDetailStatValue">{gift.rarity}</span>
               </div>
-            </div>
-          </section>
-
-          <section className="nftDetailSection">
-            <h3 className="nftDetailSectionTitle">{tk("detailHistory")}</h3>
-            <div className="nftDetailStatGrid nftDetailStatGrid--pair">
               <div className="nftDetailStat">
                 <span className="nftDetailStatLabel">{tk("meta24h")}</span>
                 <span className="nftDetailStatValue">{gift.sales24h ?? 0}</span>
@@ -926,11 +887,13 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
                 <span className={`nftDetailStatValue ${volTone}`}>{formatSignedPct(gift.volumeGrowth)}</span>
               </div>
             </div>
-          </section>
-
-          <section className="nftDetailSection">
-            <h3 className="nftDetailSectionTitle">{tk("detailSectionNarrative")}</h3>
-            <p className="nftDetailNarrative">{deskNote(lang, gift)}</p>
+            <div className="nftDetailBar" aria-hidden="true" title={tk("depthBarTitle")}>
+              <div className="nftDetailBarFill" style={{ width: `${spread}%` }} />
+            </div>
+            <div className="tagRow" style={{ marginTop: 10 }}>
+              <span className="tag tagMuted">{translateLiquidityRisk(lang, gift.liquidity, "liq")}</span>
+              <span className="tag tagMuted">{translateLiquidityRisk(lang, gift.risk, "risk")}</span>
+            </div>
           </section>
 
           {(gift.sellerNote || gift.giftLink) && (

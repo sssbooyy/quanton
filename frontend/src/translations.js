@@ -5,51 +5,39 @@ export const LANG_STORAGE_KEY = "quanton_market_lang";
 export const translations = {
   en: {
     livePill: "Live",
-    restBadge: "REST",
-    brandTagline: "AI MARKETPLACE",
+    feedTagline: "Telegram gift marketplace",
+    tickerAria: "Top listings by score",
+
     langEn: "EN",
     langRu: "RU",
     langSwitcherAria: "Interface language",
 
-    liveMarketPill: "Quanton Live",
-    liveMarketTitle: "TON gift desk — model-ranked tape",
-    liveMarketSub:
-      "Live filters, floor versus ask, model score, and tape-style liquidity for the TON gift ecosystem.",
-    tickerTitle: "Top model score",
-    tickerHint: "this session",
-    tickerEdge: "edge",
+    statListings: "listings",
+    statAvg: "avg",
+    statStrong: "strong",
+    statGap: "15%+",
+    statPrints: "24h Σ",
 
-    heroEyebrow: "Quanton market",
-    heroTitle: "Trade faster. Move in TON.",
-    heroSubtitle:
-      "Quanton Market is a Telegram-native terminal for gift listings: model score, discount versus reference floor, tape volume, and risk tags — one screen, one language.",
+    metricsOverviewAria: "Market snapshot",
 
-    metricsOverviewAria: "Session overview",
-    metricOpenListings: "Open listings",
-    metricAvgScore: "Avg model score",
-    metricStrongTape: "Strong buy tape",
-    metricFloorGap: "Floor gap 15%+",
-    metric24hPrints: "24h prints (sum)",
+    tabFilterAria: "Filters",
+    tabAll: "All",
+    tabFloorDiscount: "−15%",
+    tabHighScore: "Score 80+",
+    addListing: "List",
+    testDeskAlert: "Test alert",
 
-    tabFilterAria: "Listing filters",
-    tabAll: "All listings",
-    tabFloorDiscount: "Floor discount",
-    tabHighScore: "High score",
-    addListing: "List your gift",
-    testDeskAlert: "Test desk alert",
-
-    loadingText: "Syncing market data...",
-    emptyFilter: "No listings match the selected filter.",
+    loadingText: "Loading…",
+    emptyFilter: "Nothing matches this filter.",
 
     closeDialogAria: "Close dialog",
-    modalKicker: "Quanton listing",
-    modalTitle: "List your gift",
-    modalBody:
-      "Paste a Telegram gift link or gift ID and your ask in TON. We will detect image, rarity and metadata automatically.",
+    modalKicker: "New listing",
+    modalTitle: "List a gift",
+    modalBody: "Telegram gift link or ID, price in TON.",
     ariaCloseModal: "Close",
-    formGiftLink: "Paste Telegram gift link",
-    phGiftLink: "e.g. t.me/… or gift_starter_001",
-    hintGiftResolver: "We will detect image, rarity and metadata automatically.",
+    formGiftLink: "Gift link or ID",
+    phGiftLink: "t.me/… or gift id",
+    hintGiftResolver: "Metadata resolves automatically.",
     formPriceTon: "Your price (TON)",
     formSellerNote: "Seller note (optional)",
     phSellerNote: "Optional context for buyers",
@@ -59,8 +47,7 @@ export const translations = {
 
     errGiftLinkRequired: "Paste a Telegram gift link or gift ID.",
     errPricePositive: "Price in TON must be a number greater than 0.",
-    successToastSubmit:
-      "Gift listed on Quanton Market. Status is pending until cleared.",
+    successToastSubmit: "Listed. Pending until cleared.",
     errSubmitGeneric: "Could not submit listing.",
 
     alertLoadFailed: "Could not sync listings. Check your connection and API URL.",
@@ -76,7 +63,7 @@ export const translations = {
     badgeUpscalingDetail: "Enhancing…",
     badgeEnhancedTitle: "AI-upscaled preview (server-side)",
     badgeEnhancedShort: "HD",
-    edgeTitle: "Discount versus reference floor",
+    edgeTitle: "vs ref. floor",
     edgeSuffix: "edge",
     fieldAsk: "Ask",
     fieldRefFloor: "Ref. floor",
@@ -103,12 +90,13 @@ export const translations = {
     statusApproved: "approved",
     statusPending: "pending",
 
-    detailSheetKicker: "Listing detail",
-    detailGiftId: "Listing ID",
-    detailSectionTape: "Tape & liquidity",
-    detailSectionSignals: "Model signals",
-    detailSectionNarrative: "Desk narrative",
-    detailSectionContext: "Context",
+    detailSheetKicker: "Listing",
+    detailGiftId: "ID",
+    detailSectionMarket: "Market",
+    detailSectionTape: "Market",
+    detailSectionSignals: "Signals",
+    detailSectionNarrative: "Notes",
+    detailSectionContext: "Notes",
     detailVolatility: "Volume trend",
     detailHistory: "Session prints",
     detailSellerNote: "Seller note",
@@ -118,51 +106,39 @@ export const translations = {
 
   ru: {
     livePill: "Онлайн",
-    restBadge: "REST",
-    brandTagline: "ИИ‑РЫНОК",
+    feedTagline: "Маркетплейс подарков Telegram",
+    tickerAria: "Топ лотов по скору",
+
     langEn: "EN",
     langRu: "RU",
     langSwitcherAria: "Язык интерфейса",
 
-    liveMarketPill: "Quanton Live",
-    liveMarketTitle: "TON‑стол подарков — лента по модели",
-    liveMarketSub:
-      "Живые фильтры, флор и аск, скор модели и ликвидность ленты в экосистеме TON‑подарков.",
-    tickerTitle: "Топ по скору модели",
-    tickerHint: "сессия",
-    tickerEdge: "к флору",
+    statListings: "лотов",
+    statAvg: "ср.",
+    statStrong: "сильн.",
+    statGap: "15%+",
+    statPrints: "24ч Σ",
 
-    heroEyebrow: "Рынок Quanton",
-    heroTitle: "Быстрее сделки. Движение в TON.",
-    heroSubtitle:
-      "Quanton Market — нативный для Telegram терминал по лотам подарков: скор модели, дисконт к референс‑флору, объём ленты и теги риска — один экран, один язык интерфейса.",
+    metricsOverviewAria: "Сводка рынка",
 
-    metricsOverviewAria: "Сводка сессии",
-    metricOpenListings: "Открытые лоты",
-    metricAvgScore: "Средний скор модели",
-    metricStrongTape: "Сильный buy по ленте",
-    metricFloorGap: "Разрыв к флору 15%+",
-    metric24hPrints: "Принты 24ч (сумма)",
+    tabFilterAria: "Фильтры",
+    tabAll: "Все",
+    tabFloorDiscount: "−15%",
+    tabHighScore: "Скор 80+",
+    addListing: "Лот",
+    testDeskAlert: "Тест",
 
-    tabFilterAria: "Фильтры лотов",
-    tabAll: "Все лоты",
-    tabFloorDiscount: "Дисконт к флору",
-    tabHighScore: "Высокий скор",
-    addListing: "Выложить подарок",
-    testDeskAlert: "Тестовый алерт",
-
-    loadingText: "Синхронизация рыночных данных...",
-    emptyFilter: "Нет лотов под выбранный фильтр.",
+    loadingText: "Загрузка…",
+    emptyFilter: "Нет лотов по фильтру.",
 
     closeDialogAria: "Закрыть окно",
-    modalKicker: "Лот Quanton",
+    modalKicker: "Новый лот",
     modalTitle: "Выложить подарок",
-    modalBody:
-      "Вставьте ссылку на подарок Telegram или ID и цену в TON. Изображение, редкость и метаданные подтянем автоматически.",
+    modalBody: "Ссылка или ID подарка, цена в TON.",
     ariaCloseModal: "Закрыть",
-    formGiftLink: "Ссылка на подарок Telegram",
-    phGiftLink: "напр. t.me/… или gift_starter_001",
-    hintGiftResolver: "Изображение, редкость и метаданные определим автоматически.",
+    formGiftLink: "Ссылка или ID",
+    phGiftLink: "t.me/… или id",
+    hintGiftResolver: "Метаданные подтянем сами.",
     formPriceTon: "Ваша цена (TON)",
     formSellerNote: "Заметка продавца (необязательно)",
     phSellerNote: "Контекст для покупателей — по желанию",
@@ -172,8 +148,7 @@ export const translations = {
 
     errGiftLinkRequired: "Вставьте ссылку на подарок или ID.",
     errPricePositive: "Цена в TON должна быть числом больше 0.",
-    successToastSubmit:
-      "Лот опубликован в Quanton Market. Статус pending до проверки.",
+    successToastSubmit: "Опубликовано. Статус pending до проверки.",
     errSubmitGeneric: "Не удалось отправить лот.",
 
     alertLoadFailed: "Не удалось загрузить ленту. Проверьте сеть и URL API.",
@@ -189,7 +164,7 @@ export const translations = {
     badgeUpscalingDetail: "Улучшение…",
     badgeEnhancedTitle: "Превью с AI‑апскейлом (на сервере)",
     badgeEnhancedShort: "HD",
-    edgeTitle: "Дисконт к референс‑флору",
+    edgeTitle: "к реф. флору",
     edgeSuffix: "к флору",
     fieldAsk: "Аск",
     fieldRefFloor: "Реф. флор",
@@ -216,12 +191,13 @@ export const translations = {
     statusApproved: "одобрено",
     statusPending: "ожидает",
 
-    detailSheetKicker: "Карточка лота",
-    detailGiftId: "ID лота",
-    detailSectionTape: "Лента и ликвидность",
-    detailSectionSignals: "Сигналы модели",
-    detailSectionNarrative: "Комментарий стола",
-    detailSectionContext: "Контекст",
+    detailSheetKicker: "Лот",
+    detailGiftId: "ID",
+    detailSectionMarket: "Рынок",
+    detailSectionTape: "Рынок",
+    detailSectionSignals: "Сигналы",
+    detailSectionNarrative: "Заметка",
+    detailSectionContext: "Заметка",
     detailVolatility: "Динамика объёма",
     detailHistory: "Принты сессии",
     detailSellerNote: "Заметка продавца",
@@ -339,26 +315,4 @@ const SERVER_ERR_RU = {
 export function translateServerMessage(lang, message) {
   if (lang !== "ru" || typeof message !== "string") return message;
   return SERVER_ERR_RU[message] ?? message;
-}
-
-/**
- * @param {Lang} lang
- * @param {{ name: string; signal: string; undervaluedPercent?: number }} gift
- */
-export function deskNote(lang, gift) {
-  if (lang === "en") return gift.explanation;
-  const n = gift.name;
-  const g = Math.round(Number(gift.undervaluedPercent) || 0);
-  switch (gift.signal) {
-    case "Strong Buy":
-      return `Биржевой скан Quanton: ${n} — модель видит ~${g}% к справочному флору; редкость и потоки на стороне покупателя.`;
-    case "Watch":
-      return `Quanton: ${n} в зоне наблюдения — проверьте ликвидность и 24ч принты перед объёмом.`;
-    case "Risky":
-      return `Quanton: ${n} читается рискованно — соотношение риск/доходность не в вашу пользу на текущей ленте.`;
-    case "Neutral":
-      return `Quanton: ${n} без явного перевеса — ждите подтверждения по ленте или пропускайте.`;
-    default:
-      return gift.explanation;
-  }
 }

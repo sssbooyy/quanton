@@ -33,7 +33,7 @@ const giftSchema = new mongoose.Schema(
     risk: { type: String, default: "Unknown" },
     status: { type: String, default: "pending" },
     traits: { type: [traitEntrySchema], default: [] },
-    /** e.g. manual-resolver | seed-catalog */
+    /** e.g. manual-resolver | opengraph | seed-catalog */
     metadataSource: { type: String, default: "manual-resolver", trim: true },
     telegramUserId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
     /** Exact payload echoed by GET /gifts for Mini App compatibility */

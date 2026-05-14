@@ -27,11 +27,13 @@ MONGODB_URI=mongodb+srv://USER:PASS@cluster0.xxxxx.mongodb.net/quanton?retryWrit
 
 The server **exits on boot** if `MONGODB_URI` is missing.
 
-### First-run seed
+### Demo seed (non-production only)
 
-If the **`gifts`** collection is **empty**, the service imports rows from `backend/data/gifts.json` (or `GIFTS_JSON_PATH` if set in `backend/config.js`). Seed rows include stable **`https://picsum.photos/seed/...`** image URLs suitable for production Mini Apps. After that, data lives only in Atlas.
+When **`NODE_ENV` is not `production`**, if the **`gifts`** collection is **empty**, the service imports rows from `backend/data/gifts.json` (or `GIFTS_JSON_PATH` if set in `backend/config.js`) so local development has sample listings.
 
-If you already have documents with old placeholder URLs, either update the `image` field in Atlas or **drop the `gifts` collection** once (dev/staging only) so the service can re-import from the updated JSON on next deploy.
+**Production** (`NODE_ENV=production`, including Render): automatic Mongo import is **disabled**; an empty database stays empty until real listings are created via `POST /gifts`. `GET /gifts` then returns `[]`. The same JSON file remains on disk for the gift metadata resolver (catalog matching), not as a DB seed.
+
+If you already have documents with old placeholder URLs in dev, either update the `image` field in Atlas or **drop the `gifts` collection** once so the next non-production boot can re-import from the updated JSON.
 
 ## 2. Create a Web Service on Render
 
@@ -55,7 +57,7 @@ Render injects **`PORT`**; **`NODE_ENV`** is typically `production` for Web Serv
 | `BOT_TOKEN` | Optional | Telegram bot token; if omitted, the API runs without the bot. |
 | `ADMIN_CHAT_ID` | For alerts | Telegram chat id for `/alerts/test` and desk messages. |
 | `MINI_APP_URL` | For Web App button | Public **HTTPS** URL of the Mini App. Example: `https://quanton-nine.vercel.app`. |
-| `GIFTS_JSON_PATH` | Optional | Absolute path to a seed `gifts.json` when the DB is empty (defaults to `backend/data/gifts.json`). |
+| `GIFTS_JSON_PATH` | Optional | Absolute path to `gifts.json` for the **resolver** and for **non-production** empty-DB demo seed (defaults under `DATA_DIR` / `backend/data`). |
 
 Copy `backend/.env.example` as a checklist. Do not commit real secrets.
 

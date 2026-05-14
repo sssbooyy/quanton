@@ -18,6 +18,19 @@ export function cardImageSources(gift) {
 }
 
 /**
+ * While backend upscale is pending, show the original OpenGraph raster (no frontend upscale).
+ * @param {Record<string, unknown>} gift
+ */
+export function cardRasterSources(gift) {
+  if (gift.imageUpscaleStatus === "pending" && trimUrl(gift.imageOriginal)) {
+    const o = trimUrl(gift.imageOriginal);
+    const hi = trimUrl(gift.imageHiRes) || trimUrl(gift.image) || o;
+    return { src: o, srcSet: undefined, hiRes: hi, pending: true };
+  }
+  return { ...cardImageSources(gift), pending: false };
+}
+
+/**
  * Detail static raster (full quality).
  * @param {Record<string, unknown>} gift
  */
@@ -26,10 +39,28 @@ export function detailStaticRaster(gift) {
 }
 
 /**
- * Poster hierarchy: animation poster → thumb → hi-res → legacy image.
+ * Detail hero raster while upscale job runs: keep OG visible until hi-res is swapped server-side.
+ * @param {Record<string, unknown>} gift
+ */
+export function detailRasterWhileUpscale(gift) {
+  if (gift.imageUpscaleStatus === "pending" && trimUrl(gift.imageOriginal)) {
+    return trimUrl(gift.imageOriginal);
+  }
+  return detailStaticRaster(gift);
+}
+
+/**
+ * Poster hierarchy: animation poster → hi-res → legacy image → thumb.
+ * When upscale is pending, prefer `imageOriginal` under animations.
  * @param {Record<string, unknown>} gift
  */
 export function stackedPosterUrl(gift) {
+  if (gift.imageUpscaleStatus === "pending" && trimUrl(gift.imageOriginal)) {
+    const o = trimUrl(gift.imageOriginal);
+    return (
+      trimUrl(gift.animationPosterUrl) || o || trimUrl(gift.imageHiRes) || trimUrl(gift.image) || trimUrl(gift.imageThumb)
+    );
+  }
   return (
     trimUrl(gift.animationPosterUrl) ||
     trimUrl(gift.imageHiRes) ||

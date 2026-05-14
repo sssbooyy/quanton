@@ -35,6 +35,16 @@ const giftSchema = new mongoose.Schema(
     animationPosterUrl: { type: String, default: "", trim: true },
     /** `contain` for sticker-like transparent gifts; `cover` for photo-like OG previews. */
     imageFit: { type: String, enum: ["contain", "cover"], default: "contain" },
+    /** OpenGraph / low-res source URL before optional AI upscale (OpenGraph listings). */
+    imageOriginal: { type: String, default: "", trim: true },
+    imageUpscaled: { type: Boolean, default: false },
+    imageUpscaleProvider: { type: String, default: "", trim: true },
+    imageUpscaledAt: { type: Date, default: null },
+    imageUpscaleStatus: {
+      type: String,
+      enum: ["none", "pending", "skipped", "complete", "failed"],
+      default: "none",
+    },
     /** Fragment / Telegram lottie JSON URL when available */
     animationUrl: { type: String, default: "", trim: true },
     priceTon: { type: Number, required: true },

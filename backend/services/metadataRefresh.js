@@ -1,5 +1,6 @@
 import { Gift } from "../models/Gift.js";
 import { resolveGiftMetadata, applyResolvedMetadataToGiftDocument } from "./metadataProvider.js";
+import { scheduleGiftImageUpscale, syncUpscaleMetadataFields } from "./imageUpscaler.js";
 
 /**
  * Re-fetch external metadata for a single listing (Gift Asset + fallbacks).
@@ -20,13 +21,17 @@ export async function refreshGiftByListingId(listingId) {
   if (!resolved.ok) {
     return { error: { status: 400, body: { error: resolved.error || "Refresh failed." } } };
   }
-  if (!String(resolved.imageHiRes || resolved.image ?? "").trim()) {
+  if (!String((resolved.imageHiRes || resolved.image) ?? "").trim()) {
     return {
       error: { status: 422, body: { error: "Refreshed metadata is missing an image URL." } },
     };
   }
   applyResolvedMetadataToGiftDocument(doc, resolved);
+  syncUpscaleMetadataFields(doc, resolved);
   await doc.save();
+  if (doc.imageUpscaleStatus === "pending") {
+    scheduleGiftImageUpscale(doc.listingId);
+  }
   return { gift: doc };
 }
 

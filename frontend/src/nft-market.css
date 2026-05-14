@@ -650,6 +650,24 @@
   pointer-events: none;
 }
 
+.nftCardUpscaleHint {
+  position: absolute;
+  bottom: 7px;
+  right: 8px;
+  z-index: 4;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding: 3px 5px;
+  border-radius: 6px;
+  color: #fef9c3;
+  background: rgba(251, 191, 36, 0.2);
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  line-height: 1;
+  pointer-events: none;
+}
+
 .nftDetailChips {
   display: flex;
   flex-wrap: wrap;
@@ -673,6 +691,18 @@
   border-color: rgba(56, 189, 248, 0.35);
   color: var(--accent);
   background: rgba(56, 189, 248, 0.1);
+}
+
+.nftDetailChip--pending {
+  border-color: rgba(251, 191, 36, 0.45);
+  color: #fde68a;
+  background: rgba(251, 191, 36, 0.12);
+}
+
+.nftDetailChip--enhanced {
+  border-color: rgba(52, 211, 153, 0.45);
+  color: #6ee7b7;
+  background: rgba(52, 211, 153, 0.1);
 }
 
 .nftDetailSection {

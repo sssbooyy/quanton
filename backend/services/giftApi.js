@@ -4,6 +4,7 @@ import { Gift } from "../models/Gift.js";
 import { User } from "../models/User.js";
 import { GIFTS_FILE_PATH, isProduction } from "../config.js";
 import { resolveGiftMetadata, applyResolvedMetadataToGiftDocument } from "./metadataProvider.js";
+import { scheduleGiftImageUpscale, syncUpscaleMetadataFields } from "./imageUpscaler.js";
 
 /** Map a stored gift document to the public API shape (includes live AI fields). */
 export function giftToApiResponse(doc) {
@@ -42,6 +43,15 @@ export function giftToApiResponse(doc) {
   if (plain.animationUrl) base.animationUrl = plain.animationUrl;
   if (plain.giftAssetName) base.giftAssetName = plain.giftAssetName;
   if (plain.animationPosterUrl) base.animationPosterUrl = plain.animationPosterUrl;
+  if (plain.imageOriginal) base.imageOriginal = plain.imageOriginal;
+  base.imageUpscaled = Boolean(plain.imageUpscaled);
+  if (plain.imageUpscaleProvider) base.imageUpscaleProvider = plain.imageUpscaleProvider;
+  if (plain.imageUpscaledAt instanceof Date) {
+    base.imageUpscaledAt = plain.imageUpscaledAt.toISOString();
+  } else if (plain.imageUpscaledAt) {
+    base.imageUpscaledAt = new Date(plain.imageUpscaledAt).toISOString();
+  }
+  base.imageUpscaleStatus = plain.imageUpscaleStatus || "none";
   if (plain.metadataSyncedAt instanceof Date) {
     base.metadataSyncedAt = plain.metadataSyncedAt.toISOString();
   } else if (plain.metadataSyncedAt) {
@@ -164,7 +174,12 @@ export async function createGiftFromBody(body, listingIdSuffix = "") {
   });
 
   applyResolvedMetadataToGiftDocument(gift, resolved);
+  syncUpscaleMetadataFields(gift, resolved);
   await gift.save();
+
+  if (gift.imageUpscaleStatus === "pending") {
+    scheduleGiftImageUpscale(gift.listingId);
+  }
 
   return { gift };
 }
@@ -217,6 +232,11 @@ export async function seedGiftsFromJsonIfEmpty() {
         imageThumb: "",
         animationPosterUrl: imageStr,
         imageFit: "contain",
+        imageOriginal: "",
+        imageUpscaled: false,
+        imageUpscaleProvider: "",
+        imageUpscaledAt: null,
+        imageUpscaleStatus: "none",
         animationUrl: "",
         priceTon: Number(row.priceTon) || 0,
         floorTon: Number(row.floorTon) || 0,

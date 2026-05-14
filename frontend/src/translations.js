@@ -95,6 +95,18 @@ export const translations = {
     signalNeutral: "Neutral",
     statusApproved: "approved",
     statusPending: "pending",
+
+    detailSheetKicker: "Listing detail",
+    detailGiftId: "Listing ID",
+    detailSectionTape: "Tape & liquidity",
+    detailSectionSignals: "Model signals",
+    detailSectionNarrative: "Desk narrative",
+    detailSectionContext: "Context",
+    detailVolatility: "Volume trend",
+    detailHistory: "Session prints",
+    detailSellerNote: "Seller note",
+    detailGiftLink: "Gift link",
+    detailOpenListing: "Open listing",
   },
 
   ru: {
@@ -189,6 +201,18 @@ export const translations = {
     signalNeutral: "Нейтрально",
     statusApproved: "одобрено",
     statusPending: "ожидает",
+
+    detailSheetKicker: "Карточка лота",
+    detailGiftId: "ID лота",
+    detailSectionTape: "Лента и ликвидность",
+    detailSectionSignals: "Сигналы модели",
+    detailSectionNarrative: "Комментарий стола",
+    detailSectionContext: "Контекст",
+    detailVolatility: "Динамика объёма",
+    detailHistory: "Принты сессии",
+    detailSellerNote: "Заметка продавца",
+    detailGiftLink: "Ссылка на подарок",
+    detailOpenListing: "Лот на рынке",
   },
 };
 

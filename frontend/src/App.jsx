@@ -51,6 +51,20 @@ function statusBadgeClass(status) {
   return "badgeStatus";
 }
 
+function nftCardModifier(signal) {
+  const c = signalClass(signal);
+  if (c === "signal-bull") return "nftCard--bull";
+  if (c === "signal-watch") return "nftCard--watch";
+  if (c === "signal-risk") return "nftCard--risk";
+  return "nftCard--neutral";
+}
+
+function nftStatusCardClass(status) {
+  if (status === "pending") return "nftCardStatus nftCardStatus--pending";
+  if (status === "approved") return "nftCardStatus nftCardStatus--approved";
+  return "nftCardStatus";
+}
+
 export default function App() {
   const [lang, setLang] = useState(getInitialLanguage);
   const [gifts, setGifts] = useState([]);
@@ -61,6 +75,7 @@ export default function App() {
   const [giftSubmitting, setGiftSubmitting] = useState(false);
   const [giftFormError, setGiftFormError] = useState(null);
   const [successToast, setSuccessToast] = useState(null);
+  const [detailGift, setDetailGift] = useState(null);
 
   const tk = useMemo(() => (key) => t(lang, key), [lang]);
 
@@ -83,27 +98,32 @@ export default function App() {
     loadGifts({ showSpinner: true });
   }, []);
 
+  const anyModalOpen = giftModalOpen || Boolean(detailGift);
+
   useEffect(() => {
-    if (!giftModalOpen) return;
+    if (!anyModalOpen) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
     };
-  }, [giftModalOpen]);
+  }, [anyModalOpen]);
 
   useEffect(() => {
-    if (!giftModalOpen) return;
+    if (!anyModalOpen) return;
     function onKey(e) {
-      if (e.key === "Escape") {
+      if (e.key !== "Escape") return;
+      if (giftModalOpen) {
         setGiftModalOpen(false);
         setGiftFormError(null);
         setGiftForm(emptyGiftForm);
+        return;
       }
+      setDetailGift(null);
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [giftModalOpen]);
+  }, [anyModalOpen, giftModalOpen]);
 
   useEffect(() => {
     if (!successToast) return;
@@ -397,13 +417,30 @@ export default function App() {
         ) : filteredGifts.length === 0 ? (
           <p className="empty mono">{tk("emptyFilter")}</p>
         ) : (
-          <section className="grid giftGrid">
+          <section className="nftFeedGrid">
             {filteredGifts.map((gift) => (
-              <GiftCard key={gift.id} gift={gift} lang={lang} tk={tk} />
+              <GiftCard
+                key={gift.id}
+                gift={gift}
+                lang={lang}
+                tk={tk}
+                onOpen={() => {
+                  try {
+                    window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.("light");
+                  } catch {
+                    /* ignore */
+                  }
+                  setDetailGift(gift);
+                }}
+              />
             ))}
           </section>
         )}
       </main>
+
+      {detailGift && (
+        <GiftDetailSheet gift={detailGift} lang={lang} tk={tk} onClose={() => setDetailGift(null)} />
+      )}
 
       {giftModalOpen && (
         <div className="modalOverlay" role="presentation">
@@ -506,10 +543,7 @@ export default function App() {
   );
 }
 
-function GiftCard({ gift, lang, tk }) {
-  const spread = Math.max(0, Math.min(100, gift.undervaluedPercent));
-  const volTone =
-    gift.volumeGrowth > 0 ? "text-bull" : gift.volumeGrowth < 0 ? "text-bear" : "text-muted";
+function GiftCard({ gift, lang, tk, onOpen }) {
   const [imgFailed, setImgFailed] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
 
@@ -525,123 +559,230 @@ function GiftCard({ gift, lang, tk }) {
   const showSkeleton = showRealImage && !imgLoaded;
   const showFallback = !imageUrl || imgFailed;
 
+  const mod = nftCardModifier(gift.signal);
+
   return (
-    <article className={`card cardGlass card--gift ${signalClass(gift.signal)}`}>
-      <div className="cardMedia" aria-busy={showSkeleton}>
-        <div className="cardMediaFrame">
-          {showSkeleton ? (
-            <div className="cardImgSkeleton" aria-hidden="true" />
-          ) : null}
+    <button
+      type="button"
+      className={`nftCard ${mod}`}
+      onClick={onOpen}
+      aria-label={`${gift.name}, ${gift.priceTon} TON`}
+    >
+      <div className="nftCardMediaWrap" aria-busy={showSkeleton}>
+        <div className="nftCardMediaInner">
+          {showSkeleton ? <div className="nftCardImgSkel" aria-hidden="true" /> : null}
           {showRealImage ? (
             <img
               src={imageUrl}
-              alt={gift.name}
-              width={640}
-              height={640}
-              className={`cardImg ${imgLoaded ? "cardImg--loaded" : ""}`}
+              alt=""
+              width={512}
+              height={512}
+              className={`nftCardImg ${imgLoaded ? "nftCardImg--loaded" : ""}`}
               loading="lazy"
               decoding="async"
               referrerPolicy="no-referrer"
-              sizes="(max-width: 767px) 96vw, 420px"
+              sizes="(max-width: 480px) 46vw, 200px"
               draggable={false}
               onLoad={() => setImgLoaded(true)}
               onError={() => {
-                console.warn("[GiftCard] image load failed", {
-                  id: gift.id,
-                  name: gift.name,
-                  url: imageUrl,
-                });
                 setImgFailed(true);
                 setImgLoaded(false);
               }}
             />
           ) : null}
           {showFallback ? (
-            <div className="cardImageFallback cardImageFallback--hero" role="img" aria-label={gift.name}>
-              <div className="cardImageFallbackGlow" aria-hidden="true" />
-              <span className="cardImageFallbackRing" aria-hidden="true" />
-              <span className="cardImageFallbackName">{gift.name}</span>
-              <span className="cardImageFallbackBrand" aria-hidden="true">
-                {tk("fallbackBrand")}
-              </span>
+            <div className="nftCardFb" role="img" aria-label={gift.name}>
+              <span className="nftCardFbName">{gift.name}</span>
             </div>
           ) : null}
-          <div className="cardMediaShade" aria-hidden="true" />
         </div>
+        <span className="nftCardScore" title={tk("badgeScoreTitle")}>
+          {gift.aiScore}
+        </span>
       </div>
 
-      <div className="cardBadgeRow">
-        <div className="badgeAi mono" title={tk("badgeScoreTitle")}>
-          <span className="badgeAiLabel">{tk("badgeScoreLabel")}</span>
-          <span className="badgeAiValue">{gift.aiScore}</span>
-        </div>
-        <span className={`badgeSignal ${signalClass(gift.signal)}`}>
-          {translateSignal(lang, gift.signal)}
-        </span>
-        <span className="badgeRowSpacer" aria-hidden="true" />
-        <span
-          className={`badgeEdge mono ${spread >= 15 ? "badgeEdge--hot" : ""}`}
-          title={tk("edgeTitle")}
-        >
-          {gift.undervaluedPercent}% {tk("edgeSuffix")}
-        </span>
-        {gift.status ? (
-          <span className={statusBadgeClass(gift.status)}>
-            {translateStatus(lang, gift.status)}
+      <div className="nftCardMeta">
+        <h3 className="nftCardTitle">{gift.name}</h3>
+        <p className="nftCardCollection mono">{gift.collection}</p>
+        <p className="nftCardId" title={gift.id}>
+          {tk("detailGiftId")}: {gift.id}
+        </p>
+        <div className="nftCardPriceBox">
+          <span className="nftCardPrice">
+            {gift.priceTon}
+            <span className="nftCardPriceUnit">TON</span>
           </span>
+        </div>
+        {gift.status ? (
+          <div className="nftCardStatusRow">
+            <span className={nftStatusCardClass(gift.status)}>
+              {translateStatus(lang, gift.status)}
+            </span>
+          </div>
         ) : null}
       </div>
+    </button>
+  );
+}
 
-      <div className="cardBody">
-        <div className="cardHead">
-          <div className="cardHeadText">
-            <h2 className="giftTitle">{gift.name}</h2>
-            <p className="collection mono giftCollection">{gift.collection}</p>
+function GiftDetailSheet({ gift, lang, tk, onClose }) {
+  const spread = Math.max(0, Math.min(100, gift.undervaluedPercent));
+  const volTone =
+    gift.volumeGrowth > 0 ? "text-bull" : gift.volumeGrowth < 0 ? "text-bear" : "text-muted";
+  const [imgFailed, setImgFailed] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
+
+  const rawImage = typeof gift.image === "string" ? gift.image.trim() : "";
+  const imageUrl = isRenderableImageUrl(rawImage) ? rawImage : "";
+
+  useEffect(() => {
+    setImgFailed(false);
+    setImgLoaded(false);
+  }, [imageUrl, gift.id]);
+
+  const showRealImage = Boolean(imageUrl) && !imgFailed;
+  const showFallback = !imageUrl || imgFailed;
+
+  return (
+    <div className="nftDetailOverlay" role="presentation">
+      <button type="button" className="nftDetailBackdrop" aria-label={tk("closeDialogAria")} onClick={onClose} />
+      <div
+        className="nftDetailSheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="nft-detail-title"
+      >
+        <header className="nftDetailHeader">
+          <div className="nftDetailHeaderText">
+            <p className="nftDetailKicker">{tk("detailSheetKicker")}</p>
+            <h2 id="nft-detail-title" className="nftDetailTitle">
+              {gift.name}
+            </h2>
+            <p className="nftDetailSub mono">
+              {tk("detailGiftId")}: {gift.id}
+            </p>
           </div>
-        </div>
+          <button type="button" className="nftDetailClose" onClick={onClose} aria-label={tk("ariaCloseModal")}>
+            ×
+          </button>
+        </header>
 
-        <div className="priceRow giftStatGrid" role="group">
-          <div>
-            <span className="fieldLabel">{tk("fieldAsk")}</span>
-            <span className="mono price">{gift.priceTon} TON</span>
+        <div className="nftDetailScroll">
+          <div className="nftDetailHeroImg">
+            {showRealImage ? (
+              <img
+                src={imageUrl}
+                alt={gift.name}
+                width={640}
+                height={640}
+                className={`nftHeroImg ${imgLoaded ? "nftHeroImg--loaded" : ""}`}
+                loading="eager"
+                decoding="async"
+                referrerPolicy="no-referrer"
+                onLoad={() => setImgLoaded(true)}
+                onError={() => {
+                  setImgFailed(true);
+                  setImgLoaded(false);
+                }}
+              />
+            ) : (
+              <div className="nftCardFb" style={{ position: "absolute", inset: 0 }}>
+                <span className="nftCardFbName">{gift.name}</span>
+              </div>
+            )}
           </div>
-          <div>
-            <span className="fieldLabel">{tk("fieldRefFloor")}</span>
-            <span className="mono price dim">{gift.floorTon} TON</span>
+
+          <p className="nftCardCollection mono" style={{ margin: "0 0 12px", fontSize: 11 }}>
+            {gift.collection}
+          </p>
+
+          <div className="nftDetailChips">
+            <span className="nftDetailChip nftDetailChip--score" title={tk("badgeScoreTitle")}>
+              {tk("badgeScoreLabel")} {gift.aiScore}
+            </span>
+            <span className={`badgeSignal ${signalClass(gift.signal)}`}>{translateSignal(lang, gift.signal)}</span>
+            {gift.status ? (
+              <span className={statusBadgeClass(gift.status)}>{translateStatus(lang, gift.status)}</span>
+            ) : null}
           </div>
-          <div>
-            <span className="fieldLabel">{tk("fieldDepth")}</span>
-            <span className={`mono price ${spread >= 15 ? "text-bull" : ""}`}>{spread}%</span>
-          </div>
-        </div>
 
-        <div className="depthBar" aria-hidden="true" title={tk("depthBarTitle")}>
-          <div className="depthFill" style={{ width: `${spread}%` }} />
-        </div>
+          <section className="nftDetailSection">
+            <h3 className="nftDetailSectionTitle">{tk("detailSectionTape")}</h3>
+            <div className="nftDetailStatGrid">
+              <div className="nftDetailStat">
+                <span className="nftDetailStatLabel">{tk("fieldAsk")}</span>
+                <span className="nftDetailStatValue">{gift.priceTon} TON</span>
+              </div>
+              <div className="nftDetailStat">
+                <span className="nftDetailStatLabel">{tk("fieldRefFloor")}</span>
+                <span className="nftDetailStatValue">{gift.floorTon} TON</span>
+              </div>
+              <div className="nftDetailStat">
+                <span className="nftDetailStatLabel">{tk("fieldDepth")}</span>
+                <span className={`nftDetailStatValue ${spread >= 15 ? "text-bull" : ""}`}>{spread}%</span>
+              </div>
+            </div>
+            <div className="nftDetailBar" aria-hidden="true" title={tk("depthBarTitle")}>
+              <div className="nftDetailBarFill" style={{ width: `${spread}%` }} />
+            </div>
+            <div className="tagRow" style={{ marginTop: 10 }}>
+              <span className="tag tagMuted">{translateLiquidityRisk(lang, gift.liquidity, "liq")}</span>
+              <span className="tag tagMuted">{translateLiquidityRisk(lang, gift.risk, "risk")}</span>
+            </div>
+          </section>
 
-        <div className="metaRow mono">
-          <span>
-            {tk("metaRarity")} <b>{gift.rarity}</b>
-          </span>
-          <span>
-            {tk("meta24h")} <b>{gift.sales24h}</b>
-          </span>
-          <span className={volTone}>
-            {tk("metaVol")} <b>{formatSignedPct(gift.volumeGrowth)}</b>
-          </span>
-        </div>
+          <section className="nftDetailSection">
+            <h3 className="nftDetailSectionTitle">{tk("detailSectionSignals")}</h3>
+            <div className="nftDetailStatGrid nftDetailStatGrid--pair">
+              <div className="nftDetailStat">
+                <span className="nftDetailStatLabel">{tk("edgeTitle")}</span>
+                <span className="nftDetailStatValue">
+                  {gift.undervaluedPercent}% {tk("edgeSuffix")}
+                </span>
+              </div>
+              <div className="nftDetailStat">
+                <span className="nftDetailStatLabel">{tk("metaRarity")}</span>
+                <span className="nftDetailStatValue">{gift.rarity}</span>
+              </div>
+            </div>
+          </section>
 
-        <div className="tagRow">
-          <span className="tag tagMuted">
-            {translateLiquidityRisk(lang, gift.liquidity, "liq")}
-          </span>
-          <span className="tag tagMuted">
-            {translateLiquidityRisk(lang, gift.risk, "risk")}
-          </span>
-        </div>
+          <section className="nftDetailSection">
+            <h3 className="nftDetailSectionTitle">{tk("detailHistory")}</h3>
+            <div className="nftDetailStatGrid nftDetailStatGrid--pair">
+              <div className="nftDetailStat">
+                <span className="nftDetailStatLabel">{tk("meta24h")}</span>
+                <span className="nftDetailStatValue">{gift.sales24h ?? 0}</span>
+              </div>
+              <div className="nftDetailStat">
+                <span className="nftDetailStatLabel">{tk("detailVolatility")}</span>
+                <span className={`nftDetailStatValue ${volTone}`}>{formatSignedPct(gift.volumeGrowth)}</span>
+              </div>
+            </div>
+          </section>
 
-        <p className="explanation">{deskNote(lang, gift)}</p>
+          <section className="nftDetailSection">
+            <h3 className="nftDetailSectionTitle">{tk("detailSectionNarrative")}</h3>
+            <p className="nftDetailNarrative">{deskNote(lang, gift)}</p>
+          </section>
+
+          {(gift.sellerNote || gift.giftLink) && (
+            <section className="nftDetailSection">
+              <h3 className="nftDetailSectionTitle">{tk("detailSectionContext")}</h3>
+              {gift.sellerNote ? (
+                <p className="nftDetailNarrative">
+                  <strong>{tk("detailSellerNote")}:</strong> {gift.sellerNote}
+                </p>
+              ) : null}
+              {gift.giftLink ? (
+                <a className="nftDetailLink mono" href={gift.giftLink} target="_blank" rel="noopener noreferrer">
+                  {tk("detailGiftLink")}
+                </a>
+              ) : null}
+            </section>
+          )}
+        </div>
       </div>
-    </article>
+    </div>
   );
 }

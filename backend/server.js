@@ -6,6 +6,10 @@ import { PORT, isProduction, METADATA_SYNC_SECRET } from "./config.js";
 import { createCorsMiddleware } from "./middleware/cors.js";
 import { connectMongo, disconnectMongo, isMongoConnected } from "./db/connect.js";
 import {
+  assertDebugProvidersAllowed,
+  getProvidersDebugResponse,
+} from "./services/providerDebug.js";
+import {
   createGiftFromBody,
   giftToApiResponse,
   listGiftsForApi,
@@ -57,6 +61,17 @@ app.get("/health", (_req, res) => {
     env: isProduction ? "production" : "development",
     storage,
   });
+});
+
+app.get("/debug/providers", async (req, res, next) => {
+  try {
+    if (!assertDebugProvidersAllowed(req, res)) return;
+    const runProbe = String(req.query.probe ?? "").trim() === "1";
+    res.set("Cache-Control", "no-store");
+    res.json(await getProvidersDebugResponse({ runProbe }));
+  } catch (e) {
+    next(e);
+  }
 });
 
 app.get("/gifts", async (_req, res, next) => {

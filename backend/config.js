@@ -89,6 +89,9 @@ const _retries = Number.parseInt(process.env.AI_UPSCALER_MAX_RETRIES, 10);
 export const AI_UPSCALER_MAX_RETRIES =
   Number.isFinite(_retries) && _retries >= 1 && _retries <= 5 ? _retries : 2;
 
+/** Optional shared secret for GET /debug/providers in production (header X-Debug-Providers-Secret). */
+export const DEBUG_PROVIDERS_SECRET = process.env.DEBUG_PROVIDERS_SECRET?.trim() || "";
+
 /**
  * CORS: comma-separated origins (scheme + host, no path).
  * Set CORS_ORIGINS=https://your-app.vercel.app,https://preview.vercel.app

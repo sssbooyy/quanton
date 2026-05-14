@@ -69,6 +69,8 @@ export const translations = {
 
     badgeScoreTitle: "Model score",
     badgeScoreLabel: "Score",
+    animHintTitle: "Animated gift — open details for preview",
+    animHintShort: "LIVE",
     edgeTitle: "Discount versus reference floor",
     edgeSuffix: "edge",
     fieldAsk: "Ask",
@@ -175,6 +177,8 @@ export const translations = {
 
     badgeScoreTitle: "Скор модели",
     badgeScoreLabel: "Скор",
+    animHintTitle: "Анимированный подарок — откройте карточку для превью",
+    animHintShort: "LIVE",
     edgeTitle: "Дисконт к референс‑флору",
     edgeSuffix: "к флору",
     fieldAsk: "Аск",

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { addGift, getGifts, sendTestAlert } from "./api";
+import GiftAnimatedHero from "./GiftAnimatedHero.jsx";
 import {
   LANG_STORAGE_KEY,
   deskNote,
@@ -38,11 +39,13 @@ function formatSignedPct(n) {
   return `${n}%`;
 }
 
-/** Only load <img> for plausible remote URLs (avoids broken-icon flashes for bad strings). */
+/** Only load <img> for plausible URLs (avoids broken-icon flashes for bad strings). */
 function isRenderableImageUrl(url) {
   const u = typeof url === "string" ? url.trim() : "";
   if (!u) return false;
-  return /^https?:\/\//i.test(u);
+  if (/^https?:\/\//i.test(u)) return true;
+  if (/^data:image\//i.test(u)) return true;
+  return false;
 }
 
 function statusBadgeClass(status) {
@@ -599,6 +602,11 @@ function GiftCard({ gift, lang, tk, onOpen }) {
         <span className="nftCardScore" title={tk("badgeScoreTitle")}>
           {gift.aiScore}
         </span>
+        {gift.animationUrl ? (
+          <span className="nftCardAnimHint" title={tk("animHintTitle")}>
+            {tk("animHintShort")}
+          </span>
+        ) : null}
       </div>
 
       <div className="nftCardMeta">
@@ -629,19 +637,9 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
   const spread = Math.max(0, Math.min(100, gift.undervaluedPercent));
   const volTone =
     gift.volumeGrowth > 0 ? "text-bull" : gift.volumeGrowth < 0 ? "text-bear" : "text-muted";
-  const [imgFailed, setImgFailed] = useState(false);
-  const [imgLoaded, setImgLoaded] = useState(false);
 
   const rawImage = typeof gift.image === "string" ? gift.image.trim() : "";
   const imageUrl = isRenderableImageUrl(rawImage) ? rawImage : "";
-
-  useEffect(() => {
-    setImgFailed(false);
-    setImgLoaded(false);
-  }, [imageUrl, gift.id]);
-
-  const showRealImage = Boolean(imageUrl) && !imgFailed;
-  const showFallback = !imageUrl || imgFailed;
 
   return (
     <div className="nftDetailOverlay" role="presentation">
@@ -669,27 +667,11 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
 
         <div className="nftDetailScroll">
           <div className="nftDetailHeroImg">
-            {showRealImage ? (
-              <img
-                src={imageUrl}
-                alt={gift.name}
-                width={640}
-                height={640}
-                className={`nftHeroImg ${imgLoaded ? "nftHeroImg--loaded" : ""}`}
-                loading="eager"
-                decoding="async"
-                referrerPolicy="no-referrer"
-                onLoad={() => setImgLoaded(true)}
-                onError={() => {
-                  setImgFailed(true);
-                  setImgLoaded(false);
-                }}
-              />
-            ) : (
-              <div className="nftCardFb" style={{ position: "absolute", inset: 0 }}>
-                <span className="nftCardFbName">{gift.name}</span>
-              </div>
-            )}
+            <GiftAnimatedHero
+              animationUrl={gift.animationUrl}
+              posterUrl={imageUrl}
+              alt={gift.name}
+            />
           </div>
 
           <p className="nftCardCollection mono" style={{ margin: "0 0 12px", fontSize: 11 }}>

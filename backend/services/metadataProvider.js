@@ -17,6 +17,10 @@ import { fileURLToPath } from "url";
 import path from "path";
 import { GIFTS_FILE_PATH, GIFT_ASSET_API_KEY, GIFT_ASSET_AUTH_HEADER, GIFT_ASSET_BASE_URL } from "../config.js";
 import { fetchOpenGraphMeta } from "./openGraphResolve.js";
+import {
+  openGraphRasterVariants,
+  pickGiftAssetRasterLayers,
+} from "./giftImageAssets.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -293,9 +297,11 @@ export async function fetchGiftAssetByName(name) {
  * @param {string} giftAssetName
  */
 export function mapGiftAssetPayloadToResult(payload, giftAssetName) {
-  const pics = payload.media?.pics || {};
-  const image =
-    String(pics.large || pics.medium || payload.media_preview || "").trim() || "";
+  const layers = pickGiftAssetRasterLayers(payload);
+  const hiRes = String(layers.hiRes || "").trim();
+  const thumbRaw = String(layers.thumb || "").trim();
+  const thumb = thumbRaw && thumbRaw !== hiRes ? thumbRaw : "";
+  const animationPoster = String(layers.animationPoster || "").trim() || hiRes || thumbRaw;
   const animation = String(payload.media?.lottie_anim || "").trim();
   const rawName = String(payload.telegram_gift_name || giftAssetName || "");
   const { collection: derivedCollection, displayName } = collectionAndDisplayNameFromNftSlug(rawName);
@@ -309,12 +315,18 @@ export function mapGiftAssetPayloadToResult(payload, giftAssetName) {
   const risk = riskFromRarityIndex(Number(payload.rarity_index));
   const rarity = rarityFromPayload(payload);
 
+  const image = hiRes || thumbRaw;
+
   return {
     ok: true,
     name: name || giftAssetName,
     collection,
     image,
+    imageHiRes: hiRes || image,
+    imageThumb: thumb,
     animation,
+    animationPoster,
+    mediaFit: "contain",
     rarity,
     floorTon: floorTon > 0 ? floorTon : 0,
     sales24h,
@@ -344,6 +356,17 @@ export async function resolveGiftMetadata(giftLink) {
     return { ok: false, error: "Gift link or gift ID is required." };
   }
 
+  const giftAssetName = extractGiftAssetName(raw);
+
+  /** Prefer Gift Asset CDN rasters over local catalog / OG whenever the slug + key allow it. */
+  if (giftAssetName && GIFT_ASSET_API_KEY) {
+    const payload = await fetchGiftAssetByName(giftAssetName);
+    if (payload) {
+      const mapped = mapGiftAssetPayloadToResult(payload, giftAssetName);
+      if (mapped.image) return mapped;
+    }
+  }
+
   const catalog = loadCatalogMap();
   const candidates = extractCandidateIds(raw);
   for (const key of candidates) {
@@ -351,12 +374,20 @@ export async function resolveGiftMetadata(giftLink) {
     if (row?.name && row?.image) {
       const rarity = Number(row.rarity);
       const floorTon = Number(row.floorTon);
+      const baseImg = String(row.image).trim();
+      const rowHi = String(row.imageHiRes ?? row.image_hires ?? "").trim() || baseImg;
+      const rowTh = String(row.imageThumb ?? row.image_thumb ?? "").trim();
+      const thumb = rowTh && rowTh !== rowHi ? rowTh : "";
       return {
         ok: true,
         name: String(row.name),
         collection: String(row.collection ?? "Telegram Gifts"),
-        image: String(row.image).trim(),
-        animation: "",
+        image: rowHi,
+        imageHiRes: rowHi,
+        imageThumb: thumb,
+        animation: String(row.animationUrl ?? row.animation ?? "").trim(),
+        animationPoster: String(row.animationPoster ?? row.animation_poster ?? "").trim() || rowHi,
+        mediaFit: String(row.imageFit ?? row.media_fit ?? "contain").toLowerCase() === "cover" ? "cover" : "contain",
         rarity: Number.isFinite(rarity) && rarity >= 1 && rarity <= 100 ? Math.round(rarity) : 50,
         floorTon: Number.isFinite(floorTon) && floorTon > 0 ? floorTon : 100,
         sales24h: Number(row.sales24h) || 0,
@@ -375,16 +406,6 @@ export async function resolveGiftMetadata(giftLink) {
     }
   }
 
-  const giftAssetName = extractGiftAssetName(raw);
-
-  if (giftAssetName && GIFT_ASSET_API_KEY) {
-    const payload = await fetchGiftAssetByName(giftAssetName);
-    if (payload) {
-      const mapped = mapGiftAssetPayloadToResult(payload, giftAssetName);
-      if (mapped.image) return mapped;
-    }
-  }
-
   const pageUrl = normalizeTelegramPageUrl(raw);
   const nftSlug = pageUrl ? extractTelegramNftSlugFromUrl(pageUrl) : null;
 
@@ -394,7 +415,11 @@ export async function resolveGiftMetadata(giftLink) {
 
     if (og && og.image) {
       const name = (og.title || displayName).trim() || displayName;
-      const image = String(og.image || "").trim();
+      const ogRaw = String(og.image || "").trim();
+      const variants = openGraphRasterVariants(ogRaw);
+      const hi = String(variants.hiRes || "").trim() || ogRaw;
+      const th = String(variants.thumb || "").trim();
+      const thumb = th && th !== hi ? th : "";
       const site = (og.siteName && og.siteName.trim()) || "";
       const collection =
         site && site.toLowerCase() !== "telegram" ? site : slugCollection || "Telegram NFT";
@@ -403,8 +428,12 @@ export async function resolveGiftMetadata(giftLink) {
         ok: true,
         name,
         collection,
-        image,
+        image: hi,
+        imageHiRes: hi,
+        imageThumb: thumb,
         animation: "",
+        animationPoster: hi,
+        mediaFit: "cover",
         rarity: 58,
         floorTon: 0,
         sales24h: 0,
@@ -421,7 +450,9 @@ export async function resolveGiftMetadata(giftLink) {
         source: "opengraph",
         giftAssetName: GIFT_ASSET_NAME_RE.test(nftSlug) ? nftSlug : "",
         ownerInfo: null,
-        cachePayload: { opengraph: { title: og.title, image: og.image, siteName: og.siteName } },
+        cachePayload: {
+          opengraph: { title: og.title, image: og.image, imageUpgraded: hi, siteName: og.siteName },
+        },
       };
     }
 
@@ -463,7 +494,14 @@ export async function resolveGiftMetadata(giftLink) {
 export function applyResolvedMetadataToGiftDocument(doc, resolved) {
   doc.name = resolved.name;
   doc.collection = resolved.collection;
-  doc.image = resolved.image;
+  const hi = String(resolved.imageHiRes || resolved.image || "").trim();
+  const th = String(resolved.imageThumb || "").trim();
+  const thumb = th && th !== hi ? th : "";
+  doc.image = hi || String(resolved.image || "").trim();
+  doc.imageHiRes = hi || doc.image;
+  doc.imageThumb = thumb;
+  doc.animationPosterUrl = String(resolved.animationPoster || "").trim();
+  doc.imageFit = resolved.mediaFit === "cover" ? "cover" : "contain";
   doc.animationUrl = resolved.animation || "";
   doc.floorTon = resolved.floorTon;
   doc.rarity = resolved.rarity;

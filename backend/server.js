@@ -61,6 +61,7 @@ app.get("/health", (_req, res) => {
 
 app.get("/gifts", async (_req, res, next) => {
   try {
+    res.set("Cache-Control", "public, max-age=45, stale-while-revalidate=300");
     res.json(await listGiftsForApi());
   } catch (e) {
     next(e);
@@ -69,6 +70,7 @@ app.get("/gifts", async (_req, res, next) => {
 
 app.get("/gifts/undervalued", async (_req, res, next) => {
   try {
+    res.set("Cache-Control", "public, max-age=45, stale-while-revalidate=300");
     res.json(await listUndervaluedForApi());
   } catch (e) {
     next(e);

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { addGift, getGifts, sendTestAlert } from "./api";
 import GiftAnimatedHero from "./GiftAnimatedHero.jsx";
+import { cardImageSources, detailStaticRaster, giftMediaFit, stackedPosterUrl } from "./giftVisual.js";
 import {
   LANG_STORAGE_KEY,
   deskNote,
@@ -550,17 +551,19 @@ function GiftCard({ gift, lang, tk, onOpen }) {
   const [imgFailed, setImgFailed] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
 
-  const rawImage = typeof gift.image === "string" ? gift.image.trim() : "";
-  const imageUrl = isRenderableImageUrl(rawImage) ? rawImage : "";
+  const { src: imageUrl, srcSet } = cardImageSources(gift);
+  const renderable = isRenderableImageUrl(imageUrl);
+  const fit = giftMediaFit(gift);
+  const fitClass = fit === "cover" ? "nftCardImg--cover" : "nftCardImg--contain";
 
   useEffect(() => {
     setImgFailed(false);
     setImgLoaded(false);
-  }, [imageUrl, gift.id]);
+  }, [imageUrl, srcSet, gift.id]);
 
-  const showRealImage = Boolean(imageUrl) && !imgFailed;
+  const showRealImage = renderable && !imgFailed;
   const showSkeleton = showRealImage && !imgLoaded;
-  const showFallback = !imageUrl || imgFailed;
+  const showFallback = !renderable || imgFailed;
 
   const mod = nftCardModifier(gift.signal);
 
@@ -577,15 +580,17 @@ function GiftCard({ gift, lang, tk, onOpen }) {
           {showRealImage ? (
             <img
               src={imageUrl}
+              srcSet={srcSet}
               alt=""
               width={512}
               height={512}
-              className={`nftCardImg ${imgLoaded ? "nftCardImg--loaded" : ""}`}
+              className={`nftCardImg ${fitClass} ${imgLoaded ? "nftCardImg--loaded" : ""}`}
               loading="lazy"
               decoding="async"
               referrerPolicy="no-referrer"
-              sizes="(max-width: 480px) 46vw, 200px"
+              sizes="(max-width: 480px) 42vw, (max-width: 900px) 28vw, 240px"
               draggable={false}
+              fetchPriority="low"
               onLoad={() => setImgLoaded(true)}
               onError={() => {
                 setImgFailed(true);
@@ -638,8 +643,26 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
   const volTone =
     gift.volumeGrowth > 0 ? "text-bull" : gift.volumeGrowth < 0 ? "text-bear" : "text-muted";
 
-  const rawImage = typeof gift.image === "string" ? gift.image.trim() : "";
-  const imageUrl = isRenderableImageUrl(rawImage) ? rawImage : "";
+  const heroRaster = detailStaticRaster(gift);
+  const posterStack = stackedPosterUrl(gift);
+  const posterRenderable =
+    (isRenderableImageUrl(posterStack) && posterStack) ||
+    (isRenderableImageUrl(heroRaster) && heroRaster) ||
+    "";
+  const mediaFit = giftMediaFit(gift);
+
+  useEffect(() => {
+    const href = detailStaticRaster(gift);
+    if (!isRenderableImageUrl(href)) return undefined;
+    const link = document.createElement("link");
+    link.rel = "preload";
+    link.as = "image";
+    link.href = href;
+    document.head.appendChild(link);
+    return () => {
+      link.remove();
+    };
+  }, [gift.id, heroRaster]);
 
   return (
     <div className="nftDetailOverlay" role="presentation">
@@ -669,8 +692,9 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
           <div className="nftDetailHeroImg">
             <GiftAnimatedHero
               animationUrl={gift.animationUrl}
-              posterUrl={imageUrl}
+              posterUrl={posterRenderable}
               alt={gift.name}
+              mediaFit={mediaFit}
             />
           </div>
 

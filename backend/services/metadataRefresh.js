@@ -20,7 +20,7 @@ export async function refreshGiftByListingId(listingId) {
   if (!resolved.ok) {
     return { error: { status: 400, body: { error: resolved.error || "Refresh failed." } } };
   }
-  if (!String(resolved.image ?? "").trim()) {
+  if (!String(resolved.imageHiRes || resolved.image ?? "").trim()) {
     return {
       error: { status: 422, body: { error: "Refreshed metadata is missing an image URL." } },
     };

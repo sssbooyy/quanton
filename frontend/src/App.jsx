@@ -41,6 +41,13 @@ function formatSignedPct(n) {
   return `${n}%`;
 }
 
+/** Only load <img> for plausible remote URLs (avoids broken-icon flashes for bad strings). */
+function isRenderableImageUrl(url) {
+  const u = typeof url === "string" ? url.trim() : "";
+  if (!u) return false;
+  return /^https?:\/\//i.test(u);
+}
+
 function statusBadgeClass(status) {
   if (status === "pending") return "badgeStatus badgeStatus-pending";
   if (status === "approved") return "badgeStatus badgeStatus-approved";
@@ -571,7 +578,8 @@ function GiftCard({ gift, lang, tk }) {
   const [imgFailed, setImgFailed] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
 
-  const imageUrl = typeof gift.image === "string" ? gift.image.trim() : "";
+  const rawImage = typeof gift.image === "string" ? gift.image.trim() : "";
+  const imageUrl = isRenderableImageUrl(rawImage) ? rawImage : "";
 
   useEffect(() => {
     setImgFailed(false);
@@ -592,13 +600,15 @@ function GiftCard({ gift, lang, tk }) {
           {showRealImage ? (
             <img
               src={imageUrl}
-              alt=""
+              alt={gift.name}
               width={640}
               height={640}
               className={`cardImg ${imgLoaded ? "cardImg--loaded" : ""}`}
               loading="lazy"
               decoding="async"
+              referrerPolicy="no-referrer"
               sizes="(max-width: 480px) 92vw, (max-width: 900px) 45vw, 300px"
+              draggable={false}
               onLoad={() => setImgLoaded(true)}
               onError={() => {
                 console.warn("[GiftCard] image load failed", {

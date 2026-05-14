@@ -29,7 +29,9 @@ The server **exits on boot** if `MONGODB_URI` is missing.
 
 ### First-run seed
 
-If the **`gifts`** collection is **empty**, the service imports rows from `backend/data/gifts.json` (or `GIFTS_JSON_PATH` if set in `backend/config.js`). After that, data lives only in Atlas. Remove or empty the file on disk if you do not want seeding.
+If the **`gifts`** collection is **empty**, the service imports rows from `backend/data/gifts.json` (or `GIFTS_JSON_PATH` if set in `backend/config.js`). Seed rows include stable **`https://picsum.photos/seed/...`** image URLs suitable for production Mini Apps. After that, data lives only in Atlas.
+
+If you already have documents with old placeholder URLs, either update the `image` field in Atlas or **drop the `gifts` collection** once (dev/staging only) so the service can re-import from the updated JSON on next deploy.
 
 ## 2. Create a Web Service on Render
 

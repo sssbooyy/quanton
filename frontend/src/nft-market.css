@@ -1,8 +1,9 @@
 /* Premium mobile-first NFT marketplace layer (Fragment / Portals / Tensor style) */
 
 :root {
+  --nft-card-media-radius: 26px;
   --nft-media-radius: 24px;
-  --nft-card-radius: 20px;
+  --nft-card-radius: 18px;
   --nft-price-bg: linear-gradient(135deg, rgba(14, 165, 233, 0.22), rgba(99, 102, 241, 0.18));
   --nft-price-border: rgba(56, 189, 248, 0.28);
   --nft-sheet-bg: #0a0c12;
@@ -177,13 +178,19 @@
 
 .nftCardMediaWrap {
   position: relative;
-  width: calc(100% - 14px);
-  margin: 7px 7px 0;
+  width: calc(100% - 12px);
+  margin: 6px 6px 0;
   aspect-ratio: 1 / 1;
-  border-radius: var(--nft-media-radius);
+  border-radius: var(--nft-card-media-radius);
   overflow: hidden;
-  background: #06080f;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 40%, rgba(30, 58, 138, 0.22), transparent 62%),
+    linear-gradient(180deg, #0a0e18 0%, #06080f 100%);
   flex-shrink: 0;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.045),
+    inset 0 12px 48px rgba(0, 0, 0, 0.42),
+    0 2px 12px rgba(0, 0, 0, 0.35);
 }
 
 .nftCardMediaInner {
@@ -293,20 +300,22 @@
 }
 
 .nftCardMeta {
-  flex: 1;
+  flex: 0 1 auto;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 8px 10px 10px;
+  align-items: stretch;
+  gap: 4px;
+  padding: 6px 9px 8px;
   min-width: 0;
 }
 
 .nftCardTitle {
   margin: 0;
-  font-size: clamp(13px, 3.1vw, 15px);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+  font-size: clamp(14px, 3.5vw, 16px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.18;
+  color: #f1f5f9;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -315,6 +324,19 @@
   word-break: break-word;
 }
 
+.nftCardSubline {
+  margin: 0;
+  font-size: clamp(10px, 2.6vw, 11px);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--text-faint);
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Detail sheet reuses this class under the hero */
 .nftCardCollection {
   margin: 0;
   font-size: clamp(9px, 2.3vw, 10px);
@@ -327,55 +349,59 @@
   white-space: nowrap;
 }
 
-.nftCardId {
-  margin: 2px 0 0;
-  font-family: var(--font-mono);
-  font-size: 9px;
-  font-weight: 500;
-  color: var(--text-dim);
-  letter-spacing: 0.02em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.nftCardPriceRail {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 3px;
+  padding: 0 2px;
 }
 
-.nftCardPriceBox {
-  margin-top: auto;
-  padding: 8px 8px 9px;
-  border-radius: 14px;
-  background: var(--nft-price-bg);
-  border: 1px solid var(--nft-price-border);
-  text-align: center;
+.nftCardPricePill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 5px 14px;
+  border-radius: 9999px;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(135deg, #1e40af 0%, #2563eb 38%, #0ea5e9 100%);
+  border: 1px solid rgba(125, 211, 252, 0.35);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.25),
+    0 2px 10px rgba(14, 165, 233, 0.35),
+    0 0 22px rgba(56, 189, 248, 0.2);
 }
 
-.nftCardPrice {
-  font-family: var(--font-mono);
-  font-size: clamp(14px, 3.8vw, 17px);
+.nftCardPricePillValue {
+  font-size: clamp(12px, 3.1vw, 13px);
   font-weight: 800;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
   color: #f8fafc;
 }
 
-.nftCardPriceUnit {
-  font-size: 0.72em;
+.nftCardPricePillUnit {
+  font-size: clamp(9px, 2.3vw, 10px);
   font-weight: 700;
-  color: rgba(186, 230, 253, 0.85);
-  margin-left: 2px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(224, 242, 254, 0.88);
 }
 
 .nftCardStatusRow {
-  margin-top: 6px;
+  margin-top: 4px;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
 }
 
 .nftCardStatus {
-  font-size: 8px;
+  font-size: 7px;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  padding: 4px 7px;
+  padding: 3px 8px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: var(--text-dim);
@@ -383,14 +409,14 @@
 
 .nftCardStatus--pending {
   color: var(--amber);
-  border-color: rgba(251, 191, 36, 0.35);
-  background: rgba(251, 191, 36, 0.08);
+  border-color: rgba(251, 191, 36, 0.32);
+  background: rgba(251, 191, 36, 0.07);
 }
 
 .nftCardStatus--approved {
   color: #6ee7b7;
-  border-color: rgba(52, 211, 153, 0.35);
-  background: rgba(52, 211, 153, 0.08);
+  border-color: rgba(52, 211, 153, 0.32);
+  background: rgba(52, 211, 153, 0.07);
 }
 
 /* --- Detail bottom sheet --- */

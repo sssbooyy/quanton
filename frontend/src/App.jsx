@@ -547,9 +547,24 @@ export default function App() {
   );
 }
 
+/** Bold headline + muted token/collection line (Portals-style; no internal IDs). */
+function giftCardTitleLines(gift) {
+  const name = String(gift?.name ?? "").trim();
+  const coll = String(gift?.collection ?? "").trim();
+  const m = name.match(/^(.+?)\s+(#\d+)\s*$/);
+  if (m && m[1].trim()) {
+    return { primary: m[1].trim(), secondary: m[2].trim() };
+  }
+  if (name) {
+    return { primary: name, secondary: coll && coll !== name ? coll : "" };
+  }
+  return { primary: coll || "—", secondary: "" };
+}
+
 function GiftCard({ gift, lang, tk, onOpen }) {
   const [imgFailed, setImgFailed] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
+  const { primary: cardTitle, secondary: cardSub } = giftCardTitleLines(gift);
 
   const { src: imageUrl, srcSet, pending: upscalePending } = cardRasterSources(gift);
   const renderable = isRenderableImageUrl(imageUrl);
@@ -620,15 +635,14 @@ function GiftCard({ gift, lang, tk, onOpen }) {
       </div>
 
       <div className="nftCardMeta">
-        <h3 className="nftCardTitle">{gift.name}</h3>
-        <p className="nftCardCollection mono">{gift.collection}</p>
-        <p className="nftCardId" title={gift.id}>
-          {tk("detailGiftId")}: {gift.id}
-        </p>
-        <div className="nftCardPriceBox">
-          <span className="nftCardPrice">
-            {gift.priceTon}
-            <span className="nftCardPriceUnit">TON</span>
+        <h3 className="nftCardTitle">{cardTitle}</h3>
+        {cardSub ? (
+          <p className="nftCardSubline mono">{cardSub}</p>
+        ) : null}
+        <div className="nftCardPriceRail">
+          <span className="nftCardPricePill" aria-hidden="true">
+            <span className="nftCardPricePillValue">{gift.priceTon}</span>
+            <span className="nftCardPricePillUnit">TON</span>
           </span>
         </div>
         {gift.status ? (

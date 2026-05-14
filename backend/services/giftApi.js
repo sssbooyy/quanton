@@ -1,0 +1,205 @@
+import fs from "fs";
+import { calculateAiScore } from "./aiScore.js";
+import { Gift } from "../models/Gift.js";
+import { User } from "../models/User.js";
+import { GIFTS_FILE_PATH } from "../config.js";
+
+/** Map a stored gift document to the public API shape (includes live AI fields). */
+export function giftToApiResponse(doc) {
+  const plain =
+    doc && typeof doc.toObject === "function"
+      ? doc.toObject()
+      : { ...doc };
+
+  const base = {
+    id: plain.listingId,
+    name: plain.name,
+    collection: plain.collection,
+    image: plain.image,
+    priceTon: plain.priceTon,
+    floorTon: plain.floorTon,
+    rarity: plain.rarity,
+    sales24h: plain.sales24h ?? 0,
+    volumeGrowth: plain.volumeGrowth ?? 0,
+    liquidity: plain.liquidity,
+    risk: plain.risk,
+    status: plain.status,
+    telegramUser: plain.telegramUserSnapshot ?? null,
+    createdAt:
+      plain.createdAt instanceof Date
+        ? plain.createdAt.toISOString()
+        : plain.createdAt ?? new Date().toISOString(),
+  };
+
+  return { ...base, ...calculateAiScore(base) };
+}
+
+export async function listGiftsForApi() {
+  const docs = await Gift.find().sort({ createdAt: -1 }).lean();
+  return docs.map((d) => giftToApiResponse(d));
+}
+
+export async function listUndervaluedForApi() {
+  const all = await listGiftsForApi();
+  return all
+    .filter((g) => g.undervaluedPercent >= 15)
+    .sort((a, b) => b.aiScore - a.aiScore);
+}
+
+/**
+ * Upsert Telegram user from Mini App payload.
+ * @param {Record<string, unknown> | null | undefined} telegramUser
+ */
+async function upsertTelegramUser(telegramUser) {
+  if (!telegramUser || typeof telegramUser !== "object") return null;
+  const id = telegramUser.id;
+  if (id === undefined || id === null) return null;
+  const telegramId = String(id).trim();
+  if (!telegramId) return null;
+
+  const doc = await User.findOneAndUpdate(
+    { telegramId },
+    {
+      $set: {
+        firstName: typeof telegramUser.first_name === "string" ? telegramUser.first_name : "",
+        lastName: typeof telegramUser.last_name === "string" ? telegramUser.last_name : "",
+        username: typeof telegramUser.username === "string" ? telegramUser.username : "",
+        languageCode:
+          typeof telegramUser.language_code === "string" ? telegramUser.language_code : "",
+        isPremium: Boolean(telegramUser.is_premium),
+        photoUrl: typeof telegramUser.photo_url === "string" ? telegramUser.photo_url : "",
+      },
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+  return doc;
+}
+
+export async function createGiftFromBody(body, listingIdSuffix = "") {
+  const {
+    name,
+    collection,
+    image,
+    priceTon,
+    floorTon,
+    rarity,
+    telegramUser,
+  } = body;
+
+  const nameTrim = typeof name === "string" ? name.trim() : "";
+  const collectionTrim = typeof collection === "string" ? collection.trim() : "";
+  const imageTrim = typeof image === "string" ? image.trim() : "";
+
+  const priceNum = Number(priceTon);
+  const floorNum = Number(floorTon);
+  const rarityNum = Number(rarity);
+
+  if (!nameTrim) {
+    return { error: { status: 400, body: { error: "Gift name is required." } } };
+  }
+  if (!collectionTrim) {
+    return { error: { status: 400, body: { error: "Collection is required." } } };
+  }
+  if (!imageTrim) {
+    return { error: { status: 400, body: { error: "Image URL is required." } } };
+  }
+  if (!Number.isFinite(priceNum) || priceNum <= 0) {
+    return {
+      error: {
+        status: 400,
+        body: { error: "Price in TON must be a number greater than 0." },
+      },
+    };
+  }
+  if (!Number.isFinite(floorNum) || floorNum <= 0) {
+    return {
+      error: {
+        status: 400,
+        body: { error: "Floor price in TON must be a number greater than 0." },
+      },
+    };
+  }
+  if (!Number.isInteger(rarityNum) || rarityNum < 1 || rarityNum > 100) {
+    return {
+      error: {
+        status: 400,
+        body: { error: "Rarity must be a whole number from 1 to 100." },
+      },
+    };
+  }
+
+  const userDoc = await upsertTelegramUser(telegramUser);
+
+  const gift = await Gift.create({
+    listingId: `gift_${Date.now()}${listingIdSuffix ? `_${listingIdSuffix}` : ""}`,
+    name: nameTrim,
+    collection: collectionTrim,
+    image: imageTrim,
+    priceTon: priceNum,
+    floorTon: floorNum,
+    rarity: rarityNum,
+    sales24h: 0,
+    volumeGrowth: 0,
+    liquidity: "Unknown",
+    risk: "Unknown",
+    status: "pending",
+    telegramUserId: userDoc?._id ?? null,
+    telegramUserSnapshot: telegramUser ?? null,
+  });
+
+  return { gift };
+}
+
+/** One-time import from `gifts.json` when the collection is empty (local + Render bootstrap). */
+export async function seedGiftsFromJsonIfEmpty() {
+  const count = await Gift.countDocuments();
+  if (count > 0) return { seeded: 0 };
+
+  const seedPath = GIFTS_FILE_PATH;
+  if (!fs.existsSync(seedPath)) {
+    console.warn("[mongo] seed skipped — no file at", seedPath);
+    return { seeded: 0 };
+  }
+
+  let raw;
+  try {
+    raw = JSON.parse(fs.readFileSync(seedPath, "utf-8"));
+  } catch (e) {
+    console.warn("[mongo] seed skipped — invalid JSON:", e?.message || e);
+    return { seeded: 0 };
+  }
+
+  if (!Array.isArray(raw) || raw.length === 0) return { seeded: 0 };
+
+  let seeded = 0;
+  for (const row of raw) {
+    if (!row?.id || !row?.name) continue;
+    const imageStr = String(row.image ?? "").trim();
+    if (!imageStr) continue;
+    try {
+      await Gift.create({
+        listingId: String(row.id),
+        name: String(row.name),
+        collection: String(row.collection ?? "Telegram Gifts"),
+        image: imageStr,
+        priceTon: Number(row.priceTon) || 0,
+        floorTon: Number(row.floorTon) || 0,
+        rarity: Number(row.rarity) || 1,
+        sales24h: Number(row.sales24h) || 0,
+        volumeGrowth: Number(row.volumeGrowth) || 0,
+        liquidity: String(row.liquidity ?? "Unknown"),
+        risk: String(row.risk ?? "Unknown"),
+        status: String(row.status ?? "pending"),
+        telegramUserId: null,
+        telegramUserSnapshot: row.telegramUser ?? null,
+        createdAt: row.createdAt ? new Date(row.createdAt) : undefined,
+      });
+      seeded += 1;
+    } catch (e) {
+      console.warn("[mongo] seed row skipped:", row?.id, e?.message || e);
+    }
+  }
+
+  if (seeded) console.log(`[mongo] seeded ${seeded} gifts from`, seedPath);
+  return { seeded };
+}

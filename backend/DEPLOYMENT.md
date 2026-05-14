@@ -1,6 +1,6 @@
 # Deploy Quanton Market API on Render
 
-This service is an Express API (`backend/server.js`) with optional Telegram bot polling and a JSON file store for listings.
+This service is an Express API (`backend/server.js`) with optional Telegram bot polling and **MongoDB Atlas** for listings (Mongoose).
 
 ## Production pairing (current)
 
@@ -11,7 +11,27 @@ This service is an Express API (`backend/server.js`) with optional Telegram bot 
 
 The backend **always** allows the Vercel origin above in CORS (merged with `CORS_ORIGINS` / `FRONTEND_URL`). The frontend defaults to the Render API URL when `VITE_API_URL` is unset at build time (`frontend/src/config.js` and `frontend/vercel.json`).
 
-## 1. Create a Web Service
+## 1. MongoDB Atlas
+
+1. Create a free (or paid) cluster in [MongoDB Atlas](https://www.mongodb.com/atlas).
+2. **Database Access** → add a database user (password auth).
+3. **Network Access** → add IP allowlist **`0.0.0.0/0`** so Render can connect (or use Atlas **Private Endpoint** / fixed egress IPs for stricter setups).
+4. **Database** → **Connect** → Drivers → copy the **SRV** connection string.
+5. Replace `<password>` and set a default database name in the path, e.g. `...mongodb.net/quanton?retryWrites=true&w=majority`.
+
+Set on Render:
+
+```text
+MONGODB_URI=mongodb+srv://USER:PASS@cluster0.xxxxx.mongodb.net/quanton?retryWrites=true&w=majority
+```
+
+The server **exits on boot** if `MONGODB_URI` is missing.
+
+### First-run seed
+
+If the **`gifts`** collection is **empty**, the service imports rows from `backend/data/gifts.json` (or `GIFTS_JSON_PATH` if set in `backend/config.js`). After that, data lives only in Atlas. Remove or empty the file on disk if you do not want seeding.
+
+## 2. Create a Web Service on Render
 
 1. In [Render](https://render.com), **New → Web Service**, connect your repo.
 2. **Root directory**: `backend` (if the repo contains both `frontend` and `backend`).
@@ -22,32 +42,20 @@ The backend **always** allows the Vercel origin above in CORS (merged with `CORS
 
 Render injects **`PORT`**; **`NODE_ENV`** is typically `production` for Web Services.
 
-## 2. Environment variables
+## 3. Environment variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `PORT` | Auto on Render | Set by Render; do not override unless you know what you are doing. |
-| `CORS_ORIGINS` | Recommended | Comma-separated SPA origins. Example: `https://quanton-nine.vercel.app`. Extra preview domains can be appended. The Vercel production URL above is also built into `backend/middleware/cors.js` as a default. |
-| `FRONTEND_URL` | Optional | Single origin; merged if `CORS_ORIGINS` is empty (legacy). Example: `https://quanton-nine.vercel.app`. |
+| `MONGODB_URI` | **Yes** | Atlas SRV (or standard) URI including database name and query params. |
+| `PORT` | Auto on Render | Set by Render. |
+| `CORS_ORIGINS` | Recommended | Comma-separated SPA origins. Example: `https://quanton-nine.vercel.app`. |
+| `FRONTEND_URL` | Optional | Single origin; merged if `CORS_ORIGINS` is empty (legacy). |
 | `BOT_TOKEN` | Optional | Telegram bot token; if omitted, the API runs without the bot. |
 | `ADMIN_CHAT_ID` | For alerts | Telegram chat id for `/alerts/test` and desk messages. |
 | `MINI_APP_URL` | For Web App button | Public **HTTPS** URL of the Mini App. Example: `https://quanton-nine.vercel.app`. |
+| `GIFTS_JSON_PATH` | Optional | Absolute path to a seed `gifts.json` when the DB is empty (defaults to `backend/data/gifts.json`). |
 
 Copy `backend/.env.example` as a checklist. Do not commit real secrets.
-
-## 3. Persistent `gifts.json`
-
-Render’s filesystem is **ephemeral**: redeploys can wipe the default `./data/gifts.json` under the repo.
-
-**Recommended:** attach a [Render Disk](https://render.com/docs/disks), mount it (e.g. `/var/data/quanton`), then set:
-
-```text
-DATA_DIR=/var/data/quanton
-```
-
-The app creates the directory and `gifts.json` if missing. Writes use a temp file + rename to reduce corruption on crash.
-
-**Alternative:** keep using bundled `backend/data/gifts.json` for demos only; expect data loss on restart.
 
 ## 4. CORS and the Mini App
 
@@ -65,7 +73,7 @@ Production builds target **`https://quanton.onrender.com`** by default (`fronten
 
 - Use **HTTPS** for `MINI_APP_URL` on the public internet; Telegram blocks insecure schemes except localhost.
 - **Polling** is used (single instance). If you scale to multiple instances, switch to webhooks or a single worker — duplicate polling will conflict.
-- The process handles **SIGTERM** / **SIGINT**: stops polling before exit (Render sends SIGTERM on deploy/restart).
+- The process handles **SIGTERM** / **SIGINT**: stops Telegram polling and **closes the MongoDB connection** before HTTP shutdown.
 
 ## 7. Smoke test after deploy
 
@@ -74,4 +82,4 @@ curl -sS "https://quanton.onrender.com/health"
 curl -sS "https://quanton.onrender.com/gifts"
 ```
 
-Expect `health.ok === true` and `storage.giftsWritable === true` once a Disk (or writable path) is configured.
+Expect `health.ok === true` and `storage.mongo === true` after Atlas is reachable.

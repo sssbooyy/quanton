@@ -3,17 +3,28 @@ import crypto from "crypto";
 import { fileURLToPath } from "url";
 import path from "path";
 import { GIFTS_FILE_PATH } from "../config.js";
+import { fetchOpenGraphMeta } from "./openGraphResolve.js";
 
 /**
  * Resolve Telegram gift link / gift ID → listing metadata.
  *
- * Today: loads known rows from `backend/data/gifts.json` (same catalog as Mongo seed)
- * and matches by `gift_starter_*` id embedded in the pasted string. Unknown links return
- * a generic placeholder so the flow never hard-fails while we wire real Telegram/TON APIs.
+ * Resolution order:
+ * 1. Seed catalog (`backend/data/gifts.json`) for known `gift_starter_*` ids.
+ * 2. Telegram NFT pages (`t.me/nft/...`) via OpenGraph (`og:title`, `og:image`).
+ * 3. Generic placeholder (deterministic image) for unknown links.
  *
  * @param {string} giftLink
  * @returns {Promise<
- *   | { ok: true; name: string; collection: string; image: string; rarity: number; floorTon: number; traits: object[]; source: "manual-resolver" }
+ *   | {
+ *       ok: true;
+ *       name: string;
+ *       collection: string;
+ *       image: string;
+ *       rarity: number;
+ *       floorTon: number;
+ *       traits: object[];
+ *       source: "manual-resolver" | "opengraph";
+ *     }
  *   | { ok: false; error: string }
  * >}
  */
@@ -72,7 +83,76 @@ function extractCandidateIds(giftLink) {
 }
 
 function slugForPlaceholder(link) {
-  return crypto.createHash("sha256").update(String(link).slice(0, 200), "utf8").digest("hex").slice(0, 20);
+  return crypto
+    .createHash("sha256")
+    .update(String(link).slice(0, 200), "utf8")
+    .digest("hex")
+    .slice(0, 20);
+}
+
+/**
+ * @param {string} raw user paste
+ * @returns {string | null} canonical https URL when parseable
+ */
+export function normalizeTelegramPageUrl(raw) {
+  const t = String(raw ?? "").trim();
+  if (!t) return null;
+  try {
+    if (/^https?:\/\//i.test(t)) {
+      return new URL(t).href;
+    }
+  } catch {
+    return null;
+  }
+  if (/^(t\.me|telegram\.me)\//i.test(t)) {
+    try {
+      return new URL(`https://${t}`).href;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/**
+ * @param {string} absUrl
+ * @returns {string | null} NFT path segment after /nft/
+ */
+export function extractTelegramNftSlugFromUrl(absUrl) {
+  try {
+    const u = new URL(absUrl);
+    const host = u.hostname.replace(/^www\./i, "").toLowerCase();
+    if (host !== "t.me" && host !== "telegram.me") return null;
+    const m = u.pathname.match(/^\/nft\/([^/?#]+)/i);
+    return m ? decodeURIComponent(m[1]) : null;
+  } catch {
+    return null;
+  }
+}
+
+function humanizeCompactIdentifier(s) {
+  if (!s) return "";
+  return s.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/_/g, " ").trim();
+}
+
+/**
+ * @param {string} nftSlug e.g. LushBouquet-6509
+ */
+function collectionAndDisplayNameFromNftSlug(nftSlug) {
+  const slug = String(nftSlug || "").trim();
+  if (!slug) {
+    return { collection: "Telegram NFT", displayName: "Telegram NFT" };
+  }
+  const parts = slug.split("-");
+  const last = parts[parts.length - 1];
+  if (/^\d+$/.test(last) && parts.length > 1) {
+    const collPart = parts.slice(0, -1).join("");
+    const collection = humanizeCompactIdentifier(collPart) || "Telegram NFT";
+    const displayName = `${collection} #${last}`;
+    return { collection, displayName };
+  }
+  const collection = humanizeCompactIdentifier(slug) || "Telegram NFT";
+  return { collection, displayName: collection };
 }
 
 export async function resolveGiftMetadata(giftLink) {
@@ -103,6 +183,60 @@ export async function resolveGiftMetadata(giftLink) {
         source: "manual-resolver",
       };
     }
+  }
+
+  const pageUrl = normalizeTelegramPageUrl(raw);
+  const nftSlug = pageUrl ? extractTelegramNftSlugFromUrl(pageUrl) : null;
+
+  if (pageUrl && nftSlug) {
+    const { collection: slugCollection, displayName } = collectionAndDisplayNameFromNftSlug(nftSlug);
+    const og = await fetchOpenGraphMeta(pageUrl);
+
+    if (og && (og.title || og.image)) {
+      const name = (og.title || displayName).trim() || displayName;
+      let image = (og.image || "").trim();
+      if (!image) {
+        image = `https://picsum.photos/seed/${slugForPlaceholder(`${pageUrl}:${nftSlug}`)}/640/640`;
+      }
+      const site = (og.siteName && og.siteName.trim()) || "";
+      const collection =
+        site && site.toLowerCase() !== "telegram"
+          ? site
+          : slugCollection || "Telegram NFT";
+
+      return {
+        ok: true,
+        name,
+        collection,
+        image,
+        rarity: 58,
+        floorTon: 120,
+        traits: [
+          { key: "giftLink", value: pageUrl },
+          { key: "nftSlug", value: nftSlug },
+          { key: "resolver", value: "opengraph" },
+          ...(og.title ? [{ key: "og:title", value: og.title }] : []),
+          ...(og.image ? [{ key: "og:image", value: og.image }] : []),
+        ],
+        source: "opengraph",
+      };
+    }
+
+    const seed = slugForPlaceholder(pageUrl);
+    return {
+      ok: true,
+      name: displayName,
+      collection: slugCollection,
+      image: `https://picsum.photos/seed/${seed}/640/640`,
+      rarity: 58,
+      floorTon: 120,
+      traits: [
+        { key: "giftLink", value: pageUrl },
+        { key: "nftSlug", value: nftSlug },
+        { key: "resolver", value: "telegram-nft-slug-fallback" },
+      ],
+      source: "manual-resolver",
+    };
   }
 
   const seed = slugForPlaceholder(raw);

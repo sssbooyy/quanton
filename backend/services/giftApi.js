@@ -82,6 +82,13 @@ async function upsertTelegramUser(telegramUser) {
 }
 
 export async function createGiftFromBody(body, listingIdSuffix = "") {
+  if (!body || typeof body !== "object") {
+    return {
+      error: { status: 400, body: { error: "Gift link or gift ID is required." } },
+    };
+  }
+
+  // Listing metadata always comes from resolveGiftMetadata(giftLink), never from client name fields.
   const { giftLink, priceTon, sellerNote, telegramUser } = body;
 
   const giftLinkTrim = typeof giftLink === "string" ? giftLink.trim() : "";
@@ -109,6 +116,19 @@ export async function createGiftFromBody(body, listingIdSuffix = "") {
     };
   }
 
+  const resolvedName = String(resolved.name ?? "").trim();
+  const resolvedImage = String(resolved.image ?? "").trim();
+  if (!resolvedName || !resolvedImage) {
+    return {
+      error: {
+        status: 422,
+        body: {
+          error: "Could not resolve gift metadata (missing title or image).",
+        },
+      },
+    };
+  }
+
   const userDoc = await upsertTelegramUser(telegramUser);
 
   const traits = Array.isArray(resolved.traits) ? resolved.traits : [];
@@ -117,9 +137,9 @@ export async function createGiftFromBody(body, listingIdSuffix = "") {
     listingId: `gift_${Date.now()}${listingIdSuffix ? `_${listingIdSuffix}` : ""}`,
     giftLink: giftLinkTrim,
     sellerNote: sellerNoteTrim,
-    name: resolved.name,
-    collection: resolved.collection,
-    image: resolved.image,
+    name: resolvedName,
+    collection: String(resolved.collection ?? "Telegram Gifts").trim() || "Telegram Gifts",
+    image: resolvedImage,
     priceTon: priceNum,
     floorTon: resolved.floorTon,
     rarity: resolved.rarity,

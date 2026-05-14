@@ -278,6 +278,8 @@ export function translateLiquidityRisk(lang, tier, kind) {
 /** Server / client error strings → Russian copy */
 const SERVER_ERR_RU = {
   "Gift link or gift ID is required.": "Вставьте ссылку на подарок или ID.",
+  "Could not resolve gift metadata (missing title or image).":
+    "Не удалось получить название или изображение подарка.",
   "Could not resolve gift metadata.": "Не удалось разобрать метаданные подарка.",
   "Gift name is required.": "Укажите название лота.",
   "Collection is required.": "Укажите коллекцию.",

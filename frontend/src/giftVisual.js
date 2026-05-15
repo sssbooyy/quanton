@@ -88,6 +88,12 @@ export function giftImageFieldsForDebug(gift) {
     animationUrl: trimUrl(gift.animationUrl),
     mediaSource: String(gift.mediaSource || ""),
     mediaMatchLevel: String(gift.mediaMatchLevel || ""),
+    backdropThemeKey: String(gift.backdropTheme?.key || ""),
+    symbolPatternId:
+      gift.symbolPattern && typeof gift.symbolPattern === "object" && gift.symbolPattern.enabled
+        ? String(gift.symbolPattern.id || "")
+        : "",
+    heroBackgroundSnippet: String(gift.heroBackground?.gradient || "").slice(0, 140),
     chosenImageUrl,
     imageSrcSet: trimUrl(gift.imageSrcSet),
     imageUpscaled: Boolean(gift.imageUpscaled),

@@ -1,0 +1,220 @@
+{
+  "neutral": {
+    "label": "Neutral",
+    "background": "linear-gradient(165deg, #12151c 0%, #070910 42%, #0d0f14 100%)",
+    "overlay": "rgba(0,0,0,0.32)",
+    "symbolColor": "rgba(255,255,255,0.07)",
+    "glowColor": "rgba(80, 100, 140, 0.28)",
+    "glowColorSoft": "rgba(40, 48, 64, 0.5)",
+    "vignette": "radial-gradient(ellipse 88% 72% at 50% 46%, transparent 28%, rgba(0,0,0,0.62) 100%)"
+  },
+  "backdrops": {
+    "onyx-black": {
+      "label": "Onyx Black",
+      "background": "linear-gradient(180deg, #2a2d36 0%, #12141a 38%, #050608 100%)",
+      "overlay": "rgba(0,0,0,0.12)",
+      "symbolColor": "rgba(200,210,230,0.14)",
+      "glowColor": "rgba(180, 190, 210, 0.22)",
+      "glowColorSoft": "rgba(60, 68, 82, 0.45)",
+      "vignette": "radial-gradient(ellipse 90% 74% at 50% 44%, transparent 26%, rgba(0,0,0,0.68) 100%)"
+    },
+    "midnight-blue": {
+      "label": "Midnight Blue",
+      "background": "linear-gradient(180deg, #1e3a5f 0%, #0f1f38 50%, #080f1c 100%)",
+      "overlay": "rgba(0,10,30,0.18)",
+      "symbolColor": "rgba(120,180,255,0.16)",
+      "glowColor": "rgba(100, 160, 255, 0.3)",
+      "glowColorSoft": "rgba(30, 60, 120, 0.45)",
+      "vignette": "radial-gradient(ellipse 88% 72% at 50% 46%, transparent 30%, rgba(0,0,0,0.55) 100%)"
+    },
+    "deep-blue": {
+      "label": "Deep Blue",
+      "background": "linear-gradient(180deg, #2563eb 0%, #1d4ed8 45%, #0f172a 100%)",
+      "overlay": "rgba(0,20,60,0.15)",
+      "symbolColor": "rgba(200, 220, 255, 0.18)",
+      "glowColor": "rgba(130, 180, 255, 0.35)",
+      "glowColorSoft": "rgba(40, 80, 160, 0.4)",
+      "vignette": "radial-gradient(ellipse 86% 70% at 50% 48%, transparent 28%, rgba(0,0,0,0.58) 100%)"
+    },
+    "purple": {
+      "label": "Purple",
+      "background": "linear-gradient(180deg, #9b5cf6 0%, #7c3aed 48%, #4c1d95 100%)",
+      "overlay": "rgba(0,0,0,0.08)",
+      "symbolColor": "rgba(54,16,88,0.28)",
+      "glowColor": "rgba(200, 170, 255, 0.38)",
+      "glowColorSoft": "rgba(90, 40, 160, 0.42)",
+      "vignette": "radial-gradient(ellipse 88% 72% at 50% 46%, transparent 30%, rgba(20,0,40,0.52) 100%)"
+    },
+    "violet": {
+      "label": "Violet",
+      "background": "linear-gradient(180deg, #c084fc 0%, #9333ea 42%, #581c87 100%)",
+      "overlay": "rgba(40,0,60,0.1)",
+      "symbolColor": "rgba(88,28,135,0.26)",
+      "glowColor": "rgba(220, 190, 255, 0.36)",
+      "glowColorSoft": "rgba(100, 50, 180, 0.4)",
+      "vignette": "radial-gradient(ellipse 88% 72% at 50% 46%, transparent 30%, rgba(20,0,50,0.5) 100%)"
+    },
+    "candy-pink": {
+      "label": "Candy Pink",
+      "background": "linear-gradient(180deg, #fbcfe8 0%, #f472b6 40%, #be185d 100%)",
+      "overlay": "rgba(80,0,40,0.08)",
+      "symbolColor": "rgba(136,19,55,0.2)",
+      "glowColor": "rgba(255, 200, 230, 0.4)",
+      "glowColorSoft": "rgba(190, 60, 120, 0.38)",
+      "vignette": "radial-gradient(ellipse 88% 72% at 50% 46%, transparent 32%, rgba(60,0,30,0.48) 100%)"
+    },
+    "rose-gold": {
+      "label": "Rose Gold",
+      "background": "linear-gradient(180deg, #fde68a 0%, #fbbf24 35%, #b45309 100%)",
+      "overlay": "rgba(60,30,0,0.1)",
+      "symbolColor": "rgba(120,53,15,0.22)",
+      "glowColor": "rgba(255, 220, 160, 0.42)",
+      "glowColorSoft": "rgba(180, 100, 40, 0.38)",
+      "vignette": "radial-gradient(ellipse 88% 72% at 50% 46%, transparent 30%, rgba(50,20,0,0.5) 100%)"
+    },
+    "golden": {
+      "label": "Golden",
+      "background": "linear-gradient(180deg, #fef3c7 0%, #f59e0b 45%, #78350f 100%)",
+      "overlay": "rgba(60,40,0,0.12)",
+      "symbolColor": "rgba(120,53,15,0.24)",
+      "glowColor": "rgba(255, 210, 120, 0.45)",
+      "glowColorSoft": "rgba(180, 110, 30, 0.4)",
+      "vignette": "radial-gradient(ellipse 88% 72% at 50% 46%, transparent 28%, rgba(40,20,0,0.55) 100%)"
+    },
+    "emerald": {
+      "label": "Emerald",
+      "background": "linear-gradient(180deg, #34d399 0%, #059669 45%, #064e3b 100%)",
+      "overlay": "rgba(0,40,30,0.12)",
+      "symbolColor": "rgba(6,78,59,0.22)",
+      "glowColor": "rgba(160, 255, 210, 0.32)",
+      "glowColorSoft": "rgba(30, 100, 80, 0.42)",
+      "vignette": "radial-gradient(ellipse 88% 72% at 50% 46%, transparent 30%, rgba(0,30,20,0.55) 100%)"
+    },
+    "forest-green": {
+      "label": "Forest Green",
+      "background": "linear-gradient(180deg, #4ade80 0%, #15803d 50%, #14532d 100%)",
+      "overlay": "rgba(0,30,10,0.14)",
+      "symbolColor": "rgba(20,83,45,0.2)",
+      "glowColor": "rgba(120, 220, 160, 0.3)",
+      "glowColorSoft": "rgba(40, 90, 50, 0.45)",
+      "vignette": "radial-gradient(ellipse 88% 72% at 50% 46%, transparent 30%, rgba(0,25,10,0.58) 100%)"
+    },
+    "crimson": {
+      "label": "Crimson",
+      "background": "linear-gradient(180deg, #fb7185 0%, #e11d48 45%, #881337 100%)",
+      "overlay": "rgba(40,0,10,0.12)",
+      "symbolColor": "rgba(88,28,28,0.22)",
+      "glowColor": "rgba(255, 160, 180, 0.38)",
+      "glowColorSoft": "rgba(160, 40, 60, 0.4)",
+      "vignette": "radial-gradient(ellipse 88% 72% at 50% 46%, transparent 30%, rgba(40,0,15,0.55) 100%)"
+    },
+    "ruby-red": {
+      "label": "Ruby Red",
+      "background": "linear-gradient(180deg, #ef4444 0%, #b91c1c 48%, #450a0a 100%)",
+      "overlay": "rgba(30,0,0,0.14)",
+      "symbolColor": "rgba(80,10,10,0.26)",
+      "glowColor": "rgba(255, 140, 140, 0.36)",
+      "glowColorSoft": "rgba(140, 30, 30, 0.45)",
+      "vignette": "radial-gradient(ellipse 88% 72% at 50% 46%, transparent 28%, rgba(20,0,0,0.6) 100%)"
+    },
+    "sky-blue": {
+      "label": "Sky Blue",
+      "background": "linear-gradient(180deg, #7dd3fc 0%, #38bdf8 40%, #0369a1 100%)",
+      "overlay": "rgba(0,40,80,0.1)",
+      "symbolColor": "rgba(12,74,110,0.18)",
+      "glowColor": "rgba(180, 230, 255, 0.4)",
+      "glowColorSoft": "rgba(40, 100, 160, 0.38)",
+      "vignette": "radial-gradient(ellipse 88% 72% at 50% 46%, transparent 32%, rgba(0,30,60,0.5) 100%)"
+    },
+    "ice-blue": {
+      "label": "Ice Blue",
+      "background": "linear-gradient(180deg, #e0f2fe 0%, #93c5fd 38%, #1e3a8a 100%)",
+      "overlay": "rgba(0,30,60,0.08)",
+      "symbolColor": "rgba(30,58,138,0.16)",
+      "glowColor": "rgba(200, 230, 255, 0.42)",
+      "glowColorSoft": "rgba(60, 100, 180, 0.35)",
+      "vignette": "radial-gradient(ellipse 88% 72% at 50% 46%, transparent 32%, rgba(0,20,50,0.48) 100%)"
+    },
+    "lavender": {
+      "label": "Lavender",
+      "background": "linear-gradient(180deg, #e9d5ff 0%, #c4b5fd 42%, #6d28d9 100%)",
+      "overlay": "rgba(40,0,80,0.08)",
+      "symbolColor": "rgba(76,29,149,0.2)",
+      "glowColor": "rgba(230, 210, 255, 0.4)",
+      "glowColorSoft": "rgba(120, 70, 200, 0.35)",
+      "vignette": "radial-gradient(ellipse 88% 72% at 50% 46%, transparent 32%, rgba(30,0,60,0.48) 100%)"
+    },
+    "sunset-orange": {
+      "label": "Sunset Orange",
+      "background": "linear-gradient(180deg, #fdba74 0%, #f97316 45%, #9a3412 100%)",
+      "overlay": "rgba(60,20,0,0.1)",
+      "symbolColor": "rgba(120,40,10,0.22)",
+      "glowColor": "rgba(255, 200, 140, 0.4)",
+      "glowColorSoft": "rgba(200, 90, 30, 0.38)",
+      "vignette": "radial-gradient(ellipse 88% 72% at 50% 46%, transparent 30%, rgba(50,15,0,0.52) 100%)"
+    },
+    "coral": {
+      "label": "Coral",
+      "background": "linear-gradient(180deg, #fecaca 0%, #fb7185 42%, #9f1239 100%)",
+      "overlay": "rgba(60,0,20,0.08)",
+      "symbolColor": "rgba(120,20,50,0.2)",
+      "glowColor": "rgba(255, 190, 200, 0.38)",
+      "glowColorSoft": "rgba(200, 70, 100, 0.36)",
+      "vignette": "radial-gradient(ellipse 88% 72% at 50% 46%, transparent 32%, rgba(50,0,20,0.5) 100%)"
+    },
+    "mint": {
+      "label": "Mint",
+      "background": "linear-gradient(180deg, #a7f3d0 0%, #34d399 45%, #065f46 100%)",
+      "overlay": "rgba(0,40,30,0.1)",
+      "symbolColor": "rgba(6,78,59,0.18)",
+      "glowColor": "rgba(180, 255, 220, 0.34)",
+      "glowColorSoft": "rgba(50, 140, 100, 0.38)",
+      "vignette": "radial-gradient(ellipse 88% 72% at 50% 46%, transparent 32%, rgba(0,35,25,0.5) 100%)"
+    },
+    "slate": {
+      "label": "Slate",
+      "background": "linear-gradient(180deg, #64748b 0%, #334155 48%, #0f172a 100%)",
+      "overlay": "rgba(0,0,0,0.14)",
+      "symbolColor": "rgba(200,210,220,0.14)",
+      "glowColor": "rgba(160, 180, 200, 0.28)",
+      "glowColorSoft": "rgba(60, 70, 90, 0.45)",
+      "vignette": "radial-gradient(ellipse 88% 72% at 50% 46%, transparent 28%, rgba(0,0,0,0.6) 100%)"
+    },
+    "silver-mist": {
+      "label": "Silver Mist",
+      "background": "linear-gradient(180deg, #e2e8f0 0%, #94a3b8 40%, #334155 100%)",
+      "overlay": "rgba(0,10,20,0.1)",
+      "symbolColor": "rgba(30,41,59,0.16)",
+      "glowColor": "rgba(220, 230, 240, 0.38)",
+      "glowColorSoft": "rgba(100, 116, 140, 0.35)",
+      "vignette": "radial-gradient(ellipse 88% 72% at 50% 46%, transparent 32%, rgba(15,23,42,0.5) 100%)"
+    },
+    "champagne": {
+      "label": "Champagne",
+      "background": "linear-gradient(180deg, #fffbeb 0%, #fcd34d 38%, #b45309 100%)",
+      "overlay": "rgba(80,50,0,0.09)",
+      "symbolColor": "rgba(120,60,10,0.18)",
+      "glowColor": "rgba(255, 240, 200, 0.42)",
+      "glowColorSoft": "rgba(200, 140, 60, 0.34)",
+      "vignette": "radial-gradient(ellipse 88% 72% at 50% 46%, transparent 32%, rgba(60,30,0,0.45) 100%)"
+    },
+    "aquamarine": {
+      "label": "Aquamarine",
+      "background": "linear-gradient(180deg, #5eead4 0%, #14b8a6 45%, #115e59 100%)",
+      "overlay": "rgba(0,50,45,0.12)",
+      "symbolColor": "rgba(17,94,89,0.2)",
+      "glowColor": "rgba(160, 255, 240, 0.34)",
+      "glowColorSoft": "rgba(40, 120, 110, 0.4)",
+      "vignette": "radial-gradient(ellipse 88% 72% at 50% 46%, transparent 30%, rgba(0,40,36,0.55) 100%)"
+    },
+    "royal-blue": {
+      "label": "Royal Blue",
+      "background": "linear-gradient(180deg, #60a5fa 0%, #2563eb 42%, #1e3a8a 100%)",
+      "overlay": "rgba(0,20,80,0.12)",
+      "symbolColor": "rgba(30,58,138,0.2)",
+      "glowColor": "rgba(150, 190, 255, 0.38)",
+      "glowColorSoft": "rgba(50, 80, 180, 0.4)",
+      "vignette": "radial-gradient(ellipse 88% 72% at 50% 46%, transparent 30%, rgba(0,15,60,0.52) 100%)"
+    }
+  }
+}

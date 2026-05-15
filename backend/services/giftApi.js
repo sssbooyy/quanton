@@ -6,6 +6,7 @@ import { User } from "../models/User.js";
 import { GIFTS_FILE_PATH, isProduction } from "../config.js";
 import { resolveGiftMetadata, applyResolvedMetadataToGiftDocument } from "./metadataProvider.js";
 import { scheduleGiftImageUpscale, syncUpscaleMetadataFields } from "./imageUpscaler.js";
+import { attachHeroPresentationToApiResponse } from "./giftHeroTheme.js";
 
 /** Map a stored gift document to the public API shape (includes live AI fields). */
 export function giftToApiResponse(doc) {
@@ -86,6 +87,8 @@ export function giftToApiResponse(doc) {
   base.realFloorTon = computeRealFloorTon(plain);
   base.floorSource = String(plain.resolvedFloorSource || "");
   base.floorIsLive = computeFloorIsLive(plain);
+
+  attachHeroPresentationToApiResponse(base, plain);
 
   const scoreInput = {
     ...base,

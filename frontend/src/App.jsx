@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { addGift, getGifts, sendTestAlert } from "./api";
 import GiftAnimatedHero from "./GiftAnimatedHero.jsx";
+import GiftCollectibleHeroStage from "./GiftCollectibleHeroStage.jsx";
 import {
   bestStaticRasterUrl,
   cardRasterSources,
@@ -736,12 +737,14 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
 
         <div className="nftDetailScroll">
           <div className={`nftDetailHeroImg${ogFallback ? " nftDetailHeroImg--ogFallback" : ""}`}>
-            <GiftAnimatedHero
-              animationUrl={gift.animationUrl}
-              posterUrl={heroPoster}
-              alt={gift.name}
-              mediaFit={mediaFit}
-            />
+            <GiftCollectibleHeroStage gift={gift}>
+              <GiftAnimatedHero
+                animationUrl={gift.animationUrl}
+                posterUrl={heroPoster}
+                alt={gift.name}
+                mediaFit={mediaFit}
+              />
+            </GiftCollectibleHeroStage>
           </div>
 
           <p className="nftCardCollection mono" style={{ margin: "0 0 12px", fontSize: 11 }}>
@@ -797,7 +800,20 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
                       opacity: 0.95,
                     }}
                   >
-                    {`collection: ${debugFields.collection || "—"}\nmodel: ${debugFields.model || "—"}\nsymbol: ${debugFields.symbol || "—"}\nbackdrop: ${debugFields.backdrop || "—"}`}
+                    {`collection: ${debugFields.collection || "—"}\nmodel: ${debugFields.model || "—"}\nbackdrop: ${debugFields.backdrop || "—"}\nsymbol: ${debugFields.symbol || "—"}\nbackdropTheme: ${debugFields.backdropThemeKey || "—"}\nsymbolPattern: ${debugFields.symbolPatternId || "—"}`}
+                  </pre>
+                </div>
+                <div>
+                  <strong style={{ color: "#94a3b8" }}>heroBackground.gradient (snippet)</strong>
+                  <pre
+                    style={{
+                      margin: "4px 0 0",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-all",
+                      opacity: 0.95,
+                    }}
+                  >
+                    {debugFields.heroBackgroundSnippet || "—"}
                   </pre>
                 </div>
                 <div>

@@ -1,7 +1,22 @@
 /**
  * Resolve static raster URLs from Gift Asset–style public payloads (Trial-safe: no User-Data).
  * Checks gift.public, gift.cachedMetadata.public, gift.media, gift.cachedMetadata.media, then root fields.
+ *
+ * Symbol/backdrop/pattern/icon CDN paths must not be used as the main collectible poster (see isThemeOrSymbolAssetRasterUrl).
  */
+
+/** Path segments that indicate theme/decoration assets, not the gift poster. */
+export const MAIN_RASTER_EXCLUDED_PATH_SEGMENTS = ["/symbols/", "/backdrops/", "/patterns/", "/icons/"];
+
+/**
+ * @param {unknown} url
+ * @returns {boolean}
+ */
+export function isThemeOrSymbolAssetRasterUrl(url) {
+  const u = typeof url === "string" ? url.trim().toLowerCase() : "";
+  if (!u) return false;
+  return MAIN_RASTER_EXCLUDED_PATH_SEGMENTS.some((seg) => u.includes(seg));
+}
 
 /**
  * @param {unknown} v
@@ -58,7 +73,15 @@ const MEDIA_IMAGE_KEYS = ["image", "preview", "thumbnail"];
 const LEGACY_FALLBACK_KEYS = ["animationPosterUrl", "imageThumb"];
 
 /**
- * @typedef {{ url: string; field: string; source: string; checkedFields: string[] }} PublicImageResolution
+ * @typedef {{
+ *   url: string;
+ *   field: string;
+ *   source: string;
+ *   checkedFields: string[];
+ *   imageRejectedReason: string;
+ *   rejectedImageUrl: string;
+ *   rejectedField: string;
+ * }} PublicImageResolution
  */
 
 /**
@@ -68,6 +91,8 @@ const LEGACY_FALLBACK_KEYS = ["animationPosterUrl", "imageThumb"];
 export function resolveGiftAssetPublicImage(gift) {
   /** @type {string[]} */
   const checkedFields = [];
+  let rejectedImageUrl = "";
+  let rejectedField = "";
 
   /**
    * @param {string} field
@@ -78,10 +103,25 @@ export function resolveGiftAssetPublicImage(gift) {
     checkedFields.push(field);
     const url = pickUrl(raw);
     if (!url) return null;
+    if (isThemeOrSymbolAssetRasterUrl(url)) {
+      if (!rejectedImageUrl) {
+        rejectedImageUrl = url;
+        rejectedField = field;
+      }
+      return null;
+    }
     let source = "gift_root";
     if (field.startsWith("public.")) source = "gift_asset_public";
     else if (field.startsWith("media.")) source = "gift_asset_media";
-    return { url, field, source, checkedFields: [...checkedFields] };
+    return {
+      url,
+      field,
+      source,
+      checkedFields: [...checkedFields],
+      imageRejectedReason: rejectedImageUrl ? "symbol-or-theme-asset" : "",
+      rejectedImageUrl,
+      rejectedField,
+    };
   };
 
   const pub = getGiftPublicBucket(gift);
@@ -110,7 +150,15 @@ export function resolveGiftAssetPublicImage(gift) {
     if (hit) return hit;
   }
 
-  return { url: "", field: "", source: "none", checkedFields };
+  return {
+    url: "",
+    field: "",
+    source: "none",
+    checkedFields,
+    imageRejectedReason: rejectedImageUrl ? "symbol-or-theme-asset" : "",
+    rejectedImageUrl,
+    rejectedField,
+  };
 }
 
 /**

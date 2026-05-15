@@ -1,11 +1,21 @@
 import {
   resolveGiftAssetPublicImage,
   listGiftPublicKeys,
+  isThemeOrSymbolAssetRasterUrl,
 } from "@shared/giftPublicImageResolve.js";
 
 /** @param {unknown} u */
 function trimUrl(u) {
   return typeof u === "string" ? u.trim() : "";
+}
+
+/** First trimmed URL acceptable as main collectible raster (not symbol/backdrop CDN assets). */
+function pickMainRasterUrl(...candidates) {
+  for (const c of candidates) {
+    const s = trimUrl(c);
+    if (s && !isThemeOrSymbolAssetRasterUrl(s)) return s;
+  }
+  return "";
 }
 
 /** @param {string} u */
@@ -76,11 +86,12 @@ export function cacheBustMediaUrl(url, gift) {
  */
 export function giftImageFieldsForDebug(gift) {
   const resolution = resolveGiftAssetPublicImage(gift);
-  const legacyChosen =
-    trimUrl(gift.imageHiRes) ||
-    trimUrl(gift.image) ||
-    trimUrl(gift.animationPosterUrl) ||
-    trimUrl(gift.imageThumb);
+  const legacyChosen = pickMainRasterUrl(
+    gift.imageHiRes,
+    gift.image,
+    gift.animationPosterUrl,
+    gift.imageThumb
+  );
   const resolvedImageUrl = resolution.url || legacyChosen;
   const imageFromPublic = Boolean(
     resolution.field &&
@@ -111,6 +122,9 @@ export function giftImageFieldsForDebug(gift) {
     imageFromPublicField: imageFromPublic,
     imageCheckedFields: resolution.checkedFields.join(" → ") || "—",
     giftPublicKeys: listGiftPublicKeys(gift).join(", ") || "—",
+    imageRejectedReason: resolution.imageRejectedReason || "",
+    rejectedImageUrl: resolution.rejectedImageUrl || "",
+    rejectedField: resolution.rejectedField || "",
     chosenImageUrl: legacyChosen,
     imageSrcSet: trimUrl(gift.imageSrcSet),
     imageUpscaled: Boolean(gift.imageUpscaled),
@@ -124,12 +138,12 @@ export function giftImageFieldsForDebug(gift) {
  */
 export function bestStaticRasterUrl(gift) {
   const r = resolveGiftAssetPublicImage(gift);
-  return (
-    r.url ||
-    trimUrl(gift.imageHiRes) ||
-    trimUrl(gift.image) ||
-    trimUrl(gift.animationPosterUrl) ||
-    trimUrl(gift.imageThumb)
+  return pickMainRasterUrl(
+    r.url,
+    gift.imageHiRes,
+    gift.image,
+    gift.animationPosterUrl,
+    gift.imageThumb
   );
 }
 
@@ -139,9 +153,9 @@ export function bestStaticRasterUrl(gift) {
  */
 export function cardImageSources(gift) {
   const r = resolveGiftAssetPublicImage(gift);
-  const hi = trimUrl(gift.imageHiRes) || trimUrl(gift.image) || r.url;
-  const thumb = trimUrl(gift.imageThumb);
-  const poster = trimUrl(gift.animationPosterUrl);
+  const hi = pickMainRasterUrl(gift.imageHiRes, gift.image, r.url);
+  const thumb = pickMainRasterUrl(gift.imageThumb);
+  const poster = pickMainRasterUrl(gift.animationPosterUrl);
   const ogOnly = isOpenGraphMediaFallback(gift);
 
   let src = thumb || hi || poster;
@@ -165,10 +179,10 @@ export function cardImageSources(gift) {
  * @param {Record<string, unknown>} gift
  */
 export function cardRasterSources(gift) {
-  if (gift.imageUpscaleStatus === "pending" && trimUrl(gift.imageOriginal)) {
-    const o = trimUrl(gift.imageOriginal);
+  if (gift.imageUpscaleStatus === "pending" && pickMainRasterUrl(gift.imageOriginal)) {
+    const o = pickMainRasterUrl(gift.imageOriginal);
     const r = resolveGiftAssetPublicImage(gift);
-    const hi = trimUrl(gift.imageHiRes) || trimUrl(gift.image) || r.url || o;
+    const hi = pickMainRasterUrl(gift.imageHiRes, gift.image, r.url, o);
     return {
       src: o,
       srcSet: undefined,
@@ -198,8 +212,8 @@ export function detailStaticRaster(gift) {
  * @param {Record<string, unknown>} gift
  */
 export function detailRasterWhileUpscale(gift) {
-  if (gift.imageUpscaleStatus === "pending" && trimUrl(gift.imageOriginal)) {
-    return trimUrl(gift.imageOriginal);
+  if (gift.imageUpscaleStatus === "pending" && pickMainRasterUrl(gift.imageOriginal)) {
+    return pickMainRasterUrl(gift.imageOriginal);
   }
   return detailStaticRaster(gift);
 }
@@ -209,8 +223,8 @@ export function detailRasterWhileUpscale(gift) {
  * @param {Record<string, unknown>} gift
  */
 export function stackedPosterUrl(gift) {
-  if (gift.imageUpscaleStatus === "pending" && trimUrl(gift.imageOriginal)) {
-    return trimUrl(gift.imageOriginal) || bestStaticRasterUrl(gift);
+  if (gift.imageUpscaleStatus === "pending" && pickMainRasterUrl(gift.imageOriginal)) {
+    return pickMainRasterUrl(gift.imageOriginal) || bestStaticRasterUrl(gift);
   }
   return bestStaticRasterUrl(gift);
 }
@@ -236,11 +250,6 @@ export function giftMediaFit(gift) {
 }
 
 /**
- * @param {string} context
- * @param {Record<string, unknown>} gift
- * @param {{ src: string; srcSet?: string; heroPoster?: string }} chosen
- */
-/**
  * DEV: when Gift Asset public fields yield no raster URL, log the walk for Trial debugging.
  * @param {Record<string, unknown>} gift
  * @param {string} context
@@ -253,9 +262,17 @@ export function logGiftPublicImageMiss(gift, context = "gift") {
   console.debug(`[gift-public-image] miss:${context}`, id, {
     checkedFields: r.checkedFields,
     giftPublicKeys: listGiftPublicKeys(gift),
+    imageRejectedReason: r.imageRejectedReason || "",
+    rejectedImageUrl: r.rejectedImageUrl || "",
+    rejectedField: r.rejectedField || "",
   });
 }
 
+/**
+ * @param {string} context
+ * @param {Record<string, unknown>} gift
+ * @param {{ src: string; srcSet?: string; heroPoster?: string }} chosen
+ */
 export function logGiftImageChoice(context, gift, chosen) {
   if (!import.meta.env.DEV) return;
   logGiftPublicImageMiss(gift, context);

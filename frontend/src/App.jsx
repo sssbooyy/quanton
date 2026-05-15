@@ -852,7 +852,7 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
                       opacity: 0.95,
                     }}
                   >
-                    {`resolvedImageUrl: ${debugFields.resolvedImageUrl || "—"}\nimageSourceField: ${debugFields.imageSourceField || "—"}\nimageResolutionSource: ${debugFields.imageResolutionSource || "—"}\nimageFromPublicField: ${String(debugFields.imageFromPublicField)}\nimageCheckedFields: ${debugFields.imageCheckedFields || "—"}\ngift.public keys: ${debugFields.giftPublicKeys || "—"}`}
+                    {`resolvedImageUrl: ${debugFields.resolvedImageUrl || "—"}\nimageSourceField: ${debugFields.imageSourceField || "—"}\nimageResolutionSource: ${debugFields.imageResolutionSource || "—"}\nimageFromPublicField: ${String(debugFields.imageFromPublicField)}\nimageRejectedReason: ${debugFields.imageRejectedReason || "—"}\nrejectedImageUrl: ${debugFields.rejectedImageUrl || "—"}\nrejectedField: ${debugFields.rejectedField || "—"}\nimageCheckedFields: ${debugFields.imageCheckedFields || "—"}\ngift.public keys: ${debugFields.giftPublicKeys || "—"}`}
                   </pre>
                 </div>
                 <div>

@@ -663,7 +663,7 @@ function GiftCard({ gift, lang, tk, onOpen }) {
   );
 }
 
-function telegramProfileHandle(gift) {
+function collectibleProfileHandle(gift) {
   const u = gift?.telegramUser;
   if (!u || typeof u !== "object") return "";
   const un = u.username;
@@ -715,20 +715,20 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
   }, [gift.id, heroPoster, staticRaster]);
 
   const showHdBadge = gift.imageUpscaled === true;
-  const profileHandle = telegramProfileHandle(gift);
+  const profileHandle = collectibleProfileHandle(gift);
 
   return (
     <div className="nftDetailOverlay" role="presentation">
       <button type="button" className="nftDetailBackdrop" aria-label={tk("closeDialogAria")} onClick={onClose} />
       <div
-        className="nftDetailSheet nftDetailSheet--telegramCollectible"
+        className="nftDetailSheet nftDetailSheet--collectibleProfile"
         role="dialog"
         aria-modal="true"
         aria-labelledby="nft-detail-title"
       >
         <div className="tgCollectibleCard">
           <div className="tgCollectibleCard__backdrop" aria-hidden="true">
-            <GiftCollectibleHeroStage gift={gift} variant="telegramProfile" backdropOnly />
+            <GiftCollectibleHeroStage gift={gift} variant="collectibleProfile" backdropOnly />
           </div>
 
           <div className="tgCollectibleCard__body">

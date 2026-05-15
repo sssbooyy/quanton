@@ -202,6 +202,174 @@ export function resolveSymbolPattern(symbolName) {
 }
 
 /**
+ * Backdrop label from API document / traits / nested attributes (Mini App + web).
+ * @param {Record<string, unknown> | null | undefined} gift
+ * @returns {string}
+ */
+export function extractBackdropLabelFromGift(gift) {
+  if (!gift || typeof gift !== "object") return "";
+  const g = gift;
+
+  const top = String(g.backdrop ?? g.backdropName ?? g.background ?? "").trim();
+  if (top) return top;
+
+  const traits = Array.isArray(g.traits) ? g.traits : [];
+  for (const t of traits) {
+    if (!t || typeof t !== "object") continue;
+    const key = String(t.key ?? "").trim();
+    const kl = key.toLowerCase().replace(/\s+/g, "_");
+    if (kl === "backdrop" || kl === "background" || key.toUpperCase() === "BACKDROP") {
+      const v = String(t.value ?? "").trim();
+      if (v) return v;
+    }
+  }
+
+  const attrs = g.attributes;
+  if (attrs && typeof attrs === "object") {
+    const a = /** @type {Record<string, unknown>} */ (attrs);
+    const B = a.BACKDROP ?? a.backdrop ?? a.Background ?? a.background;
+    if (typeof B === "string" && B.trim()) return B.trim();
+    if (B && typeof B === "object" && typeof B.name === "string" && B.name.trim()) return B.name.trim();
+  }
+
+  const meta = g.metadata;
+  if (meta && typeof meta === "object" && Array.isArray(meta.attributes)) {
+    for (const row of meta.attributes) {
+      if (!row || typeof row !== "object") continue;
+      const trait = String(row.trait_type ?? row.key ?? "")
+        .toLowerCase()
+        .replace(/\s+/g, "_");
+      if (trait.includes("backdrop") || trait.includes("background")) {
+        const v = String(row.value ?? "").trim();
+        if (v) return v;
+      }
+    }
+  }
+
+  return "";
+}
+
+/**
+ * Symbol label from API document / traits / nested attributes.
+ * @param {Record<string, unknown> | null | undefined} gift
+ * @returns {string}
+ */
+export function extractSymbolLabelFromGift(gift) {
+  if (!gift || typeof gift !== "object") return "";
+  const g = gift;
+
+  const top = String(g.symbol ?? g.symbolName ?? "").trim();
+  if (top) return top;
+
+  const traits = Array.isArray(g.traits) ? g.traits : [];
+  for (const t of traits) {
+    if (!t || typeof t !== "object") continue;
+    const key = String(t.key ?? "").trim();
+    const kl = key.toLowerCase();
+    if (kl === "symbol" || key.toUpperCase() === "SYMBOL") {
+      const v = String(t.value ?? "").trim();
+      if (v) return v;
+    }
+  }
+
+  const attrs = g.attributes;
+  if (attrs && typeof attrs === "object") {
+    const a = /** @type {Record<string, unknown>} */ (attrs);
+    const S = a.SYMBOL ?? a.symbol;
+    if (typeof S === "string" && S.trim()) return S.trim();
+    if (S && typeof S === "object" && typeof S.name === "string" && S.name.trim()) return S.name.trim();
+  }
+
+  const meta = g.metadata;
+  if (meta && typeof meta === "object" && Array.isArray(meta.attributes)) {
+    for (const row of meta.attributes) {
+      if (!row || typeof row !== "object") continue;
+      const trait = String(row.trait_type ?? row.key ?? "").toLowerCase();
+      if (trait.includes("symbol")) {
+        const v = String(row.value ?? "").trim();
+        if (v) return v;
+      }
+    }
+  }
+
+  return "";
+}
+
+/**
+ * Same as buildHeroPresentationFields but reads backdrop/symbol from any gift shape.
+ * @param {Record<string, unknown> | null | undefined} gift
+ */
+export function buildHeroPresentationFieldsFromGift(gift) {
+  return buildHeroPresentationFields({
+    backdrop: extractBackdropLabelFromGift(gift),
+    symbol: extractSymbolLabelFromGift(gift),
+    model: String(gift?.model ?? ""),
+    collection: String(gift?.collection ?? ""),
+    listingId: String(gift?.id ?? gift?.listingId ?? ""),
+  });
+}
+
+/**
+ * @param {Record<string, unknown> | null | undefined} gift
+ * @param {unknown} existingPattern
+ */
+function mergeSymbolPatternFromGift(gift, existingPattern) {
+  const ex = existingPattern && typeof existingPattern === "object" ? existingPattern : null;
+  if (ex && ex.enabled && String(ex.id || "").trim()) return ex;
+  const sym = resolveSymbolPattern(extractSymbolLabelFromGift(gift));
+  if (sym) return { id: sym.id, label: sym.label, enabled: true };
+  return { id: "", label: "", enabled: false };
+}
+
+/**
+ * Resolve hero presentation for detail modal: prefer API snapshot, else trait extraction + theme JSON.
+ * @param {Record<string, unknown> | null | undefined} gift
+ */
+export function resolveCollectibleHeroPresentation(gift) {
+  const hasApi =
+    gift &&
+    typeof gift === "object" &&
+    gift.backdropTheme &&
+    gift.heroBackground &&
+    typeof gift.backdropTheme === "object" &&
+    typeof gift.heroBackground === "object";
+
+  if (hasApi) {
+    const apiKey = String(gift.backdropTheme?.key || "");
+    const extractedBackdrop = extractBackdropLabelFromGift(gift);
+    if (extractedBackdrop && apiKey === NEUTRAL_KEY) {
+      const recomputed = buildHeroPresentationFields({
+        backdrop: extractedBackdrop,
+        symbol: extractSymbolLabelFromGift(gift),
+        model: String(gift?.model ?? ""),
+        collection: String(gift?.collection ?? ""),
+        listingId: String(gift?.id ?? gift?.listingId ?? ""),
+      });
+      if (recomputed.backdropTheme.key !== NEUTRAL_KEY) {
+        return {
+          backdropTheme: recomputed.backdropTheme,
+          heroBackground: recomputed.heroBackground,
+          symbolPattern: mergeSymbolPatternFromGift(gift, recomputed.symbolPattern),
+          fromApi: false,
+        };
+      }
+    }
+
+    return {
+      backdropTheme: gift.backdropTheme,
+      heroBackground: gift.heroBackground,
+      symbolPattern: mergeSymbolPatternFromGift(gift, gift.symbolPattern),
+      fromApi: true,
+    };
+  }
+
+  return {
+    ...buildHeroPresentationFieldsFromGift(gift),
+    fromApi: false,
+  };
+}
+
+/**
  * @param {{
  *   backdrop?: string;
  *   symbol?: string;

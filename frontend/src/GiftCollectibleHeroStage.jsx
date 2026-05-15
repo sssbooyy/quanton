@@ -1,10 +1,9 @@
 import { useMemo, useSyncExternalStore } from "react";
-import { buildHeroPresentationFields } from "@shared/giftHeroResolve.js";
+import {
+  buildHeroPresentationFieldsFromGift,
+  resolveCollectibleHeroPresentation,
+} from "@shared/giftHeroResolve.js";
 import { GiftPatternLayer, GIFT_PATTERN_SYMBOL_IDS, hashPresentationSeed } from "./giftPatternLayer.js";
-
-/** Telegram / Fragment collectible profile: lighter purple top → deeper purple bottom */
-const TELEGRAM_PROFILE_GRADIENT =
-  "linear-gradient(180deg, #c4b5fd 0%, #a78bfa 18%, #9333ea 48%, #7e22ce 72%, #6b21a8 100%)";
 
 function subscribeReducedMotion() {
   const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -20,11 +19,11 @@ function getReducedMotion() {
 }
 
 /**
- * Fragment-style hero: gradient backdrop, tiled symbol atmosphere, vignette, glow behind asset.
+ * Collectible hero: gradient + symbol pattern from gift metadata (same themes as API / Portals-style).
  * @param {{
  *   gift: Record<string, unknown>;
  *   children?: import("react").ReactNode;
- *   variant?: "default" | "telegramProfile";
+ *   variant?: "default" | "collectibleProfile";
  *   backdropOnly?: boolean;
  * }} props
  */
@@ -35,11 +34,13 @@ export default function GiftCollectibleHeroStage({
   backdropOnly = false,
 }) {
   const reducedMotion = useSyncExternalStore(subscribeReducedMotion, getReducedMotion, () => false);
-  const isTelegram = variant === "telegramProfile";
+  const isProfile = variant === "collectibleProfile";
 
   const presentation = useMemo(() => {
+    if (isProfile) {
+      return resolveCollectibleHeroPresentation(gift);
+    }
     if (
-      !isTelegram &&
       gift?.backdropTheme &&
       typeof gift.backdropTheme === "object" &&
       gift?.heroBackground &&
@@ -53,16 +54,10 @@ export default function GiftCollectibleHeroStage({
       };
     }
     return {
-      ...buildHeroPresentationFields({
-        backdrop: String(gift?.backdrop || ""),
-        symbol: String(gift?.symbol || ""),
-        model: String(gift?.model || ""),
-        collection: String(gift?.collection || ""),
-        listingId: String(gift?.id || gift?.listingId || ""),
-      }),
+      ...buildHeroPresentationFieldsFromGift(gift),
       fromApi: false,
     };
-  }, [gift, isTelegram]);
+  }, [gift, isProfile]);
 
   const bt = presentation.backdropTheme;
   const symbolPattern = presentation.symbolPattern;
@@ -73,37 +68,29 @@ export default function GiftCollectibleHeroStage({
       ? String(symbolPattern.id)
       : "";
 
-  const symColor = isTelegram
-    ? "rgba(255, 255, 255, 0.92)"
-    : String(bt?.symbolColor || "rgba(255,255,255,0.08)");
+  const symColor = String(bt?.symbolColor || "rgba(255,255,255,0.1)");
   const seed = String(gift?.id || gift?.listingId || "seed");
 
-  const backdropBg = isTelegram
-    ? TELEGRAM_PROFILE_GRADIENT
-    : String(hb?.gradient || bt?.background || "#06080f");
+  const backdropBg = String(hb?.gradient || bt?.background || "#06080f");
 
-  const patternOpacity = isTelegram ? (reducedMotion ? 0.08 : 0.11) : reducedMotion ? 0.32 : 0.52;
+  const patternOpacity = isProfile ? (reducedMotion ? 0.08 : 0.1) : reducedMotion ? 0.32 : 0.52;
 
-  const patternTransform = isTelegram
+  const patternTransform = isProfile
     ? undefined
     : `translate(${(hashPresentationSeed(seed) % 9) - 4}px, ${(hashPresentationSeed(seed + "y") % 7) - 3}px)`;
 
-  const overlayBg = isTelegram ? "transparent" : String(hb?.overlay || bt?.overlay || "transparent");
+  const overlayBg = String(hb?.overlay || bt?.overlay || "transparent");
 
-  const vignetteBg = isTelegram
-    ? "radial-gradient(ellipse 92% 80% at 50% 36%, transparent 38%, rgba(50, 20, 88, 0.2) 100%)"
-    : String(hb?.vignette || bt?.vignette || "transparent");
+  const vignetteBg = String(hb?.vignette || bt?.vignette || "transparent");
 
-  const glowBg = isTelegram
-    ? "radial-gradient(ellipse 62% 55% at 50% 28%, rgba(255,255,255,0.14) 0%, transparent 68%)"
-    : `radial-gradient(ellipse 72% 68% at 50% 46%, ${String(hb?.glowCenter || bt?.glowColor || "rgba(120,140,180,0.2)")} 0%, ${String(hb?.glowEdge || bt?.glowColorSoft || "rgba(0,0,0,0)")} 62%, transparent 78%)`;
+  const glowBg = `radial-gradient(ellipse 72% 68% at 50% 46%, ${String(hb?.glowCenter || bt?.glowColor || "rgba(120,140,180,0.2)")} 0%, ${String(hb?.glowEdge || bt?.glowColorSoft || "rgba(0,0,0,0)")} 62%, transparent 78%)`;
 
   return (
-    <div className={`giftCollectibleHero${isTelegram ? " giftCollectibleHero--telegram" : ""}`}>
+    <div className={`giftCollectibleHero${isProfile ? " giftCollectibleHero--profile" : ""}`}>
       <div className="giftHeroBackdrop" style={{ background: backdropBg }} />
       {symId ? (
         <div
-          className={`giftHeroPatternWrap${reducedMotion ? " giftHeroPatternWrap--reduced" : ""}${isTelegram ? " giftHeroPatternWrap--telegram" : ""}`}
+          className={`giftHeroPatternWrap${reducedMotion ? " giftHeroPatternWrap--reduced" : ""}${isProfile ? " giftHeroPatternWrap--profile" : ""}`}
           style={{
             opacity: patternOpacity,
             transform: patternTransform,
@@ -113,9 +100,9 @@ export default function GiftCollectibleHeroStage({
         </div>
       ) : null}
       <div className="giftHeroOverlayTint" style={{ background: overlayBg }} />
-      <div className="giftHeroVignette giftHeroVignette--telegramAware" style={{ background: vignetteBg }} />
-      <div className="giftHeroGlow giftHeroGlow--telegramAware" style={{ background: glowBg }} />
-      <div className={`giftHeroBottomShade${isTelegram ? " giftHeroBottomShade--telegram" : ""}`} />
+      <div className="giftHeroVignette giftHeroVignette--profileAware" style={{ background: vignetteBg }} />
+      <div className="giftHeroGlow giftHeroGlow--profileAware" style={{ background: glowBg }} />
+      <div className={`giftHeroBottomShade${isProfile ? " giftHeroBottomShade--profile" : ""}`} />
       {!backdropOnly && children != null ? <div className="giftHeroContent">{children}</div> : null}
     </div>
   );

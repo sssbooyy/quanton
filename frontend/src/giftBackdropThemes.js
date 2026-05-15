@@ -13,4 +13,8 @@ export {
   resolveBackdropTheme,
   resolveSymbolPattern,
   buildHeroPresentationFields,
+  extractBackdropLabelFromGift,
+  extractSymbolLabelFromGift,
+  buildHeroPresentationFieldsFromGift,
+  resolveCollectibleHeroPresentation,
 } from "@shared/giftHeroResolve.js";

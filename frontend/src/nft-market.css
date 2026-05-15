@@ -435,7 +435,7 @@
 }
 
 /* --- Telegram collectible detail (full-card profile) --- */
-.nftDetailSheet--telegramCollectible {
+.nftDetailSheet--collectibleProfile {
   background: transparent;
   border: none;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
@@ -444,42 +444,42 @@
   padding-bottom: 0;
 }
 
-.nftDetailSheet--telegramCollectible .nftDetailSection {
-  background: rgba(40, 18, 72, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+.nftDetailSheet--collectibleProfile .nftDetailSection {
+  background: rgba(0, 0, 0, 0.38);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
   padding: 14px 14px 16px;
   margin-bottom: 12px;
 }
 
-.nftDetailSheet--telegramCollectible .nftDetailSectionTitle {
+.nftDetailSheet--collectibleProfile .nftDetailSectionTitle {
   color: rgba(255, 255, 255, 0.92);
 }
 
-.nftDetailSheet--telegramCollectible .nftDetailStatLabel {
+.nftDetailSheet--collectibleProfile .nftDetailStatLabel {
   color: rgba(255, 255, 255, 0.55);
 }
 
-.nftDetailSheet--telegramCollectible .nftDetailStatValue {
+.nftDetailSheet--collectibleProfile .nftDetailStatValue {
   color: #fff;
 }
 
-.nftDetailSheet--telegramCollectible .nftDetailNarrative,
-.nftDetailSheet--telegramCollectible .nftDetailLink {
+.nftDetailSheet--collectibleProfile .nftDetailNarrative,
+.nftDetailSheet--collectibleProfile .nftDetailLink {
   color: rgba(255, 255, 255, 0.9);
 }
 
-.nftDetailSheet--telegramCollectible .nftDetailBar {
+.nftDetailSheet--collectibleProfile .nftDetailBar {
   background: rgba(0, 0, 0, 0.2);
 }
 
-.nftDetailSheet--telegramCollectible .tagMuted {
+.nftDetailSheet--collectibleProfile .tagMuted {
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.14);
   color: rgba(255, 255, 255, 0.85);
 }
 
-.nftDetailSheet--telegramCollectible .nftDetailChip {
+.nftDetailSheet--collectibleProfile .nftDetailChip {
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.18);
   color: rgba(255, 255, 255, 0.95);
@@ -543,7 +543,7 @@
   cursor: pointer;
   touch-action: manipulation;
   color: #fff;
-  background: rgba(64, 28, 108, 0.5);
+  background: rgba(0, 0, 0, 0.38);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
@@ -594,7 +594,7 @@
 }
 
 .tgCollectibleHeroImg .giftAnimHeroRoot {
-  filter: drop-shadow(0 16px 28px rgba(45, 15, 80, 0.42));
+  filter: drop-shadow(0 16px 24px rgba(0, 0, 0, 0.38));
 }
 
 .tgCollectibleHeroImg .nftHeroImg,
@@ -899,25 +899,25 @@
   background: linear-gradient(to top, rgba(0, 0, 0, 0.48) 0%, transparent 100%);
 }
 
-.giftHeroPatternWrap--telegram {
+.giftHeroPatternWrap--profile {
   filter: blur(0.55px);
 }
 
-.giftHeroBottomShade--telegram {
+.giftHeroBottomShade--profile {
   height: 26%;
-  background: linear-gradient(to top, rgba(42, 15, 72, 0.28) 0%, transparent 100%);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.22) 0%, transparent 100%);
 }
 
-.giftHeroVignette--telegramAware {
+.giftHeroVignette--profileAware {
   mix-blend-mode: soft-light;
 }
 
-.giftHeroGlow--telegramAware {
+.giftHeroGlow--profileAware {
   mix-blend-mode: screen;
   opacity: 0.75;
 }
 
-.giftCollectibleHero--telegram .giftHeroContent {
+.giftCollectibleHero--profile .giftHeroContent {
   filter: none;
 }
 

@@ -31,8 +31,20 @@ export const GIFT_ASSET_BASE_URL = (process.env.GIFT_ASSET_BASE_URL || "https://
   ""
 );
 export const GIFT_ASSET_API_KEY = process.env.GIFT_ASSET_API_KEY?.trim() || "";
-/** Header name for the API key (default matches common Gift Asset deployments). */
+/** Header name when `GIFT_ASSET_AUTH_MODE=legacy` (otherwise ignored for named modes). */
 export const GIFT_ASSET_AUTH_HEADER = process.env.GIFT_ASSET_AUTH_HEADER?.trim() || "X-API-Key";
+/**
+ * How the API key is sent. OpenAPI documents `X-API-Key`; some hosts expect Bearer or `?api_key=`.
+ * Values: `bearer` | `x-api-key` | `api-key` | `query` | `legacy` (custom header from GIFT_ASSET_AUTH_HEADER).
+ */
+export const GIFT_ASSET_AUTH_MODE = process.env.GIFT_ASSET_AUTH_MODE?.trim() || "";
+
+/** Default `telegram_gift_name` for probes (matches dev catalog "Plush Pepe" + real Gift Asset ids). */
+export const GIFT_ASSET_PROBE_NAME =
+  process.env.GIFT_ASSET_PROBE_NAME?.trim() || "PlushPepe-2308";
+/** Collection label for `get_unique_gifts_price_list` probe. */
+export const GIFT_ASSET_PROBE_COLLECTION_NAME =
+  process.env.GIFT_ASSET_PROBE_COLLECTION?.trim() || "Plush Pepe";
 
 /** Optional shared secret for POST /gifts/metadata/sync-stale */
 export const METADATA_SYNC_SECRET = process.env.METADATA_SYNC_SECRET?.trim() || "";

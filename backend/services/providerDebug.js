@@ -3,20 +3,19 @@
  * @see GET /debug/providers in server.js
  */
 
-import axios from "axios";
+import { giftAssetGet } from "./giftAssetHttp.js";
+import { resolveGiftAssetAuthMode } from "./giftAssetAuth.js";
+import { extractMinFloorTonFromProviderRow } from "./giftAssetPublicClient.js";
 import {
   DEBUG_PROVIDERS_SECRET,
   FLOOR_CACHE_TTL_MS,
   GIFT_ASSET_API_KEY,
-  GIFT_ASSET_AUTH_HEADER,
   GIFT_ASSET_BASE_URL,
+  GIFT_ASSET_PROBE_COLLECTION_NAME,
   NODE_ENV,
   REPLICATE_API_TOKEN,
   isProduction,
 } from "../config.js";
-
-/** Default Gift Asset name used for connectivity probes (stable public-style id). */
-const DEFAULT_PROBE_GIFT_NAME = "EasterEgg-1";
 
 /** @type {object | null} */
 let lastProviderTest = null;
@@ -40,141 +39,158 @@ export function assertDebugProvidersAllowed(req, res) {
 }
 
 /**
- * @param {unknown} payload
+ * @param {import("axios").AxiosResponse} res
  */
-function collectFloorFieldHints(payload) {
-  if (!payload || typeof payload !== "object") return [];
-  const hints = [];
-  const mf = /** @type {Record<string, unknown>} */ (payload).market_floor;
-  if (mf && typeof mf === "object") {
-    for (const k of Object.keys(mf)) hints.push(`market_floor.${k}`);
+function apiErrorHintFromResponse(res) {
+  const d = res.data;
+  if (!d || typeof d !== "object") {
+    return res.status && res.status !== 200 ? `http_${res.status}` : "";
   }
-  const prov = /** @type {Record<string, unknown>} */ (payload).providers;
-  if (prov && typeof prov === "object") {
-    for (const [pk, row] of Object.entries(prov)) {
-      if (!row || typeof row !== "object") continue;
-      for (const k of Object.keys(row)) {
-        if (/floor|ton|price|sales/i.test(k)) hints.push(`providers.${pk}.${k}`);
-      }
-    }
-  }
-  return [...new Set(hints)].slice(0, 48);
+  if (d.code !== undefined && d.code !== null) return String(d.code);
+  return res.status && res.status !== 200 ? `http_${res.status}` : "";
 }
 
 /**
- * @param {unknown} payload
+ * @param {string} path
+ * @param {Record<string, string | number | boolean | undefined>} query
  */
-function collectMediaFieldHints(payload) {
-  if (!payload || typeof payload !== "object") return [];
-  const hints = [];
-  const p = /** @type {Record<string, unknown>} */ (payload);
-  if (p.media_preview) hints.push("media_preview");
-  const m = p.media;
-  if (m && typeof m === "object") {
-    for (const k of Object.keys(m)) {
-      if (k === "pics") {
-        const pics = /** @type {unknown} */ (m.pics);
-        const shape = Array.isArray(pics) ? `array(len=${pics.length})` : typeof pics;
-        hints.push(`media.pics(${shape})`);
-      } else {
-        hints.push(`media.${k}`);
-      }
-    }
+function redactedRequestUrl(path, query) {
+  const base = GIFT_ASSET_BASE_URL.replace(/\/+$/, "");
+  const p = path.startsWith("/") ? path : `/${path}`;
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(query)) {
+    if (v === undefined || v === null) continue;
+    const val = k === "api_key" ? "(redacted)" : String(v);
+    q.set(k, val);
   }
-  return [...new Set(hints)].slice(0, 32);
+  const qs = q.toString();
+  return qs ? `${base}${p}?${qs}` : `${base}${p}`;
 }
 
 /**
- * Temporary probe: one GET to Gift Asset `get_gift_by_name`, logs safe facts, stores summary.
- * Never logs API keys or response bodies.
- * @param {string} [giftName]
+ * @param {import("axios").AxiosResponse} res
+ * @param {"collection_floors" | "providers_fee" | "global_price_list"} kind
+ */
+function hasUsefulData(res, kind) {
+  if (res.status !== 200 || !res.data) return false;
+  const d = res.data;
+  if (typeof d !== "object") return false;
+  if ("code" in d && "message" in d && d.message) return false;
+  if (kind === "collection_floors") {
+    return extractMinFloorTonFromProviderRow(d.collection_floors) > 0;
+  }
+  if (kind === "providers_fee") {
+    return Array.isArray(d) && d.length > 0;
+  }
+  if (kind === "global_price_list") {
+    return Boolean(d.collection_floors && typeof d.collection_floors === "object");
+  }
+  return false;
+}
+
+/**
+ * Multi-endpoint probe (public/provider routes only; no User-Data).
  * @returns {Promise<Record<string, unknown>>}
  */
-export async function runGiftAssetProbe(giftName) {
-  const name = String(giftName || process.env.GIFT_ASSET_PROBE_NAME || DEFAULT_PROBE_GIFT_NAME).trim();
-  const base = GIFT_ASSET_BASE_URL.replace(/\/+$/, "");
-  const path = "/api/v1/gifts/get_gift_by_name";
-  const requestUrl = `${base}${path}?name=${encodeURIComponent(name)}`;
+export async function runGiftAssetProbe() {
+  const authModeUsed = resolveGiftAssetAuthMode();
+  const collectionName = GIFT_ASSET_PROBE_COLLECTION_NAME;
 
   if (!GIFT_ASSET_API_KEY) {
     const summary = {
       at: new Date().toISOString(),
-      giftName: name,
-      requestUrl,
+      authModeUsed,
+      collectionName,
+      endpointUsed: "GET /api/v1/gifts/get_unique_gifts_price_list",
+      requestUrl: redactedRequestUrl("/api/v1/gifts/get_unique_gifts_price_list", {
+        collection_name: collectionName,
+      }),
+      statusCode: null,
+      apiErrorHint: "missing_api_key",
+      hasData: false,
       skipped: true,
       reason: "missing_api_key",
-      statusCode: null,
-      hasData: false,
-      floorFieldHints: [],
-      mediaFieldHints: [],
+      steps: [],
     };
     lastProviderTest = summary;
-    console.log("[provider-debug] Gift Asset probe skipped (no API key)", {
-      requestUrl,
-      statusCode: null,
-      hasData: false,
-    });
     return summary;
   }
 
-  let statusCode = 0;
-  let hasJson = false;
-  let hasGiftPayload = false;
-  let floorFieldHints = [];
-  let mediaFieldHints = [];
-  let apiErrorHint = "";
+  /** @type {Record<string, unknown>[]} */
+  const steps = [];
 
-  try {
-    const res = await axios.get(`${base}${path}`, {
-      params: { name },
-      headers: { [GIFT_ASSET_AUTH_HEADER]: GIFT_ASSET_API_KEY },
-      timeout: 18_000,
-      validateStatus: () => true,
-    });
-    statusCode = res.status;
-    hasJson = Boolean(res.data && typeof res.data === "object");
-    const data = hasJson ? res.data : null;
-    if (data && typeof data.code !== "undefined" && data.message) {
-      apiErrorHint = String(data.code || "api_error");
-      hasGiftPayload = false;
-    } else if (data && (data.telegram_gift_name || data.id || data.media)) {
-      hasGiftPayload = true;
-      floorFieldHints = collectFloorFieldHints(data);
-      mediaFieldHints = collectMediaFieldHints(data);
-    } else if (res.status !== 200) {
-      apiErrorHint = `http_${res.status}`;
+  /**
+   * @param {string} label
+   * @param {string} path
+   * @param {Record<string, string | number | boolean | undefined>} query
+   * @param {"collection_floors" | "providers_fee" | "global_price_list"} kind
+   */
+  async function runStep(label, path, query, kind) {
+    const endpointUsed = `GET ${path}`;
+    const displayQuery = { ...query };
+    if (authModeUsed === "query") displayQuery.api_key = "(redacted)";
+    const requestUrl = redactedRequestUrl(path, displayQuery);
+    let statusCode = 0;
+    let apiErrorHint = "";
+    let hasData = false;
+    let floorFieldHints = [];
+
+    try {
+      const res = await giftAssetGet(path, query);
+      statusCode = res.status;
+      apiErrorHint = apiErrorHintFromResponse(res);
+      hasData = hasUsefulData(res, kind);
+      if (kind === "collection_floors" && res.data?.collection_floors) {
+        const ton = extractMinFloorTonFromProviderRow(res.data.collection_floors);
+        floorFieldHints = [`collection_floors.min_ton=${ton}`];
+      }
+      if (kind === "global_price_list" && res.data?.collection_floors) {
+        const cf = res.data.collection_floors;
+        floorFieldHints = [`collection_floors.keys(${Object.keys(cf).length})`];
+      }
+    } catch (e) {
+      apiErrorHint = "network_error";
+      console.warn("[provider-debug] step network error:", label, e?.message || e);
     }
-  } catch (e) {
-    statusCode = 0;
-    hasJson = false;
-    apiErrorHint = "network_error";
-    console.warn("[provider-debug] Gift Asset probe network error:", e?.message || e);
+
+    const step = {
+      label,
+      authModeUsed,
+      endpointUsed,
+      requestUrl,
+      statusCode,
+      apiErrorHint: apiErrorHint || undefined,
+      hasData,
+      floorFieldHints,
+    };
+    steps.push(step);
+    console.log("[provider-debug] Gift Asset public step", step);
+    return step;
   }
 
-  const hasData = hasGiftPayload;
+  await runStep(
+    "collection_price_list",
+    "/api/v1/gifts/get_unique_gifts_price_list",
+    { collection_name: collectionName },
+    "collection_floors"
+  );
+  await runStep("global_price_list", "/api/v1/gifts/get_gifts_price_list", {}, "global_price_list");
+  await runStep("providers_fee", "/api/v1/gifts/get_providers_fee", {}, "providers_fee");
+
+  const primary = steps[0] || {};
   const summary = {
     at: new Date().toISOString(),
-    giftName: name,
-    requestUrl,
-    skipped: false,
-    statusCode,
-    hasJsonBody: hasJson,
-    hasGiftPayload,
-    hasData,
-    apiErrorHint: apiErrorHint || undefined,
-    floorFieldHints,
-    mediaFieldHints,
+    authModeUsed,
+    collectionName,
+    endpointUsed: primary.endpointUsed,
+    requestUrl: primary.requestUrl,
+    statusCode: primary.statusCode,
+    apiErrorHint: primary.apiErrorHint,
+    hasData: primary.hasData,
+    aggregateHasData: steps.some((s) => s.hasData),
+    steps,
   };
   lastProviderTest = summary;
-
-  console.log("[provider-debug] Gift Asset probe", {
-    requestUrl,
-    statusCode,
-    hasData,
-    floorFieldHints,
-    mediaFieldHints,
-  });
-
   return summary;
 }
 
@@ -185,6 +201,7 @@ export async function getProvidersDebugResponse(opts = {}) {
   const hasGiftAssetApiKey = Boolean(GIFT_ASSET_API_KEY);
   const giftAssetConfigured = hasGiftAssetApiKey && Boolean(GIFT_ASSET_BASE_URL);
   const replicateConfigured = Boolean(REPLICATE_API_TOKEN);
+  const giftAssetAuthMode = resolveGiftAssetAuthMode();
 
   if (opts.runProbe) {
     await runGiftAssetProbe();
@@ -194,12 +211,13 @@ export async function getProvidersDebugResponse(opts = {}) {
     giftAssetConfigured,
     giftAssetBaseUrl: GIFT_ASSET_BASE_URL,
     hasGiftAssetApiKey,
+    giftAssetAuthMode,
     floorCacheTtlMs: FLOOR_CACHE_TTL_MS,
     replicateConfigured,
     nodeEnv: NODE_ENV,
     lastProviderTest,
     hint: opts.runProbe
-      ? "Live probe executed; see server logs for the same summary."
-      : "Add ?probe=1 to run a live Gift Asset request once (updates lastProviderTest; logs to console).",
+      ? "Live probe uses public Gift Asset endpoints only (no User-Data routes)."
+      : "Add ?probe=1 to run public Gift Asset checks (updates lastProviderTest).",
   };
 }

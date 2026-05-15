@@ -15,17 +15,12 @@ import fs from "fs";
 import axios from "axios";
 import { fileURLToPath } from "url";
 import path from "path";
-import { GIFTS_FILE_PATH, GIFT_ASSET_API_KEY } from "../config.js";
+import { GIFTS_FILE_PATH } from "../config.js";
 import { fetchOpenGraphMeta } from "./openGraphResolve.js";
-import { fetchGiftAssetByName } from "./giftAssetClient.js";
 import {
   openGraphRasterVariants,
   pickGiftAssetRasterLayers,
 } from "./giftImageAssets.js";
-import {
-  extractBestCollectionFloorTon,
-  extractLegacyMarketFloorTon,
-} from "./floorProvider.js";
 import {
   normalizeCollectionFloorKeyFromGiftAssetName,
   normalizeCollectionFloorKeyFromLabel,
@@ -294,11 +289,11 @@ export function mapGiftAssetPayloadToResult(payload, giftAssetName) {
     String(payload.telegram_gift_title || "").trim() || displayName || giftAssetName;
   const collection = derivedCollection;
 
-  const floorLegacy = floorTonFromPayload(payload);
-  const floorBest = extractBestCollectionFloorTon(payload);
-  const floorAlt = extractLegacyMarketFloorTon(payload);
-  const floorTon =
-    floorBest > 0 ? floorBest : floorAlt > 0 ? floorAlt : floorLegacy > 0 ? floorLegacy : 0;
+  const floorTon = floorTonFromPayload(payload);
+  const sales24h = aggregateSales24h(payload.providers);
+  const liquidity = liquidityFromSales24h(sales24h);
+  const risk = riskFromRarityIndex(Number(payload.rarity_index));
+  const rarity = rarityFromPayload(payload);
 
   const image = hiRes || thumbRaw;
 
@@ -346,14 +341,9 @@ export async function resolveGiftMetadata(giftLink) {
   }
 
   const giftAssetName = extractGiftAssetName(raw);
-
-  /** Prefer Gift Asset CDN rasters over local catalog / OG whenever the slug + key allow it. */
-  if (giftAssetName && GIFT_ASSET_API_KEY) {
-    const payload = await fetchGiftAssetByName(giftAssetName);
-    if (payload) {
-      const mapped = mapGiftAssetPayloadToResult(payload, giftAssetName);
-      if (mapped.image) return mapped;
-    }
+  let pageUrl = normalizeTelegramPageUrl(raw);
+  if (!pageUrl && giftAssetName) {
+    pageUrl = normalizeTelegramPageUrl(`https://t.me/nft/${giftAssetName}`);
   }
 
   const catalog = loadCatalogMap();
@@ -397,8 +387,7 @@ export async function resolveGiftMetadata(giftLink) {
     }
   }
 
-  const pageUrl = normalizeTelegramPageUrl(raw);
-  const nftSlug = pageUrl ? extractTelegramNftSlugFromUrl(pageUrl) : null;
+  const nftSlug = pageUrl ? extractTelegramNftSlugFromUrl(pageUrl) : giftAssetName;
 
   if (pageUrl && nftSlug) {
     const { collection: slugCollection, displayName } = collectionAndDisplayNameFromNftSlug(nftSlug);
@@ -451,26 +440,10 @@ export async function resolveGiftMetadata(giftLink) {
       };
     }
 
-    if (!GIFT_ASSET_API_KEY && GIFT_ASSET_NAME_RE.test(nftSlug)) {
-      return {
-        ok: false,
-        error:
-          "Set GIFT_ASSET_API_KEY to resolve Telegram gift metadata, or ensure the NFT preview page exposes OpenGraph images.",
-      };
-    }
-
     return {
       ok: false,
       error:
-        "Could not resolve gift metadata. Configure GIFT_ASSET_API_KEY (Gift Asset API) or paste a valid t.me/nft link with a public preview.",
-    };
-  }
-
-  if (giftAssetName && !GIFT_ASSET_API_KEY) {
-    return {
-      ok: false,
-      error:
-        "Gift Asset API key is not configured. Set GIFT_ASSET_API_KEY to resolve this gift ID, or paste a full https://t.me/nft/… link.",
+        "Could not resolve gift metadata. Paste a valid https://t.me/nft/… link with a public preview image, or use a known catalog id.",
     };
   }
 
@@ -518,5 +491,3 @@ export function applyResolvedMetadataToGiftDocument(doc, resolved) {
   doc.metadataSyncedAt = new Date();
   if (resolved.ownerInfo !== undefined) doc.ownerInfo = resolved.ownerInfo;
 }
-
-export { fetchGiftAssetByName };

@@ -6,6 +6,11 @@ export {
   normalizeTelegramPageUrl,
   extractTelegramNftSlugFromUrl,
   extractGiftAssetName,
-  fetchGiftAssetByName,
   mapGiftAssetPayloadToResult,
 } from "./metadataProvider.js";
+
+export {
+  fetchLiveCollectionFloor,
+  fetchLiveCollectionFloorForCandidates,
+  resolveCollectionNameCandidates,
+} from "./giftAssetPublicClient.js";

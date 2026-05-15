@@ -14,6 +14,21 @@ export function normalizeCollectionFloorKeyFromGiftAssetName(name) {
 }
 
 /**
+ * Human-readable collection from Gift Asset slug (e.g. FreshSocks-918 → "Fresh Socks").
+ * @param {string} giftAssetName
+ * @returns {string}
+ */
+export function collectionDisplayNameFromGiftAssetName(giftAssetName) {
+  const slug = String(giftAssetName ?? "").trim();
+  const m = slug.match(/^([A-Za-z][A-Za-z0-9]*)-\d+$/);
+  if (!m) return "";
+  return m[1]
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/_/g, " ")
+    .trim();
+}
+
+/**
  * @param {string} label Human collection name or slug fragment
  * @returns {string}
  */

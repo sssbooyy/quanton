@@ -1125,7 +1125,7 @@ function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
               </button>
             </div>
 
-            <div className="tgCollectibleScroll portalsScroll">
+            <div className="portalsSheetFlow">
               <section className="portalsGlassSection">
                 <h3 className="portalsSectionTitle">{tk("portalsAttributes")}</h3>
                 <div className="portalsAttrList" role="list">

@@ -326,7 +326,15 @@ export default function App() {
 
       <header className="topbar topbar--terminal">
         <div className="brand">
-          <span className="brandMark" aria-hidden="true" />
+          <img
+            className="brandLogo"
+            src="/quanton-logo.png"
+            alt=""
+            width={32}
+            height={32}
+            decoding="async"
+            draggable={false}
+          />
           <div className="brandLockup">
             <span className="brandQuanton">Quanton</span>
           </div>

@@ -1,8 +1,8 @@
 /**
  * Resolve static raster URLs from Gift Asset–style public payloads (Trial-safe: no User-Data).
  *
- * Main collectible image: see `resolveMainGiftRasterImage` (public → constructed /models/ URL → root/media/legacy).
- * Symbol/backdrop/pattern/icon CDN paths must not be used as the main poster (see isThemeOrSymbolAssetRasterUrl).
+ * Main collectible image: `resolveMainGiftRasterImage` / `getMainGiftRasterCandidates` (public → constructed /models/ URL → root → media).
+ * Symbol/backdrop/pattern/icon CDN paths must not be used as the main poster (`isThemeOrSymbolAssetRasterUrl`).
  */
 
 /** Path segments that indicate theme/decoration assets, not the gift poster. */
@@ -101,6 +101,50 @@ const MEDIA_IMAGE_KEYS = ["image", "preview", "thumbnail"];
 const LEGACY_FALLBACK_KEYS = ["animationPosterUrl", "imageThumb"];
 
 /**
+ * Root raster keys for the main poster pipeline (after public + constructed model).
+ * `animationPosterUrl` / `imageThumb` before other root URL fields, then media.
+ */
+const MAIN_GIFT_ROOT_RASTER_ORDER = [
+  "imageHiRes",
+  "image",
+  "animationPosterUrl",
+  "imageThumb",
+  "imageUrl",
+  "preview",
+  "previewUrl",
+  "thumbnail",
+  "thumbnailUrl",
+];
+
+/**
+ * Single ordered walk for `getMainGiftRasterCandidates` / `resolveMainGiftRasterImage`.
+ * @param {Record<string, unknown> | null | undefined} gift
+ * @returns {Generator<{ field: string; url: string; source: string }>}
+ */
+function* iterateMainGiftRasterResolutionOrder(gift) {
+  const pub = getGiftPublicBucket(gift);
+  if (pub) {
+    for (const k of PUBLIC_IMAGE_KEYS) {
+      const field = `public.${k}`;
+      yield { field, url: pickUrl(pub[k]), source: "gift_asset_public" };
+    }
+  }
+  const modelUrl = buildGiftAssetModelUrl(gift?.collection, gift?.model);
+  if (modelUrl) {
+    yield { field: "constructed.modelUrl", url: modelUrl, source: "gift_asset_model_url" };
+  }
+  for (const k of MAIN_GIFT_ROOT_RASTER_ORDER) {
+    yield { field: k, url: pickUrl(gift?.[k]), source: "gift_root" };
+  }
+  const media = getGiftMediaBucket(gift);
+  if (media) {
+    for (const k of MEDIA_IMAGE_KEYS) {
+      yield { field: `media.${k}`, url: pickUrl(media[k]), source: "gift_asset_media" };
+    }
+  }
+}
+
+/**
  * @typedef {{
  *   url: string;
  *   field: string;
@@ -140,129 +184,95 @@ function finalizeMainRasterHit(p) {
 }
 
 /**
- * Priority: (a) public bucket non-theme URLs → (b) constructed /models/ URL → (c) root/media/legacy non-theme.
+ * @typedef {{ url: string; field: string; source: string }} MainRasterCandidate
+ */
+
+/**
+ * Ordered unique main-raster candidates: public → constructed model URL → root → media.
+ * Skips theme/symbol URLs (`/symbols/`, `/backdrops/`, `/patterns/`, `/icons/`).
+ * Used for runtime `onError` fallback when /models/*.png 404s.
+ * @param {Record<string, unknown> | null | undefined} gift
+ * @returns {MainRasterCandidate[]}
+ */
+export function getMainGiftRasterCandidates(gift) {
+  /** @type {MainRasterCandidate[]} */
+  const list = [];
+  const seen = new Set();
+
+  for (const step of iterateMainGiftRasterResolutionOrder(gift)) {
+    const u = typeof step.url === "string" ? step.url.trim() : "";
+    if (!u || isThemeOrSymbolAssetRasterUrl(u)) continue;
+    if (seen.has(u)) continue;
+    seen.add(u);
+    list.push({ url: u, field: step.field, source: step.source });
+  }
+  return list;
+}
+
+/**
+ * Chosen main raster is `getMainGiftRasterCandidates(gift)[0]` (single source of truth for ordering).
  * @param {Record<string, unknown> | null | undefined} gift
  * @returns {MainRasterResolution}
  */
 export function resolveMainGiftRasterImage(gift) {
+  const constructedModelImageUrl = buildGiftAssetModelUrl(gift?.collection, gift?.model);
+  const candidates = getMainGiftRasterCandidates(gift);
+
+  if (candidates.length > 0) {
+    const first = candidates[0];
+    /** @type {string[]} */
+    const checkedFields = [];
+    let rejectedImageUrl = "";
+    let rejectedField = "";
+
+    for (const step of iterateMainGiftRasterResolutionOrder(gift)) {
+      checkedFields.push(step.field);
+      const url = typeof step.url === "string" ? step.url.trim() : "";
+      if (!url) continue;
+      if (isThemeOrSymbolAssetRasterUrl(url)) {
+        if (!rejectedImageUrl) {
+          rejectedImageUrl = url;
+          rejectedField = step.field;
+        }
+        continue;
+      }
+      if (step.field === first.field && url === first.url) {
+        return finalizeMainRasterHit({
+          url: first.url,
+          field: first.field,
+          source: first.source,
+          checkedFields,
+          rejectedImageUrl,
+          rejectedField,
+          constructedModelImageUrl,
+        });
+      }
+    }
+
+    return finalizeMainRasterHit({
+      url: first.url,
+      field: first.field,
+      source: first.source,
+      checkedFields,
+      rejectedImageUrl,
+      rejectedField,
+      constructedModelImageUrl,
+    });
+  }
+
   /** @type {string[]} */
   const checkedFields = [];
   let rejectedImageUrl = "";
   let rejectedField = "";
-
-  const constructedModelImageUrl = buildGiftAssetModelUrl(gift?.collection, gift?.model);
-
-  /**
-   * @param {string} field
-   * @param {string} url
-   */
-  const rejectTheme = (field, url) => {
-    if (!rejectedImageUrl) {
-      rejectedImageUrl = url;
-      rejectedField = field;
-    }
-  };
-
-  // (a) Gift Assist / public explicit image fields only
-  const pub = getGiftPublicBucket(gift);
-  if (pub) {
-    for (const k of PUBLIC_IMAGE_KEYS) {
-      const field = `public.${k}`;
-      checkedFields.push(field);
-      const url = pickUrl(pub[k]);
-      if (!url) continue;
-      if (isThemeOrSymbolAssetRasterUrl(url)) {
-        rejectTheme(field, url);
-        continue;
+  for (const step of iterateMainGiftRasterResolutionOrder(gift)) {
+    checkedFields.push(step.field);
+    const url = typeof step.url === "string" ? step.url.trim() : "";
+    if (url && isThemeOrSymbolAssetRasterUrl(url)) {
+      if (!rejectedImageUrl) {
+        rejectedImageUrl = url;
+        rejectedField = step.field;
       }
-      return finalizeMainRasterHit({
-        url,
-        field,
-        source: "gift_asset_public",
-        checkedFields: [...checkedFields],
-        rejectedImageUrl,
-        rejectedField,
-        constructedModelImageUrl,
-      });
     }
-  }
-
-  // (b) Constructed Gift Asset model URL (same pattern as Stellar Rocket knowledge.png)
-  if (constructedModelImageUrl) {
-    checkedFields.push("constructed.modelUrl");
-    return finalizeMainRasterHit({
-      url: constructedModelImageUrl,
-      field: "constructed.modelUrl",
-      source: "gift_asset_model_url",
-      checkedFields: [...checkedFields],
-      rejectedImageUrl,
-      rejectedField,
-      constructedModelImageUrl,
-    });
-  }
-
-  // (c) Root, media, legacy — never theme/symbol paths
-  for (const k of ROOT_IMAGE_KEYS) {
-    const field = k;
-    checkedFields.push(field);
-    const url = pickUrl(gift?.[k]);
-    if (!url) continue;
-    if (isThemeOrSymbolAssetRasterUrl(url)) {
-      rejectTheme(field, url);
-      continue;
-    }
-    return finalizeMainRasterHit({
-      url,
-      field,
-      source: "gift_root",
-      checkedFields: [...checkedFields],
-      rejectedImageUrl,
-      rejectedField,
-      constructedModelImageUrl,
-    });
-  }
-
-  const media = getGiftMediaBucket(gift);
-  if (media) {
-    for (const k of MEDIA_IMAGE_KEYS) {
-      const field = `media.${k}`;
-      checkedFields.push(field);
-      const url = pickUrl(media[k]);
-      if (!url) continue;
-      if (isThemeOrSymbolAssetRasterUrl(url)) {
-        rejectTheme(field, url);
-        continue;
-      }
-      return finalizeMainRasterHit({
-        url,
-        field,
-        source: "gift_asset_media",
-        checkedFields: [...checkedFields],
-        rejectedImageUrl,
-        rejectedField,
-        constructedModelImageUrl,
-      });
-    }
-  }
-
-  for (const k of LEGACY_FALLBACK_KEYS) {
-    const field = k;
-    checkedFields.push(field);
-    const url = pickUrl(gift?.[k]);
-    if (!url) continue;
-    if (isThemeOrSymbolAssetRasterUrl(url)) {
-      rejectTheme(field, url);
-      continue;
-    }
-    return finalizeMainRasterHit({
-      url,
-      field,
-      source: "gift_root",
-      checkedFields: [...checkedFields],
-      rejectedImageUrl,
-      rejectedField,
-      constructedModelImageUrl,
-    });
   }
 
   return {

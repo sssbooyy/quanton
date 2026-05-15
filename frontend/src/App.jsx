@@ -843,6 +843,19 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
                   </pre>
                 </div>
                 <div>
+                  <strong style={{ color: "#94a3b8" }}>resolved image (public → legacy)</strong>
+                  <pre
+                    style={{
+                      margin: "4px 0 0",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-all",
+                      opacity: 0.95,
+                    }}
+                  >
+                    {`resolvedImageUrl: ${debugFields.resolvedImageUrl || "—"}\nimageSourceField: ${debugFields.imageSourceField || "—"}\nimageResolutionSource: ${debugFields.imageResolutionSource || "—"}\nimageFromPublicField: ${String(debugFields.imageFromPublicField)}\nimageCheckedFields: ${debugFields.imageCheckedFields || "—"}\ngift.public keys: ${debugFields.giftPublicKeys || "—"}`}
+                  </pre>
+                </div>
+                <div>
                   <strong style={{ color: "#94a3b8" }}>image (API)</strong>
                   <pre
                     style={{

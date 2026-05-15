@@ -7,6 +7,7 @@ import { GIFTS_FILE_PATH, isProduction } from "../config.js";
 import { resolveGiftMetadata, applyResolvedMetadataToGiftDocument } from "./metadataProvider.js";
 import { scheduleGiftImageUpscale, syncUpscaleMetadataFields } from "./imageUpscaler.js";
 import { attachHeroPresentationToApiResponse } from "./giftHeroTheme.js";
+import { resolveGiftAssetPublicImage } from "../../shared/giftPublicImageResolve.js";
 
 /** Map a stored gift document to the public API shape (includes live AI fields). */
 export function giftToApiResponse(doc) {
@@ -71,8 +72,31 @@ export function giftToApiResponse(doc) {
     base.ownerInfo = plain.ownerInfo;
   }
 
-  const th = String(plain.imageThumb || "").trim();
-  const hi = String(plain.imageHiRes || plain.image || "").trim();
+  const pubInline = plain.public && typeof plain.public === "object" ? plain.public : null;
+  const pubCached =
+    plain.cachedMetadata &&
+    typeof plain.cachedMetadata === "object" &&
+    plain.cachedMetadata.public &&
+    typeof plain.cachedMetadata.public === "object"
+      ? plain.cachedMetadata.public
+      : null;
+  if (pubInline) {
+    base.public = pubInline;
+  } else if (pubCached) {
+    base.public = pubCached;
+  }
+
+  const hiExisting = String(base.imageHiRes || base.image || "").trim();
+  if (!hiExisting) {
+    const resolvedImg = resolveGiftAssetPublicImage(base);
+    if (resolvedImg.url) {
+      base.image = resolvedImg.url;
+      base.imageHiRes = resolvedImg.url;
+    }
+  }
+
+  const th = String(base.imageThumb || "").trim();
+  const hi = String(base.imageHiRes || base.image || "").trim();
   if (!plain.imageUpscaled && th && hi && th !== hi) {
     base.imageSrcSet = `${th} 1x, ${hi} 2x`;
   }

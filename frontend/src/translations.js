@@ -129,7 +129,9 @@ export const translations = {
     inCart: "In cart",
 
     portalsMarketplace: "Quanton Marketplace",
-    portalsCommission: "0% commission",
+    floorDeltaBelow: "{pct}% below floor",
+    floorDeltaAbove: "{pct}% above floor",
+    floorDeltaAtFloor: "At floor",
     portalsFloorTitle: "Floor price",
     portalsMakeOffer: "Make an offer",
     portalsOfferHint: "from 0.01 TON",
@@ -285,7 +287,9 @@ export const translations = {
     inCart: "В корзине",
 
     portalsMarketplace: "Quanton Маркет",
-    portalsCommission: "0% комиссия",
+    floorDeltaBelow: "На {pct}% ниже флора",
+    floorDeltaAbove: "На {pct}% выше флора",
+    floorDeltaAtFloor: "У флора",
     portalsFloorTitle: "Флор",
     portalsMakeOffer: "Предложить цену",
     portalsOfferHint: "от 0.01 TON",

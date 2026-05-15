@@ -1912,16 +1912,58 @@
   color: #8b8f98;
 }
 
-.portalsCommissionPill {
+.portalsFloorDeltaBadge {
   display: inline-flex;
   margin-top: 10px;
-  padding: 4px 10px;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 12px;
   border-radius: 999px;
   font-size: 11px;
   font-weight: 600;
-  color: #93c5fd;
-  background: rgba(59, 130, 246, 0.14);
-  border: 1px solid rgba(59, 130, 246, 0.32);
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  max-width: min(100%, 20rem);
+  text-align: center;
+  box-sizing: border-box;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.portalsFloorDeltaBadge--below {
+  color: #6ee7b7;
+  background: rgba(52, 211, 153, 0.12);
+  border: 1px solid rgba(52, 211, 153, 0.34);
+  animation: portalsFloorDeltaGlowBelow 2.8s ease-in-out infinite;
+}
+
+.portalsFloorDeltaBadge--above {
+  color: #fdba74;
+  background: rgba(251, 146, 60, 0.1);
+  border: 1px solid rgba(251, 146, 60, 0.38);
+}
+
+.portalsFloorDeltaBadge--at {
+  color: #94a3b8;
+  background: rgba(148, 163, 184, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+}
+
+@keyframes portalsFloorDeltaGlowBelow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(52, 211, 153, 0);
+  }
+
+  50% {
+    box-shadow: 0 0 14px 1px rgba(52, 211, 153, 0.28);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portalsFloorDeltaBadge--below {
+    animation: none;
+  }
 }
 
 .portalsFloorCard {

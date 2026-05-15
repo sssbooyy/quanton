@@ -922,6 +922,32 @@ function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
     return Number.isFinite(f) && f > 0 ? f : 0;
   })();
 
+  /** @type {{ variant: "below" | "above" | "at"; pct: number } | null} */
+  const floorDeltaBadge = (() => {
+    const floorPrice = liveFloorTon;
+    const sellerPrice = Number(gift.priceTon);
+    if (!Number.isFinite(floorPrice) || floorPrice <= 0 || !Number.isFinite(sellerPrice) || sellerPrice <= 0) {
+      return null;
+    }
+    const deltaPercent = ((floorPrice - sellerPrice) / floorPrice) * 100;
+    const atFloorThresholdPct = 0.85;
+    if (Math.abs(deltaPercent) <= atFloorThresholdPct) {
+      return { variant: "at", pct: 0 };
+    }
+    const pct = Math.round(Math.abs(deltaPercent));
+    if (sellerPrice < floorPrice) return { variant: "below", pct: Math.max(pct, 1) };
+    return { variant: "above", pct: Math.max(pct, 1) };
+  })();
+
+  const floorDeltaBadgeLabel =
+    floorDeltaBadge == null
+      ? ""
+      : floorDeltaBadge.variant === "at"
+        ? tk("floorDeltaAtFloor")
+        : floorDeltaBadge.variant === "below"
+          ? tk("floorDeltaBelow").replace("{pct}", String(floorDeltaBadge.pct))
+          : tk("floorDeltaAbove").replace("{pct}", String(floorDeltaBadge.pct));
+
   const heroPoster = cacheBustMediaUrl(mainRaster.url, gift);
   const staticRaster = bestStaticRasterUrl(gift);
   const mediaFit = giftMediaFit(gift);
@@ -1064,7 +1090,14 @@ function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
                 {gift.name}
               </h2>
               {listingNo ? <p className="portalsListingId mono">{listingNo}</p> : null}
-              <span className="portalsCommissionPill">{tk("portalsCommission")}</span>
+              {floorDeltaBadge ? (
+                <span
+                  className={`portalsFloorDeltaBadge portalsFloorDeltaBadge--${floorDeltaBadge.variant}`}
+                  aria-label={floorDeltaBadgeLabel}
+                >
+                  {floorDeltaBadgeLabel}
+                </span>
+              ) : null}
             </div>
 
             <div className="portalsFloorCard">

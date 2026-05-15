@@ -706,13 +706,13 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 4px 20px 0;
+  padding: 2px 20px 0;
 }
 
 .tgCollectibleHeroImg {
   position: relative;
   width: 100%;
-  max-width: min(268px, 74vw);
+  max-width: min(158px, 46vw);
   aspect-ratio: 1 / 1;
   border-radius: 20px;
   overflow: visible;
@@ -763,7 +763,7 @@
 .tgCollectibleHeadline {
   flex-shrink: 0;
   text-align: center;
-  padding: 16px 22px 10px;
+  padding: 10px 22px 8px;
 }
 
 .tgCollectibleTitle {
@@ -1333,4 +1333,503 @@
 
 .nftDetailStatGrid--dense .nftDetailStatValue {
   font-size: 12px;
+}
+
+/* --- Marketplace browse: search, filters, cart, simplified cards --- */
+.nftCardCell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  border-radius: var(--nft-card-radius);
+  overflow: hidden;
+  background: rgba(12, 14, 20, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.nftCardCell .nftCardOpen.nftCard {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.nftCardMeta--simple {
+  gap: 6px;
+  padding-bottom: 8px;
+}
+
+.nftCardPriceRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.nftCardCartRow {
+  flex-shrink: 0;
+  padding: 0 10px 10px;
+}
+
+.nftCardAddCart {
+  width: 100%;
+  min-height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgba(56, 189, 248, 0.12);
+  color: #bae6fd;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.nftCardAddCart--inCart {
+  border-color: rgba(52, 211, 153, 0.4);
+  background: rgba(52, 211, 153, 0.12);
+  color: #a7f3d0;
+}
+
+@media (hover: hover) {
+  .nftCardAddCart:hover {
+    background: rgba(56, 189, 248, 0.2);
+  }
+
+  .nftCardAddCart--inCart:hover {
+    background: rgba(52, 211, 153, 0.18);
+  }
+}
+
+.marketBrowseBar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.marketSearchRow {
+  width: 100%;
+}
+
+.marketSearchInput {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.marketSearchInput:focus {
+  outline: 2px solid rgba(56, 189, 248, 0.45);
+  outline-offset: 1px;
+}
+
+.marketPresets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.marketPresets button {
+  min-height: 40px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.marketPresets button.active {
+  border-color: rgba(56, 189, 248, 0.45);
+  color: #bae6fd;
+  background: rgba(56, 189, 248, 0.1);
+}
+
+.marketFiltersDetails {
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+}
+
+.marketFiltersSummary {
+  list-style: none;
+  cursor: pointer;
+  padding: 12px 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  user-select: none;
+}
+
+.marketFiltersSummary::-webkit-details-marker {
+  display: none;
+}
+
+.marketFiltersDetails[open] .marketFiltersSummary {
+  color: #e2e8f0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.marketFiltersGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  padding: 12px 14px 14px;
+}
+
+.marketField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.marketField--full {
+  grid-column: 1 / -1;
+}
+
+.marketField--actions {
+  align-items: stretch;
+}
+
+.marketField__label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.marketInput,
+.marketSelect {
+  min-height: 40px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.marketStatusPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.marketStatusPills button {
+  min-height: 36px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.marketStatusPills button.active {
+  border-color: rgba(129, 140, 248, 0.5);
+  color: #c7d2fe;
+  background: rgba(99, 102, 241, 0.12);
+}
+
+.marketResetBtn {
+  min-height: 42px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.tgCollectibleDetailActions {
+  display: flex;
+  justify-content: center;
+  padding: 0 18px 12px;
+}
+
+.detailAddCartBtn {
+  width: 100%;
+  max-width: 320px;
+  min-height: 48px;
+  border-radius: 14px;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  background: linear-gradient(165deg, rgba(56, 189, 248, 0.18), rgba(99, 102, 241, 0.12));
+  color: #e0f2fe;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.cartHeaderBtn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.35);
+  color: #e2e8f0;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.cartHeaderBtn__badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #38bdf8, #6366f1);
+  color: #0f172a;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 18px;
+  text-align: center;
+}
+
+.cartOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 195;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  animation: nftDetailFade 0.2s ease;
+}
+
+.cartBackdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.68);
+  backdrop-filter: blur(3px);
+}
+
+.cartSheet {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 480px;
+  max-height: min(88vh, 720px);
+  display: flex;
+  flex-direction: column;
+  background: rgba(10, 12, 18, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 -20px 40px rgba(0, 0, 0, 0.45);
+}
+
+.cartSheet__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: max(12px, env(safe-area-inset-top, 0px)) 16px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.cartSheet__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.cartSheet__close {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cartSheet__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px 16px;
+}
+
+.cartSheet__empty {
+  margin: 24px 0;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.cartList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cartRow {
+  display: grid;
+  grid-template-columns: 48px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.cartRow__thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  object-fit: cover;
+  display: block;
+}
+
+.cartRow__thumb--fb {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.cartRow__meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cartRow__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e8eef3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cartRow__price {
+  font-size: 12px;
+  color: #bae6fd;
+}
+
+.cartRow__remove {
+  border: none;
+  background: transparent;
+  color: #f87171;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 8px 4px;
+  touch-action: manipulation;
+}
+
+.cartSheet__footer {
+  flex-shrink: 0;
+  padding: 12px 16px max(16px, env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(8, 10, 15, 0.92);
+}
+
+.cartTotal {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.cartTotal strong {
+  font-size: 18px;
+  color: #f8fafc;
+}
+
+.cartFooterActions {
+  display: flex;
+  gap: 10px;
+}
+
+.cartBtnSecondary,
+.cartBtnPrimary {
+  flex: 1;
+  min-height: 48px;
+  border-radius: 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.cartBtnSecondary {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: transparent;
+  color: var(--text-dim);
+}
+
+.cartBtnPrimary {
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgba(56, 189, 248, 0.15);
+  color: #bae6fd;
+}
+
+.cartBtnPrimary:disabled,
+.cartBtnSecondary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }

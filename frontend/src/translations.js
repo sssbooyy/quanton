@@ -90,7 +90,43 @@ export const translations = {
     signalRisky: "Risky",
     signalNeutral: "Neutral",
     statusApproved: "approved",
-    statusPending: "pending",
+    statusPending: "Pending",
+    statusLive: "Live",
+    statusSold: "Sold",
+
+    searchPlaceholder: "Search name, collection, model, #…",
+    filterPanelTitle: "Filters & sort",
+    filterPriceMin: "Min TON",
+    filterPriceMax: "Max TON",
+    filterCollection: "Collection",
+    filterCollectionAll: "All collections",
+    filterMinRarity: "Min rarity",
+    filterMinScore: "Min score",
+    filterStatusAll: "All",
+    filterStatusLive: "Live",
+    filterStatusPending: "Pending",
+    filterStatusSold: "Sold",
+    filterListingStatusGroup: "Status",
+    sortLabel: "Sort",
+    sortNewest: "Newest",
+    sortPriceLow: "Price ↑",
+    sortPriceHigh: "Price ↓",
+    sortScore: "Score",
+    sortFloorDiff: "Floor gap",
+    presetAll: "All",
+    presetDiscount: "−15% floor",
+    presetHighScore: "Score 80+",
+    filtersReset: "Reset",
+
+    cartAria: "Cart",
+    cartTitle: "Cart",
+    cartEmpty: "No items yet.",
+    cartTotal: "Total",
+    cartClear: "Clear",
+    cartRemove: "Remove",
+    cartCheckout: "Checkout (soon)",
+    addToCart: "Add to cart",
+    inCart: "In cart",
 
     detailSheetKicker: "Listing",
     detailGiftId: "ID",
@@ -197,6 +233,42 @@ export const translations = {
     signalNeutral: "Нейтрально",
     statusApproved: "одобрено",
     statusPending: "ожидает",
+    statusLive: "В продаже",
+    statusSold: "Продано",
+
+    searchPlaceholder: "Поиск: имя, коллекция, модель, #…",
+    filterPanelTitle: "Фильтры и сортировка",
+    filterPriceMin: "Мин. TON",
+    filterPriceMax: "Макс. TON",
+    filterCollection: "Коллекция",
+    filterCollectionAll: "Все коллекции",
+    filterMinRarity: "Мин. редкость",
+    filterMinScore: "Мин. скор",
+    filterStatusAll: "Все",
+    filterStatusLive: "В продаже",
+    filterStatusPending: "Ожидает",
+    filterStatusSold: "Продано",
+    filterListingStatusGroup: "Статус",
+    sortLabel: "Сортировка",
+    sortNewest: "Новые",
+    sortPriceLow: "Цена ↑",
+    sortPriceHigh: "Цена ↓",
+    sortScore: "Скор",
+    sortFloorDiff: "К флору",
+    presetAll: "Все",
+    presetDiscount: "−15% к флору",
+    presetHighScore: "Скор 80+",
+    filtersReset: "Сброс",
+
+    cartAria: "Корзина",
+    cartTitle: "Корзина",
+    cartEmpty: "Пока пусто.",
+    cartTotal: "Итого",
+    cartClear: "Очистить",
+    cartRemove: "Убрать",
+    cartCheckout: "Оформление (скоро)",
+    addToCart: "В корзину",
+    inCart: "В корзине",
 
     detailSheetKicker: "Лот",
     detailGiftId: "ID",
@@ -270,6 +342,23 @@ export function translateStatus(lang, status) {
   if (status === "approved") return translations.ru.statusApproved;
   if (status === "pending") return translations.ru.statusPending;
   return status;
+}
+
+/**
+ * User-facing listing status (approved → Live).
+ * @param {Lang} lang
+ * @param {string | undefined | null} status
+ */
+export function listingStatusLabel(lang, status) {
+  const s = String(status ?? "")
+    .trim()
+    .toLowerCase();
+  if (s === "approved") return lang === "ru" ? translations.ru.statusLive : translations.en.statusLive;
+  if (s === "pending")
+    return lang === "ru" ? translations.ru.statusPending : translations.en.statusPending;
+  if (s === "sold") return lang === "ru" ? translations.ru.statusSold : translations.en.statusSold;
+  if (!status) return "";
+  return translateStatus(lang, status);
 }
 
 /**

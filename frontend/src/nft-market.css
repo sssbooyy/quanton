@@ -1833,3 +1833,323 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* --- Portals-style gift detail modal --- */
+.nftDetailSheet--portals {
+  max-width: 440px;
+}
+
+.tgCollectibleCard__body--portals {
+  color: #f2f3f5;
+}
+
+.portalsToolbar {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: flex-start;
+  gap: 8px;
+  padding: max(6px, env(safe-area-inset-top, 0px)) 8px 4px;
+  pointer-events: none;
+}
+
+.portalsToolbar > button {
+  pointer-events: auto;
+}
+
+.portalsToolbarBrand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  pointer-events: none;
+  padding-top: 2px;
+}
+
+.portalsToolbarLogo {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.portalsToolbarTitle {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #f2f3f5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.portalsUpscalingNote {
+  margin: 0 16px 4px;
+  text-align: center;
+  font-size: 11px;
+  color: #8b8f98;
+}
+
+.portalsTitleBlock {
+  text-align: center;
+  padding: 4px 18px 12px;
+}
+
+.portalsTitle {
+  margin: 0;
+  font-size: clamp(1.15rem, 4.5vw, 1.35rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: #f2f3f5;
+}
+
+.portalsListingId {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: #8b8f98;
+}
+
+.portalsCommissionPill {
+  display: inline-flex;
+  margin-top: 10px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.14);
+  border: 1px solid rgba(59, 130, 246, 0.32);
+}
+
+.portalsFloorCard {
+  margin: 0 14px 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #17181c;
+  border: 1px solid #2a2c31;
+}
+
+.portalsFloorCard__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.portalsFloorCard__label {
+  font-size: 13px;
+  color: #8b8f98;
+}
+
+.portalsLivePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6ee7b7;
+}
+
+.portalsFloorCard__value {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #f2f3f5;
+  letter-spacing: -0.02em;
+}
+
+.portalsActionsRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 0 14px 12px;
+}
+
+.portalsBtnOffer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 52px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  border: 1px solid #2a2c31;
+  background: #17181c;
+  color: #f2f3f5;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: not-allowed;
+  opacity: 0.72;
+  touch-action: manipulation;
+}
+
+.portalsBtnOffer__hint {
+  font-size: 10px;
+  font-weight: 600;
+  color: #8b8f98;
+}
+
+.portalsBtnCart {
+  min-height: 52px;
+  border-radius: 14px;
+  border: 1px solid rgba(124, 92, 255, 0.45);
+  background: #7c5cff;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  touch-action: manipulation;
+  box-shadow: 0 8px 24px rgba(124, 92, 255, 0.22);
+}
+
+.portalsBtnCart--inCart {
+  background: rgba(52, 211, 153, 0.2);
+  border-color: rgba(52, 211, 153, 0.45);
+  color: #a7f3d0;
+  box-shadow: none;
+}
+
+.portalsScroll {
+  padding: 4px 14px max(12px, env(safe-area-inset-bottom, 0px));
+}
+
+.portalsGlassSection {
+  margin-bottom: 12px;
+  padding: 14px 14px 12px;
+  border-radius: 16px;
+  background: #17181c;
+  border: 1px solid #2a2c31;
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+.portalsSectionTitle {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #f2f3f5;
+  letter-spacing: -0.01em;
+}
+
+.portalsAttrList {
+  display: flex;
+  flex-direction: column;
+}
+
+.portalsAttrRow {
+  display: grid;
+  grid-template-columns: minmax(0, 26%) minmax(0, 1fr) minmax(4.5rem, auto);
+  gap: 8px 6px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #2a2c31;
+  min-width: 0;
+}
+
+.portalsAttrRow:last-child {
+  border-bottom: none;
+}
+
+.portalsAttrRow__label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8b8f98;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.portalsAttrRow__center {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.portalsAttrRow__value {
+  font-size: 15px;
+  font-weight: 500;
+  color: #3b82f6;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.portalsRarityPill {
+  flex-shrink: 0;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #e2e8f0;
+  background: #1e293b;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.portalsAttrRow__floor {
+  font-size: 13px;
+  font-weight: 600;
+  color: #f2f3f5;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.portalsPriceRows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.portalsPriceRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.portalsPriceRow__label {
+  font-size: 13px;
+  color: #8b8f98;
+}
+
+.portalsPriceRow__value {
+  font-size: 15px;
+  font-weight: 600;
+  color: #f2f3f5;
+}
+
+.portalsTrustFooter {
+  margin: 4px 0 16px;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: #8b8f98;
+}
+
+.portalsDebugSection {
+  margin-bottom: 12px;
+}
+
+@media (max-width: 360px) {
+  .portalsAttrRow {
+    grid-template-columns: minmax(0, 28%) minmax(0, 1fr) minmax(4rem, auto);
+    gap: 6px 4px;
+  }
+
+  .portalsAttrRow__value {
+    font-size: 14px;
+  }
+
+  .portalsToolbarTitle {
+    font-size: 10px;
+  }
+}

@@ -19,7 +19,6 @@ import {
   getInitialLanguage,
   listingStatusLabel,
   t,
-  translateLiquidityRisk,
   translateServerMessage,
   translateSignal,
 } from "./translations";
@@ -31,6 +30,12 @@ import {
   uniqueCollections,
 } from "./marketplaceBrowse.js";
 import { useMarketplaceCart } from "./useMarketplaceCart.js";
+import {
+  giftBackdropLabel,
+  giftListingIdDisplay,
+  traitFloorTon,
+  traitRarityBadgeText,
+} from "./giftDetailPortals.js";
 
 const emptyGiftForm = {
   giftLink: "",
@@ -907,21 +912,7 @@ function GiftCard({ gift, lang, tk, onOpen, onAddToCart, inCart }) {
   );
 }
 
-function collectibleProfileHandle(gift) {
-  const u = gift?.telegramUser;
-  if (!u || typeof u !== "object") return "";
-  const un = u.username;
-  if (typeof un === "string" && un.trim()) return `@${un.trim()}`;
-  const fn = u.first_name;
-  if (typeof fn === "string" && fn.trim()) return fn.trim();
-  return "";
-}
-
 function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
-  const spread = Math.max(0, Math.min(100, gift.undervaluedPercent));
-  const volTone =
-    gift.volumeGrowth > 0 ? "text-bull" : gift.volumeGrowth < 0 ? "text-bear" : "text-muted";
-
   const mainRaster = useGiftMainRasterImage(gift);
 
   const liveFloorTon = (() => {
@@ -943,6 +934,39 @@ function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
         activeSource: mainRaster.source,
       })
     : null;
+
+  const listingNo = giftListingIdDisplay(gift);
+  const backdropLabel = giftBackdropLabel(gift) || "—";
+
+  const formatTonAmount = (n) => {
+    if (n == null || !Number.isFinite(Number(n)) || Number(n) <= 0) return null;
+    const x = Math.round(Number(n) * 100) / 100;
+    return Number.isInteger(x) ? String(x) : x.toFixed(2);
+  };
+
+  const attrRows = [
+    {
+      key: "model",
+      label: tk("attrModel"),
+      value: String(gift.model || "").trim() || "—",
+      floor: traitFloorTon(gift, "model"),
+      badge: traitRarityBadgeText(gift, "model"),
+    },
+    {
+      key: "symbol",
+      label: tk("attrSymbol"),
+      value: String(gift.symbol || "").trim() || "—",
+      floor: traitFloorTon(gift, "symbol"),
+      badge: traitRarityBadgeText(gift, "symbol"),
+    },
+    {
+      key: "backdrop",
+      label: tk("attrBackdrop"),
+      value: backdropLabel,
+      floor: traitFloorTon(gift, "backdrop"),
+      badge: traitRarityBadgeText(gift, "backdrop"),
+    },
+  ];
 
   useEffect(() => {
     const card = cardRasterSources(gift);
@@ -966,14 +990,11 @@ function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
     };
   }, [gift.id, heroPoster, staticRaster]);
 
-  const showHdBadge = gift.imageUpscaled === true;
-  const profileHandle = collectibleProfileHandle(gift);
-
   return (
-    <div className="nftDetailOverlay" role="presentation">
+    <div className="nftDetailOverlay portalsDetailOverlay" role="presentation">
       <button type="button" className="nftDetailBackdrop" aria-label={tk("closeDialogAria")} onClick={onClose} />
       <div
-        className="nftDetailSheet nftDetailSheet--collectibleProfile"
+        className="nftDetailSheet nftDetailSheet--collectibleProfile nftDetailSheet--portals"
         role="dialog"
         aria-modal="true"
         aria-labelledby="nft-detail-title"
@@ -983,8 +1004,8 @@ function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
             <GiftCollectibleHeroStage gift={gift} variant="collectibleProfile" backdropOnly />
           </div>
 
-          <div className="tgCollectibleCard__body">
-            <div className="tgCollectibleToolbar">
+          <div className="tgCollectibleCard__body tgCollectibleCard__body--portals">
+            <div className="portalsToolbar">
               <button
                 type="button"
                 className="tgCollectibleCircleBtn tgCollectibleCircleBtn--close"
@@ -995,6 +1016,18 @@ function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
                   ×
                 </span>
               </button>
+              <div className="portalsToolbarBrand">
+                <img
+                  className="portalsToolbarLogo"
+                  src="/quanton-logo.png"
+                  alt=""
+                  width={22}
+                  height={22}
+                  decoding="async"
+                  draggable={false}
+                />
+                <span className="portalsToolbarTitle">{tk("portalsMarketplace")}</span>
+              </div>
               <button
                 type="button"
                 className="tgCollectibleCircleBtn tgCollectibleCircleBtn--menu"
@@ -1022,290 +1055,128 @@ function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
               </div>
             </div>
 
-            <div className="tgCollectibleHeadline">
-              <h2 id="nft-detail-title" className="tgCollectibleTitle">
+            {gift.imageUpscaleStatus === "pending" ? (
+              <p className="portalsUpscalingNote mono">{tk("badgeUpscalingDetail")}</p>
+            ) : null}
+
+            <div className="portalsTitleBlock">
+              <h2 id="nft-detail-title" className="portalsTitle">
                 {gift.name}
               </h2>
-              <p className="tgCollectibleUsername">{profileHandle || "—"}</p>
+              {listingNo ? <p className="portalsListingId mono">{listingNo}</p> : null}
+              <span className="portalsCommissionPill">{tk("portalsCommission")}</span>
             </div>
 
-            <div className="tgCollectibleDetailActions">
-              <button type="button" className="detailAddCartBtn" onClick={onAddToCart}>
+            <div className="portalsFloorCard">
+              <div className="portalsFloorCard__top">
+                <span className="portalsFloorCard__label">{tk("portalsFloorTitle")}</span>
+                {gift.floorIsLive ? (
+                  <span className="portalsLivePill">
+                    <span className="nftDetailLiveFloorDot" aria-hidden="true" />
+                    {tk("livePill")}
+                  </span>
+                ) : null}
+              </div>
+              <p className="portalsFloorCard__value mono">
+                {formatTonAmount(liveFloorTon) ? `${formatTonAmount(liveFloorTon)} TON` : "—"}
+              </p>
+            </div>
+
+            <div className="portalsActionsRow">
+              <button type="button" className="portalsBtnOffer" disabled>
+                <span className="portalsBtnOffer__label">{tk("portalsMakeOffer")}</span>
+                <span className="portalsBtnOffer__hint mono">{tk("portalsOfferHint")}</span>
+              </button>
+              <button type="button" className={`portalsBtnCart ${inCart ? "portalsBtnCart--inCart" : ""}`} onClick={onAddToCart}>
                 {inCart ? tk("inCart") : tk("addToCart")}
               </button>
             </div>
 
-            <div className="tgCollectibleScroll">
-              <div className="nftDetailChips tgCollectibleChips">
-                <span className="nftDetailChip nftDetailChip--score" title={tk("badgeScoreTitle")}>
-                  {tk("badgeScoreLabel")} {gift.aiScore}
-                </span>
-                {gift.status ? (
-                  <span className={statusBadgeClass(gift.status)}>{listingStatusLabel(lang, gift.status)}</span>
-                ) : null}
-                {gift.imageUpscaleStatus === "pending" ? (
-                  <span className="nftDetailChip nftDetailChip--pending" title={tk("badgeUpscalingTitle")}>
-                    {tk("badgeUpscalingDetail")}
-                  </span>
-                ) : null}
-                {showHdBadge ? (
-                  <span className="nftDetailChip nftDetailChip--enhanced" title={tk("badgeEnhancedTitle")}>
-                    {tk("badgeEnhancedShort")}
-                  </span>
-                ) : null}
-                {showImageDebug && gift.mediaSource ? (
-                  <span className="nftDetailChip nftDetailChip--media" title="Media source">
-                    {gift.mediaSource}
-                    {gift.mediaMatchLevel ? ` · ${gift.mediaMatchLevel}` : ""}
-                  </span>
-                ) : null}
-              </div>
+            <div className="tgCollectibleScroll portalsScroll">
+              <section className="portalsGlassSection">
+                <h3 className="portalsSectionTitle">{tk("portalsAttributes")}</h3>
+                <div className="portalsAttrList" role="list">
+                  {attrRows.map((row) => (
+                    <div key={row.key} className="portalsAttrRow" role="listitem">
+                      <span className="portalsAttrRow__label">{row.label}</span>
+                      <div className="portalsAttrRow__center">
+                        <span className="portalsAttrRow__value">{row.value}</span>
+                        {row.badge ? <span className="portalsRarityPill mono">{row.badge}</span> : null}
+                      </div>
+                      <span className="portalsAttrRow__floor mono">
+                        {formatTonAmount(row.floor) ? `${formatTonAmount(row.floor)} TON` : "—"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="portalsGlassSection">
+                <h3 className="portalsSectionTitle">{tk("portalsPriceCompare")}</h3>
+                <div className="portalsPriceRows">
+                  <div className="portalsPriceRow">
+                    <span className="portalsPriceRow__label">{tk("portalsSellerPrice")}</span>
+                    <span className="portalsPriceRow__value mono">
+                      {formatTonAmount(gift.priceTon) ? `${formatTonAmount(gift.priceTon)} TON` : "—"}
+                    </span>
+                  </div>
+                  <div className="portalsPriceRow">
+                    <span className="portalsPriceRow__label">{tk("portalsReferenceFloor")}</span>
+                    <span className="portalsPriceRow__value mono">
+                      {formatTonAmount(liveFloorTon) ? `${formatTonAmount(liveFloorTon)} TON` : "—"}
+                    </span>
+                  </div>
+                </div>
+              </section>
+
+              <p className="portalsTrustFooter">{tk("portalsTrustFooter")}</p>
 
               {showImageDebug && debugFields ? (
-            <section
-              className="nftDetailSection"
-              style={{ borderTop: "1px dashed rgba(255,255,255,0.15)", paddingTop: 12 }}
-            >
-              <h3 className="nftDetailSectionTitle" style={{ color: "#fbbf24" }}>
-                Image debug (original vs upscaled)
-              </h3>
-              <p className="mono" style={{ fontSize: 11, opacity: 0.85, margin: "0 0 8px" }}>
-                Enable with <code>?imageDebug=1</code> or{" "}
-                <code>localStorage.setItem(&quot;quantonImageDebug&quot;,&quot;1&quot;)</code>
-              </p>
-              <div style={{ display: "grid", gap: 10, fontSize: 11 }}>
-                <div>
-                  <strong style={{ color: "#94a3b8" }}>traits</strong>
-                  <pre
-                    style={{
-                      margin: "4px 0 0",
-                      whiteSpace: "pre-wrap",
-                      wordBreak: "break-all",
-                      opacity: 0.95,
-                    }}
-                  >
-                    {`collection: ${debugFields.collection || "—"}\nmodel: ${debugFields.model || "—"}\nbackdrop: ${debugFields.backdrop || "—"}\nsymbol: ${debugFields.symbol || "—"}\nbackdropTheme: ${debugFields.backdropThemeKey || "—"}\nsymbolPattern: ${debugFields.symbolPatternId || "—"}`}
-                  </pre>
-                </div>
-                <div>
-                  <strong style={{ color: "#94a3b8" }}>heroBackground.gradient (snippet)</strong>
-                  <pre
-                    style={{
-                      margin: "4px 0 0",
-                      whiteSpace: "pre-wrap",
-                      wordBreak: "break-all",
-                      opacity: 0.95,
-                    }}
-                  >
-                    {debugFields.heroBackgroundSnippet || "—"}
-                  </pre>
-                </div>
-                <div>
-                  <strong style={{ color: "#94a3b8" }}>resolved image (public → legacy)</strong>
-                  <pre
-                    style={{
-                      margin: "4px 0 0",
-                      whiteSpace: "pre-wrap",
-                      wordBreak: "break-all",
-                      opacity: 0.95,
-                    }}
-                  >
-                    {`resolvedImageUrl: ${debugFields.resolvedImageUrl || "—"}\nconstructedModelImageUrl: ${debugFields.constructedModelImageUrl || "—"}\nimageCandidates: ${debugFields.imageCandidates || "—"}\nimageCandidateUrls:\n${debugFields.imageCandidateUrls || "—"}\nfailedImageUrls: ${debugFields.failedImageUrls || "—"}\nactiveImageCandidateIndex: ${debugFields.activeImageCandidateIndex}\nactiveImageSource: ${debugFields.activeImageSource || "—"}\nimageSourceField: ${debugFields.imageSourceField || "—"}\nimageResolutionSource: ${debugFields.imageResolutionSource || "—"}\nimageFromPublicField: ${String(debugFields.imageFromPublicField)}\nimageRejectedReason: ${debugFields.imageRejectedReason || "—"}\nrejectedImageUrl: ${debugFields.rejectedImageUrl || "—"}\nrejectedField: ${debugFields.rejectedField || "—"}\nimageCheckedFields: ${debugFields.imageCheckedFields || "—"}\ngift.public keys: ${debugFields.giftPublicKeys || "—"}`}
-                  </pre>
-                </div>
-                <div>
-                  <strong style={{ color: "#94a3b8" }}>image (API)</strong>
-                  <pre
-                    style={{
-                      margin: "4px 0 0",
-                      whiteSpace: "pre-wrap",
-                      wordBreak: "break-all",
-                      opacity: 0.95,
-                    }}
-                  >
-                    {debugFields.image || "—"}
-                  </pre>
-                </div>
-                <div>
-                  <strong style={{ color: "#94a3b8" }}>imageThumb</strong>
-                  <pre
-                    style={{
-                      margin: "4px 0 0",
-                      whiteSpace: "pre-wrap",
-                      wordBreak: "break-all",
-                      opacity: 0.95,
-                    }}
-                  >
-                    {debugFields.imageThumb || "—"}
-                  </pre>
-                </div>
-                <div>
-                  <strong style={{ color: "#94a3b8" }}>animationPosterUrl</strong>
-                  <pre
-                    style={{
-                      margin: "4px 0 0",
-                      whiteSpace: "pre-wrap",
-                      wordBreak: "break-all",
-                      opacity: 0.95,
-                    }}
-                  >
-                    {debugFields.animationPosterUrl || "—"}
-                  </pre>
-                </div>
-                <div>
-                  <strong style={{ color: "#94a3b8" }}>imageOriginal (OG / source)</strong>
-                  <pre
-                    style={{
-                      margin: "4px 0 0",
-                      whiteSpace: "pre-wrap",
-                      wordBreak: "break-all",
-                      opacity: 0.95,
-                    }}
-                  >
-                    {debugFields.imageOriginal || "—"}
-                  </pre>
-                </div>
-                <div>
-                  <strong style={{ color: "#94a3b8" }}>imageHiRes (API — should match Replicate after done)</strong>
-                  <pre
-                    style={{
-                      margin: "4px 0 0",
-                      whiteSpace: "pre-wrap",
-                      wordBreak: "break-all",
-                      opacity: 0.95,
-                    }}
-                  >
-                    {debugFields.imageHiRes || "—"}
-                  </pre>
-                </div>
-                <div>
-                  <strong style={{ color: "#94a3b8" }}>Rendered hero poster URL (cache-busted if HD)</strong>
-                  <pre
-                    style={{
-                      margin: "4px 0 0",
-                      whiteSpace: "pre-wrap",
-                      wordBreak: "break-all",
-                      opacity: 0.95,
-                    }}
-                  >
-                    {heroPoster || "—"}
-                  </pre>
-                </div>
-                <div>
-                  <strong style={{ color: "#94a3b8" }}>mediaSource · mediaMatchLevel</strong>
-                  <pre
-                    style={{
-                      margin: "4px 0 0",
-                      whiteSpace: "pre-wrap",
-                      wordBreak: "break-all",
-                      opacity: 0.95,
-                    }}
-                  >
-                    {`${debugFields.mediaSource || "—"} · ${debugFields.mediaMatchLevel || "—"}`}
-                  </pre>
-                </div>
-                <div>
-                  <strong style={{ color: "#94a3b8" }}>chosen image URL</strong>
-                  <pre
-                    style={{
-                      margin: "4px 0 0",
-                      whiteSpace: "pre-wrap",
-                      wordBreak: "break-all",
-                      opacity: 0.95,
-                    }}
-                  >
-                    {debugFields.chosenImageUrl || "—"}
-                  </pre>
-                </div>
-                <div className="mono" style={{ opacity: 0.9 }}>
-                  imageUpscaled: {String(debugFields.imageUpscaled)} · imageUpscaleStatus:{" "}
-                  {debugFields.imageUpscaleStatus || "—"} · provider:{" "}
-                  {String(gift.imageUpscaleProvider || "—")}
-                </div>
-              </div>
-            </section>
-          ) : null}
+                <section
+                  className="portalsGlassSection portalsDebugSection"
+                  style={{ borderStyle: "dashed" }}
+                >
+                  <h3 className="portalsSectionTitle" style={{ color: "#fbbf24" }}>
+                    Image debug (original vs upscaled)
+                  </h3>
+                  <p className="mono" style={{ fontSize: 11, opacity: 0.85, margin: "0 0 8px" }}>
+                    Enable with <code>?imageDebug=1</code> or{" "}
+                    <code>localStorage.setItem(&quot;quantonImageDebug&quot;,&quot;1&quot;)</code>
+                  </p>
+                  <div style={{ display: "grid", gap: 10, fontSize: 11 }}>
+                    <pre className="mono" style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+                      {JSON.stringify(debugFields, null, 2).length > 12_000
+                        ? "debug payload large — use browser devtools"
+                        : JSON.stringify(debugFields, null, 2)}
+                    </pre>
+                  </div>
+                </section>
+              ) : null}
 
-          <section className="nftDetailSection">
-            <h3 className="nftDetailSectionTitle">{tk("detailSectionMarket")}</h3>
-            <div className="nftDetailStatGrid nftDetailStatGrid--dense">
-              <div className="nftDetailStat">
-                <span className="nftDetailStatLabel">{tk("fieldAsk")}</span>
-                <span className="nftDetailStatValue">{gift.priceTon} TON</span>
-              </div>
-              <div className="nftDetailStat">
-                <span className="nftDetailStatLabel">{tk("detailLiveFloor")}</span>
-                <span className="nftDetailStatValue nftDetailFloorValueRow">
-                  {gift.floorIsLive ? (
-                    <span
-                      className="nftDetailLiveFloorDot"
-                      title={tk("detailFloorLiveHint")}
-                      aria-label={tk("livePill")}
-                    />
+              {(gift.sellerNote || gift.giftLink) && (
+                <section className="portalsGlassSection">
+                  <h3 className="portalsSectionTitle">{tk("detailSectionContext")}</h3>
+                  {gift.sellerNote ? (
+                    <p className="nftDetailNarrative">
+                      <strong>{tk("detailSellerNote")}:</strong> {gift.sellerNote}
+                    </p>
                   ) : null}
-                  {liveFloorTon} TON
-                </span>
-              </div>
-              <div className="nftDetailStat">
-                <span className="nftDetailStatLabel">{tk("fieldDepth")}</span>
-                <span className={`nftDetailStatValue ${spread >= 15 ? "text-bull" : ""}`}>{spread}%</span>
-              </div>
-              <div className="nftDetailStat">
-                <span className="nftDetailStatLabel">{tk("edgeTitle")}</span>
-                <span className="nftDetailStatValue">
-                  {gift.undervaluedPercent}% {tk("edgeSuffix")}
-                </span>
-              </div>
-              <div className="nftDetailStat">
-                <span className="nftDetailStatLabel">{tk("metaRarity")}</span>
-                <span className="nftDetailStatValue">{gift.rarity}</span>
-              </div>
-              <div className="nftDetailStat">
-                <span className="nftDetailStatLabel">{tk("meta24h")}</span>
-                <span className="nftDetailStatValue">{gift.sales24h ?? 0}</span>
-              </div>
-              <div className="nftDetailStat">
-                <span className="nftDetailStatLabel">{tk("detailVolatility")}</span>
-                <span className={`nftDetailStatValue ${volTone}`}>{formatSignedPct(gift.volumeGrowth)}</span>
-              </div>
+                  {gift.giftLink ? (
+                    <a
+                      className="nftDetailLink mono"
+                      href={gift.giftLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {tk("detailGiftLink")}
+                    </a>
+                  ) : null}
+                </section>
+              )}
             </div>
-            <div className="nftDetailBar" aria-hidden="true" title={tk("depthBarTitle")}>
-              <div className="nftDetailBarFill" style={{ width: `${spread}%` }} />
-            </div>
-            <div className="tagRow" style={{ marginTop: 10 }}>
-              <span className="tag tagMuted">{translateLiquidityRisk(lang, gift.liquidity, "liq")}</span>
-              <span className="tag tagMuted">{translateLiquidityRisk(lang, gift.risk, "risk")}</span>
-            </div>
-          </section>
-
-          <section className="nftDetailSection">
-            <h3 className="nftDetailSectionTitle">{tk("detailSectionSignals")}</h3>
-            <div className="nftDetailChips tgCollectibleChips" style={{ justifyContent: "flex-start", marginBottom: 0 }}>
-              <span className={`badgeSignal ${signalClass(gift.signal)}`}>
-                {translateSignal(lang, gift.signal)}
-              </span>
-            </div>
-          </section>
-
-          {(gift.sellerNote || gift.giftLink) && (
-            <section className="nftDetailSection">
-              <h3 className="nftDetailSectionTitle">{tk("detailSectionContext")}</h3>
-              {gift.sellerNote ? (
-                <p className="nftDetailNarrative">
-                  <strong>{tk("detailSellerNote")}:</strong> {gift.sellerNote}
-                </p>
-              ) : null}
-              {gift.giftLink ? (
-                <a className="nftDetailLink mono" href={gift.giftLink} target="_blank" rel="noopener noreferrer">
-                  {tk("detailGiftLink")}
-                </a>
-              ) : null}
-            </section>
-          )}
+          </div>
         </div>
       </div>
-      </div>
-    </div>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import {
-  resolveGiftAssetPublicImage,
+  resolveMainGiftRasterImage,
   listGiftPublicKeys,
   isThemeOrSymbolAssetRasterUrl,
 } from "@shared/giftPublicImageResolve.js";
@@ -85,18 +85,15 @@ export function cacheBustMediaUrl(url, gift) {
  * @param {Record<string, unknown>} gift
  */
 export function giftImageFieldsForDebug(gift) {
-  const resolution = resolveGiftAssetPublicImage(gift);
+  const main = resolveMainGiftRasterImage(gift);
   const legacyChosen = pickMainRasterUrl(
     gift.imageHiRes,
     gift.image,
     gift.animationPosterUrl,
     gift.imageThumb
   );
-  const resolvedImageUrl = resolution.url || legacyChosen;
-  const imageFromPublic = Boolean(
-    resolution.field &&
-      (resolution.source === "gift_asset_public" || resolution.field.startsWith("public."))
-  );
+  const resolvedImageUrl = main.url || legacyChosen;
+  const imageFromPublic = main.source === "gift_asset_public";
   return {
     collection: String(gift.collection || ""),
     model: String(gift.model || ""),
@@ -117,14 +114,15 @@ export function giftImageFieldsForDebug(gift) {
         : "",
     heroBackgroundSnippet: String(gift.heroBackground?.gradient || "").slice(0, 140),
     resolvedImageUrl,
-    imageSourceField: resolution.field || (legacyChosen ? "legacy(top-level)" : ""),
-    imageResolutionSource: resolution.url ? resolution.source : legacyChosen ? "legacy" : "none",
+    constructedModelImageUrl: main.constructedModelImageUrl || "",
+    imageSourceField: main.field || (legacyChosen ? "legacy(top-level)" : ""),
+    imageResolutionSource: main.url ? main.source : legacyChosen ? "legacy" : "none",
     imageFromPublicField: imageFromPublic,
-    imageCheckedFields: resolution.checkedFields.join(" → ") || "—",
+    imageCheckedFields: main.checkedFields.join(" → ") || "—",
     giftPublicKeys: listGiftPublicKeys(gift).join(", ") || "—",
-    imageRejectedReason: resolution.imageRejectedReason || "",
-    rejectedImageUrl: resolution.rejectedImageUrl || "",
-    rejectedField: resolution.rejectedField || "",
+    imageRejectedReason: main.imageRejectedReason || "",
+    rejectedImageUrl: main.rejectedImageUrl || "",
+    rejectedField: main.rejectedField || "",
     chosenImageUrl: legacyChosen,
     imageSrcSet: trimUrl(gift.imageSrcSet),
     imageUpscaled: Boolean(gift.imageUpscaled),
@@ -133,18 +131,11 @@ export function giftImageFieldsForDebug(gift) {
 }
 
 /**
- * Best static raster for detail: Gift Asset public fields, then top-level/media fallbacks.
+ * Best static raster for detail / hero stack: unified main gift pipeline (public → model URL → root).
  * @param {Record<string, unknown>} gift
  */
 export function bestStaticRasterUrl(gift) {
-  const r = resolveGiftAssetPublicImage(gift);
-  return pickMainRasterUrl(
-    r.url,
-    gift.imageHiRes,
-    gift.image,
-    gift.animationPosterUrl,
-    gift.imageThumb
-  );
+  return trimUrl(resolveMainGiftRasterImage(gift).url);
 }
 
 /**
@@ -152,8 +143,8 @@ export function bestStaticRasterUrl(gift) {
  * @param {Record<string, unknown>} gift
  */
 export function cardImageSources(gift) {
-  const r = resolveGiftAssetPublicImage(gift);
-  const hi = pickMainRasterUrl(gift.imageHiRes, gift.image, r.url);
+  const r = resolveMainGiftRasterImage(gift);
+  const hi = trimUrl(r.url);
   const thumb = pickMainRasterUrl(gift.imageThumb);
   const poster = pickMainRasterUrl(gift.animationPosterUrl);
   const ogOnly = isOpenGraphMediaFallback(gift);
@@ -181,7 +172,7 @@ export function cardImageSources(gift) {
 export function cardRasterSources(gift) {
   if (gift.imageUpscaleStatus === "pending" && pickMainRasterUrl(gift.imageOriginal)) {
     const o = pickMainRasterUrl(gift.imageOriginal);
-    const r = resolveGiftAssetPublicImage(gift);
+    const r = resolveMainGiftRasterImage(gift);
     const hi = pickMainRasterUrl(gift.imageHiRes, gift.image, r.url, o);
     return {
       src: o,
@@ -256,11 +247,12 @@ export function giftMediaFit(gift) {
  */
 export function logGiftPublicImageMiss(gift, context = "gift") {
   if (!import.meta.env.DEV) return;
-  const r = resolveGiftAssetPublicImage(gift);
+  const r = resolveMainGiftRasterImage(gift);
   if (r.url) return;
   const id = gift?.id ?? gift?.listingId ?? "?";
   console.debug(`[gift-public-image] miss:${context}`, id, {
     checkedFields: r.checkedFields,
+    constructedModelImageUrl: r.constructedModelImageUrl || "",
     giftPublicKeys: listGiftPublicKeys(gift),
     imageRejectedReason: r.imageRejectedReason || "",
     rejectedImageUrl: r.rejectedImageUrl || "",

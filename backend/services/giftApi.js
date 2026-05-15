@@ -7,7 +7,7 @@ import { GIFTS_FILE_PATH, isProduction } from "../config.js";
 import { resolveGiftMetadata, applyResolvedMetadataToGiftDocument } from "./metadataProvider.js";
 import { scheduleGiftImageUpscale, syncUpscaleMetadataFields } from "./imageUpscaler.js";
 import { attachHeroPresentationToApiResponse } from "./giftHeroTheme.js";
-import { resolveGiftAssetPublicImage, isThemeOrSymbolAssetRasterUrl } from "../../shared/giftPublicImageResolve.js";
+import { resolveMainGiftRasterImage, isThemeOrSymbolAssetRasterUrl } from "../../shared/giftPublicImageResolve.js";
 
 /**
  * Remove symbol/backdrop/pattern/icon CDN URLs from main raster fields (not for hero pattern/background traits).
@@ -109,7 +109,7 @@ export function giftToApiResponse(doc) {
 
   const hiExisting = String(base.imageHiRes || base.image || "").trim();
   if (!hiExisting) {
-    const resolvedImg = resolveGiftAssetPublicImage(base);
+    const resolvedImg = resolveMainGiftRasterImage(base);
     if (resolvedImg.url) {
       base.image = resolvedImg.url;
       base.imageHiRes = resolvedImg.url;

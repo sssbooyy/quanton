@@ -172,6 +172,10 @@ const SYMBOL_ALIASES = {
   gift: "gift",
   bow: "bow",
   ribbon: "bow",
+  paw: "paw",
+  "paw-print": "paw",
+  "bear-paw": "paw",
+  "dog-paw": "paw",
 };
 
 /**

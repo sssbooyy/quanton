@@ -33,6 +33,16 @@ function SymbolGlyph({ symbolId }) {
           <circle cx="15" cy="15" r="1.2" fill="currentColor" opacity="0.45" />
         </g>
       );
+    case "paw":
+      return (
+        <g>
+          <ellipse cx="12" cy="15.5" rx="5.2" ry="4.2" />
+          <circle cx="7.8" cy="8.2" r="2.15" />
+          <circle cx="10.8" cy="6.3" r="1.95" />
+          <circle cx="13.5" cy="6.3" r="1.95" />
+          <circle cx="16.5" cy="8.5" r="2.15" />
+        </g>
+      );
     case "cross":
       return (
         <path d="M10 4h4v6h6v4h-6v6h-4v-6H4v-4h6V4Z" />
@@ -264,6 +274,7 @@ export const GiftPatternLayer = memo(GiftPatternLayerInner);
 
 export const GIFT_PATTERN_SYMBOL_IDS = new Set([
   "ladybug",
+  "paw",
   "cross",
   "star",
   "heart",

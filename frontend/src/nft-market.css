@@ -445,8 +445,8 @@
 }
 
 .nftDetailSheet--telegramCollectible .nftDetailSection {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(40, 18, 72, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 16px;
   padding: 14px 14px 16px;
   margin-bottom: 12px;
@@ -543,8 +543,8 @@
   cursor: pointer;
   touch-action: manipulation;
   color: #fff;
-  background: rgba(13, 48, 88, 0.45);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  background: rgba(64, 28, 108, 0.5);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
@@ -562,10 +562,10 @@
 
 .tgCollectibleCircleBtn__dots {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 3.5px;
 }
 
 .tgCollectibleCircleBtn__dots span {
@@ -594,7 +594,7 @@
 }
 
 .tgCollectibleHeroImg .giftAnimHeroRoot {
-  filter: drop-shadow(0 16px 28px rgba(0, 40, 70, 0.35));
+  filter: drop-shadow(0 16px 28px rgba(45, 15, 80, 0.42));
 }
 
 .tgCollectibleHeroImg .nftHeroImg,
@@ -905,7 +905,7 @@
 
 .giftHeroBottomShade--telegram {
   height: 26%;
-  background: linear-gradient(to top, rgba(10, 42, 78, 0.2) 0%, transparent 100%);
+  background: linear-gradient(to top, rgba(42, 15, 72, 0.28) 0%, transparent 100%);
 }
 
 .giftHeroVignette--telegramAware {

@@ -2,9 +2,9 @@ import { useMemo, useSyncExternalStore } from "react";
 import { buildHeroPresentationFields } from "@shared/giftHeroResolve.js";
 import { GiftPatternLayer, GIFT_PATTERN_SYMBOL_IDS, hashPresentationSeed } from "./giftPatternLayer.js";
 
-/** Telegram collectible profile: lighter top → deeper blue bottom */
+/** Telegram / Fragment collectible profile: lighter purple top → deeper purple bottom */
 const TELEGRAM_PROFILE_GRADIENT =
-  "linear-gradient(180deg, #5b9fd4 0%, #4a8ec8 22%, #3d7eb8 52%, #2e6494 78%, #245a86 100%)";
+  "linear-gradient(180deg, #c4b5fd 0%, #a78bfa 18%, #9333ea 48%, #7e22ce 72%, #6b21a8 100%)";
 
 function subscribeReducedMotion() {
   const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -91,7 +91,7 @@ export default function GiftCollectibleHeroStage({
   const overlayBg = isTelegram ? "transparent" : String(hb?.overlay || bt?.overlay || "transparent");
 
   const vignetteBg = isTelegram
-    ? "radial-gradient(ellipse 92% 80% at 50% 36%, transparent 35%, rgba(15, 45, 80, 0.14) 100%)"
+    ? "radial-gradient(ellipse 92% 80% at 50% 36%, transparent 38%, rgba(50, 20, 88, 0.2) 100%)"
     : String(hb?.vignette || bt?.vignette || "transparent");
 
   const glowBg = isTelegram

@@ -663,6 +663,16 @@ function GiftCard({ gift, lang, tk, onOpen }) {
   );
 }
 
+function telegramProfileHandle(gift) {
+  const u = gift?.telegramUser;
+  if (!u || typeof u !== "object") return "";
+  const un = u.username;
+  if (typeof un === "string" && un.trim()) return `@${un.trim()}`;
+  const fn = u.first_name;
+  if (typeof fn === "string" && fn.trim()) return fn.trim();
+  return "";
+}
+
 function GiftDetailSheet({ gift, lang, tk, onClose }) {
   const spread = Math.max(0, Math.min(100, gift.undervaluedPercent));
   const volTone =
@@ -705,79 +715,95 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
   }, [gift.id, heroPoster, staticRaster]);
 
   const showHdBadge = gift.imageUpscaled === true;
+  const profileHandle = telegramProfileHandle(gift);
 
   return (
     <div className="nftDetailOverlay" role="presentation">
       <button type="button" className="nftDetailBackdrop" aria-label={tk("closeDialogAria")} onClick={onClose} />
       <div
-        className="nftDetailSheet"
+        className="nftDetailSheet nftDetailSheet--telegramCollectible"
         role="dialog"
         aria-modal="true"
         aria-labelledby="nft-detail-title"
       >
-        <header className="nftDetailHeader">
-          <div className="nftDetailHeaderText">
-            <p className="nftDetailKicker">{tk("detailSheetKicker")}</p>
-            <h2 id="nft-detail-title" className="nftDetailTitle">
-              {gift.name}
-            </h2>
-            {gift.model ? (
-              <p className="nftDetailModel" style={{ margin: "4px 0 0", fontSize: 15, opacity: 0.92 }}>
-                {gift.model}
-              </p>
-            ) : null}
-            <p className="nftDetailSub mono">
-              {tk("detailGiftId")}: {gift.id}
-            </p>
-          </div>
-          <button type="button" className="nftDetailClose" onClick={onClose} aria-label={tk("ariaCloseModal")}>
-            ×
-          </button>
-        </header>
-
-        <div className="nftDetailScroll">
-          <div className={`nftDetailHeroImg${ogFallback ? " nftDetailHeroImg--ogFallback" : ""}`}>
-            <GiftCollectibleHeroStage gift={gift}>
-              <GiftAnimatedHero
-                animationUrl={gift.animationUrl}
-                posterUrl={heroPoster}
-                alt={gift.name}
-                mediaFit={mediaFit}
-              />
-            </GiftCollectibleHeroStage>
+        <div className="tgCollectibleCard">
+          <div className="tgCollectibleCard__backdrop" aria-hidden="true">
+            <GiftCollectibleHeroStage gift={gift} variant="telegramProfile" backdropOnly />
           </div>
 
-          <p className="nftCardCollection mono" style={{ margin: "0 0 12px", fontSize: 11 }}>
-            {gift.collection}
-          </p>
+          <div className="tgCollectibleCard__body">
+            <div className="tgCollectibleToolbar">
+              <button
+                type="button"
+                className="tgCollectibleCircleBtn tgCollectibleCircleBtn--close"
+                onClick={onClose}
+                aria-label={tk("collectibleCloseAria")}
+              >
+                <span className="tgCollectibleCircleBtn__x" aria-hidden="true">
+                  ×
+                </span>
+              </button>
+              <button
+                type="button"
+                className="tgCollectibleCircleBtn tgCollectibleCircleBtn--menu"
+                aria-label={tk("collectibleMenuAria")}
+              >
+                <span className="tgCollectibleCircleBtn__dots" aria-hidden="true">
+                  <span />
+                  <span />
+                  <span />
+                </span>
+              </button>
+            </div>
 
-          <div className="nftDetailChips">
-            <span className="nftDetailChip nftDetailChip--score" title={tk("badgeScoreTitle")}>
-              {tk("badgeScoreLabel")} {gift.aiScore}
-            </span>
-            <span className={`badgeSignal ${signalClass(gift.signal)}`}>{translateSignal(lang, gift.signal)}</span>
-            {gift.status ? (
-              <span className={statusBadgeClass(gift.status)}>{translateStatus(lang, gift.status)}</span>
-            ) : null}
-            {gift.imageUpscaleStatus === "pending" ? (
-              <span className="nftDetailChip nftDetailChip--pending" title={tk("badgeUpscalingTitle")}>
-                {tk("badgeUpscalingDetail")}
-              </span>
-            ) : null}
-            {showHdBadge ? (
-              <span className="nftDetailChip nftDetailChip--enhanced" title={tk("badgeEnhancedTitle")}>
-                {tk("badgeEnhancedShort")}
-              </span>
-            ) : null}
-            {showImageDebug && gift.mediaSource ? (
-              <span className="nftDetailChip nftDetailChip--media" title="Media source">
-                {gift.mediaSource}
-                {gift.mediaMatchLevel ? ` · ${gift.mediaMatchLevel}` : ""}
-              </span>
-            ) : null}
-          </div>
+            <div className="tgCollectibleHero">
+              <div
+                className={`tgCollectibleHeroImg${ogFallback ? " tgCollectibleHeroImg--ogFallback" : ""}`}
+              >
+                <GiftAnimatedHero
+                  animationUrl={gift.animationUrl}
+                  posterUrl={heroPoster}
+                  alt={gift.name}
+                  mediaFit={mediaFit}
+                />
+              </div>
+            </div>
 
-          {showImageDebug && debugFields ? (
+            <div className="tgCollectibleHeadline">
+              <h2 id="nft-detail-title" className="tgCollectibleTitle">
+                {gift.name}
+              </h2>
+              <p className="tgCollectibleUsername">{profileHandle || "—"}</p>
+            </div>
+
+            <div className="tgCollectibleScroll">
+              <div className="nftDetailChips tgCollectibleChips">
+                <span className="nftDetailChip nftDetailChip--score" title={tk("badgeScoreTitle")}>
+                  {tk("badgeScoreLabel")} {gift.aiScore}
+                </span>
+                <span className={`badgeSignal ${signalClass(gift.signal)}`}>{translateSignal(lang, gift.signal)}</span>
+                {gift.status ? (
+                  <span className={statusBadgeClass(gift.status)}>{translateStatus(lang, gift.status)}</span>
+                ) : null}
+                {gift.imageUpscaleStatus === "pending" ? (
+                  <span className="nftDetailChip nftDetailChip--pending" title={tk("badgeUpscalingTitle")}>
+                    {tk("badgeUpscalingDetail")}
+                  </span>
+                ) : null}
+                {showHdBadge ? (
+                  <span className="nftDetailChip nftDetailChip--enhanced" title={tk("badgeEnhancedTitle")}>
+                    {tk("badgeEnhancedShort")}
+                  </span>
+                ) : null}
+                {showImageDebug && gift.mediaSource ? (
+                  <span className="nftDetailChip nftDetailChip--media" title="Media source">
+                    {gift.mediaSource}
+                    {gift.mediaMatchLevel ? ` · ${gift.mediaMatchLevel}` : ""}
+                  </span>
+                ) : null}
+              </div>
+
+              {showImageDebug && debugFields ? (
             <section
               className="nftDetailSection"
               style={{ borderTop: "1px dashed rgba(255,255,255,0.15)", paddingTop: 12 }}
@@ -998,6 +1024,8 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
           )}
         </div>
       </div>
+      </div>
+    </div>
     </div>
   );
 }

@@ -104,6 +104,9 @@ export const translations = {
     detailSellerNote: "Seller note",
     detailGiftLink: "Gift link",
     detailOpenListing: "Open listing",
+
+    collectibleMenuAria: "Menu",
+    collectibleCloseAria: "Close",
   },
 
   ru: {
@@ -207,6 +210,9 @@ export const translations = {
     detailSellerNote: "Заметка продавца",
     detailGiftLink: "Ссылка на подарок",
     detailOpenListing: "Лот на рынке",
+
+    collectibleMenuAria: "Меню",
+    collectibleCloseAria: "Закрыть",
   },
 };
 

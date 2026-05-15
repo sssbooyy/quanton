@@ -26,6 +26,10 @@ const giftSchema = new mongoose.Schema(
     sellerNote: { type: String, default: "", trim: true },
     name: { type: String, required: true, trim: true },
     collection: { type: String, required: true, trim: true },
+    /** Telegram collectible model trait (e.g. True Love). */
+    model: { type: String, default: "", trim: true },
+    symbol: { type: String, default: "", trim: true },
+    backdrop: { type: String, default: "", trim: true },
     image: { type: String, required: true, trim: true },
     /** Largest static raster URL (Gift Asset / upgraded OG); primary quality source. */
     imageHiRes: { type: String, default: "", trim: true },
@@ -48,9 +52,13 @@ const giftSchema = new mongoose.Schema(
     /** Fragment / Telegram lottie JSON URL when available */
     animationUrl: { type: String, default: "", trim: true },
     /**
-     * Media provenance: local_asset | gift_asset | telegram_cdn | ai_upscaled | opengraph
+     * Media provenance: local_asset | gift_asset | telegram_cdn | telegram_sticker | ai_upscaled | opengraph
      */
     mediaSource: { type: String, default: "", trim: true },
+    /**
+     * Match specificity: exact_model | model | collection | opengraph
+     */
+    mediaMatchLevel: { type: String, default: "", trim: true },
     priceTon: { type: Number, required: true },
     floorTon: { type: Number, required: true },
     /** Normalized key for cross-alias floor cache (e.g. freshsocks / fresh-socks). */

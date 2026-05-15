@@ -1,6 +1,7 @@
 /**
- * Portals-style gift media resolution (local registry → public providers → Telegram CDN → OG).
- * Never uses Gift Asset User-Data routes.
+ * Portals-style gift media resolution with model-aware matching.
+ * Priority (when model traits are known): per-gift CDN → local model → Gift Asset model → OG.
+ * Collection-generic art is skipped when model/symbol/backdrop attributes exist.
  */
 
 import fs from "fs";
@@ -109,26 +110,57 @@ function loadRegistry() {
 }
 
 /**
- * @param {string[]} keys
- * @returns {object | null}
+ * @param {object} row
+ * @param {string} mediaSource
+ * @param {string} mediaMatchLevel
  */
-export function matchLocalAssetRegistry(keys) {
+function rowToMedia(row, mediaSource, mediaMatchLevel) {
+  const imageHiRes = toPublicAssetUrl(row.imageHiRes || row.image || "");
+  if (!imageHiRes) return null;
+  const imageThumb = toPublicAssetUrl(row.imageThumb || imageHiRes);
+  return {
+    image: imageHiRes,
+    imageHiRes,
+    imageThumb: imageThumb || imageHiRes,
+    animationUrl: toPublicAssetUrl(row.animationUrl || ""),
+    animationPosterUrl: toPublicAssetUrl(row.animationPosterUrl || imageHiRes),
+    imageFit: row.imageFit === "cover" ? "cover" : "contain",
+    mediaSource,
+    mediaMatchLevel,
+  };
+}
+
+/**
+ * Model-aware local registry lookup.
+ * @param {string[]} keys
+ * @param {{ model?: string; symbol?: string; backdrop?: string }} [attrs]
+ */
+export function matchLocalAssetRegistry(keys, attrs = {}) {
   const reg = loadRegistry();
+  const modelKey = toRegistryKebabKey(attrs.model);
+  const hasModel = Boolean(modelKey);
+  const hasFullTraits = Boolean(modelKey && attrs.symbol && attrs.backdrop);
+
   for (const k of keys) {
-    const row = reg[k];
-    if (!row || typeof row !== "object") continue;
-    const imageHiRes = toPublicAssetUrl(row.imageHiRes || row.image || "");
-    if (!imageHiRes) continue;
-    const imageThumb = toPublicAssetUrl(row.imageThumb || imageHiRes);
-    return {
-      image: imageHiRes,
-      imageHiRes,
-      imageThumb: imageThumb || imageHiRes,
-      animationUrl: toPublicAssetUrl(row.animationUrl || ""),
-      animationPosterUrl: toPublicAssetUrl(row.animationPosterUrl || imageHiRes),
-      imageFit: row.imageFit === "cover" ? "cover" : "contain",
-      mediaSource: "local_asset",
-    };
+    const entry = reg[k];
+    if (!entry || typeof entry !== "object") continue;
+
+    if (hasModel && entry.models && typeof entry.models === "object") {
+      const row = entry.models[modelKey];
+      if (row && typeof row === "object") {
+        const media = rowToMedia(
+          row,
+          "local_asset",
+          hasFullTraits ? "exact_model" : "model"
+        );
+        if (media) return media;
+      }
+    }
+
+    if (hasModel) continue;
+
+    const media = rowToMedia(entry, "local_asset", "collection");
+    if (media) return media;
   }
   return null;
 }
@@ -164,6 +196,27 @@ async function urlExists(url) {
 }
 
 /**
+ * @param {string} url
+ * @param {string} mediaSource
+ * @param {string} mediaMatchLevel
+ * @param {{ imageThumb?: string; animationUrl?: string }} [extras]
+ */
+function remoteRasterMedia(url, mediaSource, mediaMatchLevel, extras = {}) {
+  const u = String(url || "").trim();
+  if (!u) return null;
+  return {
+    image: u,
+    imageHiRes: u,
+    imageThumb: extras.imageThumb || u,
+    animationUrl: extras.animationUrl || "",
+    animationPosterUrl: u,
+    imageFit: "contain",
+    mediaSource,
+    mediaMatchLevel,
+  };
+}
+
+/**
  * Gift Asset public collection original raster (`/api/v1/data/original/…`).
  * @param {string} collectionLabel
  */
@@ -176,15 +229,47 @@ async function tryGiftAssetPublicOriginal(collectionLabel) {
   for (const file of candidates) {
     const url = `${base}/api/v1/data/original/${file}`;
     if (await urlExists(url)) {
-      return {
-        image: url,
-        imageHiRes: url,
-        imageThumb: url,
-        animationUrl: "",
-        animationPosterUrl: url,
-        imageFit: "contain",
-        mediaSource: "gift_asset",
-      };
+      return remoteRasterMedia(url, "gift_asset", "collection");
+    }
+  }
+  return null;
+}
+
+/**
+ * Gift Asset attribute rasters: `/api/v1/data/{collection}/models/{name}.png` etc.
+ * @param {string} collectionLabel
+ * @param {{ model?: string; symbol?: string; backdrop?: string }} attrs
+ */
+async function tryGiftAssetAttributeMedia(collectionLabel, attrs) {
+  if (!GIFT_ASSET_API_KEY) return null;
+  const compact = normalizeCollectionFloorKeyFromLabel(collectionLabel);
+  if (!compact) return null;
+  const base = GIFT_ASSET_BASE_URL.replace(/\/+$/, "");
+  const exts = [".png", ".webp", ".jpg"];
+
+  const model = toRegistryKebabKey(attrs.model);
+  const symbol = toRegistryKebabKey(attrs.symbol);
+  const backdrop = toRegistryKebabKey(attrs.backdrop);
+  const hasFullTraits = Boolean(model && symbol && backdrop);
+
+  /** @type {[string, string, string][]} */
+  const tries = [];
+  if (model) tries.push(["models", model]);
+  if (symbol) tries.push(["symbols", symbol]);
+  if (backdrop) tries.push(["backdrops", backdrop]);
+
+  for (const [attrType, attrName] of tries) {
+    for (const ext of exts) {
+      const url = `${base}/api/v1/data/${compact}/${attrType}/${attrName}${ext}`;
+      if (await urlExists(url)) {
+        const level =
+          attrType === "models"
+            ? hasFullTraits
+              ? "exact_model"
+              : "model"
+            : "model";
+        return remoteRasterMedia(url, "gift_asset", level);
+      }
     }
   }
   return null;
@@ -223,6 +308,7 @@ export async function discoverTelegramCollectibleMedia(nftSlug) {
     animationPosterUrl: imageHiRes,
     imageFit: "contain",
     mediaSource: "telegram_cdn",
+    mediaMatchLevel: "exact_model",
   };
 }
 
@@ -240,6 +326,7 @@ function openGraphMediaFallback(ogImage) {
     animationPosterUrl: raw,
     imageFit: "cover",
     mediaSource: "opengraph",
+    mediaMatchLevel: "opengraph",
     openGraphOnly: true,
   };
 }
@@ -259,6 +346,7 @@ export function applyAiUpscaledMedia(base, upscaledUrl) {
     imageThumb: "",
     animationPosterUrl: url,
     mediaSource: "ai_upscaled",
+    mediaMatchLevel: base.mediaMatchLevel || "opengraph",
     openGraphOnly: false,
   };
 }
@@ -268,20 +356,14 @@ export function applyAiUpscaledMedia(base, upscaledUrl) {
  *   nftSlug?: string;
  *   giftAssetName?: string;
  *   collection?: string;
+ *   model?: string;
+ *   symbol?: string;
+ *   backdrop?: string;
  *   giftLink?: string;
  *   ogImage?: string;
+ *   stickerUrl?: string;
  *   name?: string;
  * }} ctx
- * @returns {Promise<{
- *   image: string;
- *   imageHiRes: string;
- *   imageThumb: string;
- *   animationUrl: string;
- *   animationPosterUrl: string;
- *   imageFit: "contain" | "cover";
- *   mediaSource: string;
- *   openGraphOnly?: boolean;
- * } | null>}
  */
 export async function resolveGiftMedia(ctx = {}) {
   const nftSlug = String(ctx.nftSlug || ctx.giftAssetName || "").trim();
@@ -290,24 +372,60 @@ export async function resolveGiftMedia(ctx = {}) {
     collectionDisplayNameFromGiftAssetName(nftSlug) ||
     "";
 
+  const model = String(ctx.model || "").trim();
+  const symbol = String(ctx.symbol || "").trim();
+  const backdrop = String(ctx.backdrop || "").trim();
+  const hasModelAttrs = Boolean(model);
+  const attrs = { model, symbol, backdrop };
   const keys = buildRegistryLookupKeys(nftSlug, collection);
-
-  const local = matchLocalAssetRegistry(keys);
-  if (local) return local;
-
-  if (collection) {
-    const ga = await tryGiftAssetPublicOriginal(collection);
-    if (ga) return ga;
-    const alt = collectionDisplayNameFromGiftAssetName(nftSlug);
-    if (alt && alt !== collection) {
-      const ga2 = await tryGiftAssetPublicOriginal(alt);
-      if (ga2) return ga2;
-    }
-  }
 
   if (nftSlug) {
     const tg = await discoverTelegramCollectibleMedia(nftSlug);
-    if (tg) return tg;
+    if (tg) {
+      return {
+        ...tg,
+        mediaMatchLevel: hasModelAttrs ? "exact_model" : tg.mediaMatchLevel || "model",
+      };
+    }
+  }
+
+  const local = matchLocalAssetRegistry(keys, attrs);
+  if (local) return local;
+
+  if (collection && hasModelAttrs) {
+    const gaAttr = await tryGiftAssetAttributeMedia(collection, attrs);
+    if (gaAttr) return gaAttr;
+    const alt = collectionDisplayNameFromGiftAssetName(nftSlug);
+    if (alt && alt !== collection) {
+      const gaAttr2 = await tryGiftAssetAttributeMedia(alt, attrs);
+      if (gaAttr2) return gaAttr2;
+    }
+  }
+
+  if (!hasModelAttrs) {
+    if (collection) {
+      const ga = await tryGiftAssetPublicOriginal(collection);
+      if (ga) return ga;
+      const alt = collectionDisplayNameFromGiftAssetName(nftSlug);
+      if (alt && alt !== collection) {
+        const ga2 = await tryGiftAssetPublicOriginal(alt);
+        if (ga2) return ga2;
+      }
+    }
+  }
+
+  const sticker = String(ctx.stickerUrl || "").trim();
+  if (sticker && /^https?:\/\//i.test(sticker) && hasModelAttrs) {
+    return {
+      image: sticker,
+      imageHiRes: sticker,
+      imageThumb: sticker,
+      animationUrl: sticker,
+      animationPosterUrl: sticker,
+      imageFit: "contain",
+      mediaSource: "telegram_sticker",
+      mediaMatchLevel: "model",
+    };
   }
 
   return openGraphMediaFallback(ctx.ogImage);
@@ -322,6 +440,10 @@ export function shouldScheduleAiUpscale(mediaSource, imageHiRes) {
   const src = String(mediaSource || "").trim();
   if (src === "opengraph") return Boolean(String(imageHiRes || "").trim().startsWith("http"));
   if (src === "ai_upscaled") return false;
-  if (["local_asset", "gift_asset", "telegram_cdn"].includes(src)) return false;
+  if (
+    ["local_asset", "gift_asset", "telegram_cdn", "telegram_sticker"].includes(src)
+  ) {
+    return false;
+  }
   return false;
 }

@@ -44,6 +44,10 @@ export function giftToApiResponse(doc) {
   base.animationUrl = String(plain.animationUrl || "").trim();
   base.animationPosterUrl = String(plain.animationPosterUrl || "").trim();
   base.mediaSource = String(plain.mediaSource || "").trim();
+  if (plain.model) base.model = String(plain.model).trim();
+  if (plain.symbol) base.symbol = String(plain.symbol).trim();
+  if (plain.backdrop) base.backdrop = String(plain.backdrop).trim();
+  if (plain.mediaMatchLevel) base.mediaMatchLevel = String(plain.mediaMatchLevel).trim();
   if (plain.giftAssetName) base.giftAssetName = plain.giftAssetName;
   if (plain.imageOriginal) base.imageOriginal = plain.imageOriginal;
   base.imageUpscaled = Boolean(plain.imageUpscaled);

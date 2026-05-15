@@ -544,18 +544,23 @@ export default function App() {
   );
 }
 
-/** Bold headline + muted token/collection line (Portals-style; no internal IDs). */
+/** Bold headline + model or token line (Portals-style; no internal IDs). */
 function giftCardTitleLines(gift) {
   const name = String(gift?.name ?? "").trim();
   const coll = String(gift?.collection ?? "").trim();
+  const model = String(gift?.model ?? "").trim();
   const m = name.match(/^(.+?)\s+(#\d+)\s*$/);
   if (m && m[1].trim()) {
-    return { primary: m[1].trim(), secondary: m[2].trim() };
+    const primary = `${m[1].trim()} ${m[2].trim()}`;
+    return { primary, secondary: model || "" };
   }
   if (name) {
-    return { primary: name, secondary: coll && coll !== name ? coll : "" };
+    return {
+      primary: name,
+      secondary: model || (coll && coll !== name ? coll : ""),
+    };
   }
-  return { primary: coll || "—", secondary: "" };
+  return { primary: coll || "—", secondary: model || "" };
 }
 
 function GiftCard({ gift, lang, tk, onOpen }) {
@@ -715,6 +720,11 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
             <h2 id="nft-detail-title" className="nftDetailTitle">
               {gift.name}
             </h2>
+            {gift.model ? (
+              <p className="nftDetailModel" style={{ margin: "4px 0 0", fontSize: 15, opacity: 0.92 }}>
+                {gift.model}
+              </p>
+            ) : null}
             <p className="nftDetailSub mono">
               {tk("detailGiftId")}: {gift.id}
             </p>
@@ -759,6 +769,7 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
             {showImageDebug && gift.mediaSource ? (
               <span className="nftDetailChip nftDetailChip--media" title="Media source">
                 {gift.mediaSource}
+                {gift.mediaMatchLevel ? ` · ${gift.mediaMatchLevel}` : ""}
               </span>
             ) : null}
           </div>
@@ -776,6 +787,19 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
                 <code>localStorage.setItem(&quot;quantonImageDebug&quot;,&quot;1&quot;)</code>
               </p>
               <div style={{ display: "grid", gap: 10, fontSize: 11 }}>
+                <div>
+                  <strong style={{ color: "#94a3b8" }}>traits</strong>
+                  <pre
+                    style={{
+                      margin: "4px 0 0",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-all",
+                      opacity: 0.95,
+                    }}
+                  >
+                    {`collection: ${debugFields.collection || "—"}\nmodel: ${debugFields.model || "—"}\nsymbol: ${debugFields.symbol || "—"}\nbackdrop: ${debugFields.backdrop || "—"}`}
+                  </pre>
+                </div>
                 <div>
                   <strong style={{ color: "#94a3b8" }}>image (API)</strong>
                   <pre
@@ -855,7 +879,7 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
                   </pre>
                 </div>
                 <div>
-                  <strong style={{ color: "#94a3b8" }}>mediaSource</strong>
+                  <strong style={{ color: "#94a3b8" }}>mediaSource · mediaMatchLevel</strong>
                   <pre
                     style={{
                       margin: "4px 0 0",
@@ -864,7 +888,20 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
                       opacity: 0.95,
                     }}
                   >
-                    {debugFields.mediaSource || "—"}
+                    {`${debugFields.mediaSource || "—"} · ${debugFields.mediaMatchLevel || "—"}`}
+                  </pre>
+                </div>
+                <div>
+                  <strong style={{ color: "#94a3b8" }}>chosen image URL</strong>
+                  <pre
+                    style={{
+                      margin: "4px 0 0",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-all",
+                      opacity: 0.95,
+                    }}
+                  >
+                    {debugFields.chosenImageUrl || "—"}
                   </pre>
                 </div>
                 <div className="mono" style={{ opacity: 0.9 }}>

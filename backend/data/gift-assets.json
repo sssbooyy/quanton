@@ -5,5 +5,15 @@
     "animationUrl": "",
     "animationPosterUrl": "/assets/gifts/perfume-bottle/hd.svg",
     "imageFit": "contain"
+  },
+  "star-notepad": {
+    "models": {
+      "true-love": {
+        "imageThumb": "/assets/gifts/star-notepad/true-love/thumb.webp",
+        "imageHiRes": "/assets/gifts/star-notepad/true-love/hd.webp",
+        "animationUrl": "/assets/gifts/star-notepad/true-love/animation.webm",
+        "imageFit": "contain"
+      }
+    }
   }
 }

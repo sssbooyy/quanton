@@ -16,7 +16,7 @@ import axios from "axios";
 import { fileURLToPath } from "url";
 import path from "path";
 import { GIFTS_FILE_PATH } from "../config.js";
-import { fetchOpenGraphMeta } from "./openGraphResolve.js";
+import { fetchTelegramNftPage } from "./telegramNftPageParse.js";
 import { resolveGiftMedia } from "./giftMediaProvider.js";
 import { pickGiftAssetRasterLayers } from "./giftImageAssets.js";
 import {
@@ -295,10 +295,23 @@ export function mapGiftAssetPayloadToResult(payload, giftAssetName) {
 
   const image = hiRes || thumbRaw;
 
+  let model = "";
+  let symbol = "";
+  let backdrop = "";
+  const attrs = payload.attributes;
+  if (attrs && typeof attrs === "object") {
+    model = String(attrs.MODEL?.name ?? "").trim();
+    symbol = String(attrs.SYMBOL?.name ?? "").trim();
+    backdrop = String(attrs.BACKDROP?.name ?? "").trim();
+  }
+
   return {
     ok: true,
     name: name || giftAssetName,
     collection,
+    model,
+    symbol,
+    backdrop,
     image,
     imageHiRes: hiRes || image,
     imageThumb: thumb,
@@ -389,18 +402,33 @@ export async function resolveGiftMetadata(giftLink) {
 
   if (pageUrl && nftSlug) {
     const { collection: slugCollection, displayName } = collectionAndDisplayNameFromNftSlug(nftSlug);
-    const og = await fetchOpenGraphMeta(pageUrl);
-    const site = (og?.siteName && og.siteName.trim()) || "";
+    const page = await fetchTelegramNftPage(pageUrl);
+    const site = (page?.siteName && page.siteName.trim()) || "";
     const collection =
-      site && site.toLowerCase() !== "telegram" ? site : slugCollection || "Telegram NFT";
-    const name = ((og?.title || displayName) ?? displayName).trim() || displayName;
+      (page?.collection && page.collection.trim()) ||
+      (site && site.toLowerCase() !== "telegram" ? site : "") ||
+      slugCollection ||
+      "Telegram NFT";
+    const name =
+      ((page?.title || displayName) ?? displayName).trim() || displayName;
+
+    const model = String(page?.model || "").trim();
+    const symbol = String(page?.symbol || "").trim();
+    const backdrop = String(page?.backdrop || "").trim();
+    const owner = String(page?.owner || "").trim();
+    const availability = String(page?.availability || page?.quantity || "").trim();
+    const blockchain = String(page?.blockchain || "").trim();
 
     const media = await resolveGiftMedia({
       nftSlug,
       giftAssetName: GIFT_ASSET_NAME_RE.test(nftSlug) ? nftSlug : "",
       collection,
+      model,
+      symbol,
+      backdrop,
       giftLink: pageUrl,
-      ogImage: og?.image || "",
+      ogImage: page?.image || "",
+      stickerUrl: page?.stickerUrl || "",
       name,
     });
 
@@ -416,12 +444,38 @@ export async function resolveGiftMetadata(giftLink) {
     const imageThumb = String(media?.imageThumb || "").trim();
     const thumb = imageThumb && imageThumb !== imageHiRes ? imageThumb : "";
     const mediaSource = String(media?.mediaSource || "opengraph");
+    const mediaMatchLevel = String(media?.mediaMatchLevel || "opengraph");
     const resolverSource = mediaSource === "opengraph" ? "opengraph" : "gift-media";
+
+    const traits = [
+      { key: "giftLink", value: pageUrl },
+      { key: "nftSlug", value: nftSlug },
+      { key: "resolver", value: resolverSource },
+      { key: "mediaSource", value: mediaSource },
+      { key: "mediaMatchLevel", value: mediaMatchLevel },
+    ];
+    if (model) traits.push({ key: "model", value: model });
+    if (symbol) traits.push({ key: "symbol", value: symbol });
+    if (backdrop) traits.push({ key: "backdrop", value: backdrop });
+    if (availability) traits.push({ key: "availability", value: availability });
+    if (owner) traits.push({ key: "owner", value: owner });
+    if (blockchain) traits.push({ key: "blockchain", value: blockchain });
+    if (page?.title) traits.push({ key: "og:title", value: page.title });
+    if (page?.image) traits.push({ key: "og:image", value: page.image });
+    if (Array.isArray(page?.traits)) {
+      for (const t of page.traits) {
+        if (!t?.key || traits.some((x) => x.key === t.key)) continue;
+        traits.push({ key: String(t.key), value: String(t.value ?? "") });
+      }
+    }
 
     return {
       ok: true,
       name,
       collection,
+      model,
+      symbol,
+      backdrop,
       image: imageHiRes,
       imageHiRes,
       imageThumb: thumb || imageHiRes,
@@ -429,28 +483,33 @@ export async function resolveGiftMetadata(giftLink) {
       animationPoster: String(media?.animationPosterUrl || imageHiRes),
       mediaFit: media?.imageFit === "cover" ? "cover" : "contain",
       mediaSource,
+      mediaMatchLevel,
       rarity: 58,
       floorTon: 0,
       sales24h: 0,
       volumeGrowth: 0,
       liquidity: "Unknown",
       risk: "Unknown",
-      traits: [
-        { key: "giftLink", value: pageUrl },
-        { key: "nftSlug", value: nftSlug },
-        { key: "resolver", value: resolverSource },
-        { key: "mediaSource", value: mediaSource },
-        ...(og?.title ? [{ key: "og:title", value: og.title }] : []),
-        ...(og?.image ? [{ key: "og:image", value: og.image }] : []),
-      ],
+      traits,
       source: resolverSource,
       giftAssetName: GIFT_ASSET_NAME_RE.test(nftSlug) ? nftSlug : "",
-      ownerInfo: null,
+      ownerInfo: owner ? { owner } : null,
       cachePayload: {
-        opengraph: og
-          ? { title: og.title, image: og.image, siteName: og.siteName }
+        telegramPage: page
+          ? {
+              title: page.title,
+              image: page.image,
+              collection: page.collection,
+              model: page.model,
+              symbol: page.symbol,
+              backdrop: page.backdrop,
+              owner: page.owner,
+              availability: page.availability,
+              blockchain: page.blockchain,
+            }
           : null,
         mediaSource,
+        mediaMatchLevel,
       },
       collectionFloorKey:
         normalizeCollectionFloorKeyFromGiftAssetName(nftSlug) ||
@@ -474,6 +533,9 @@ export async function resolveGiftMetadata(giftLink) {
 export function applyResolvedMetadataToGiftDocument(doc, resolved) {
   doc.name = resolved.name;
   doc.collection = resolved.collection;
+  doc.model = String(resolved.model || "").trim();
+  doc.symbol = String(resolved.symbol || "").trim();
+  doc.backdrop = String(resolved.backdrop || "").trim();
   const hi = String(resolved.imageHiRes || resolved.image || "").trim();
   const th = String(resolved.imageThumb || "").trim();
   const thumb = th && th !== hi ? th : "";
@@ -484,6 +546,7 @@ export function applyResolvedMetadataToGiftDocument(doc, resolved) {
   doc.imageFit = resolved.mediaFit === "cover" ? "cover" : "contain";
   doc.animationUrl = resolved.animation || "";
   doc.mediaSource = String(resolved.mediaSource || "").trim();
+  doc.mediaMatchLevel = String(resolved.mediaMatchLevel || "").trim();
   doc.floorTon = resolved.floorTon;
   doc.collectionFloorKey = String(resolved.collectionFloorKey || "").trim();
   const rf = Number(resolved.resolvedFloorTon);

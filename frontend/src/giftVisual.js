@@ -70,7 +70,16 @@ export function cacheBustMediaUrl(url, gift) {
  * @param {Record<string, unknown>} gift
  */
 export function giftImageFieldsForDebug(gift) {
+  const chosenImageUrl =
+    trimUrl(gift.imageHiRes) ||
+    trimUrl(gift.image) ||
+    trimUrl(gift.animationPosterUrl) ||
+    trimUrl(gift.imageThumb);
   return {
+    collection: String(gift.collection || ""),
+    model: String(gift.model || ""),
+    symbol: String(gift.symbol || ""),
+    backdrop: String(gift.backdrop || ""),
     imageHiRes: trimUrl(gift.imageHiRes),
     image: trimUrl(gift.image),
     imageThumb: trimUrl(gift.imageThumb),
@@ -78,6 +87,8 @@ export function giftImageFieldsForDebug(gift) {
     animationPosterUrl: trimUrl(gift.animationPosterUrl),
     animationUrl: trimUrl(gift.animationUrl),
     mediaSource: String(gift.mediaSource || ""),
+    mediaMatchLevel: String(gift.mediaMatchLevel || ""),
+    chosenImageUrl,
     imageSrcSet: trimUrl(gift.imageSrcSet),
     imageUpscaled: Boolean(gift.imageUpscaled),
     imageUpscaleStatus: String(gift.imageUpscaleStatus || ""),

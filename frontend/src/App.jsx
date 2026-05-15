@@ -598,10 +598,18 @@ function GiftCard({ gift, lang, tk, onOpen }) {
       aria-label={`${gift.name}, ${gift.priceTon} TON`}
     >
       <div
-        className={`nftCardMediaWrap${ogFallback ? " nftCardMediaWrap--ogFallback" : ""}`}
+        className={`nftCardMediaWrap nftCardMediaWrap--collectibleHero${ogFallback ? " nftCardMediaWrap--ogFallback" : ""}`}
         aria-busy={showSkeleton}
       >
-        <div className="nftCardMediaInner">
+        <div className="nftCardHeroBackdrop" aria-hidden="true">
+          <GiftCollectibleHeroStage gift={gift} variant="collectibleProfile" backdropOnly />
+        </div>
+        <div className="nftCardMediaInner nftCardMediaInner--onHero">
+          <div className="nftCardCollectibleAtmos" aria-hidden="true">
+            <div className="nftCardCollectibleBlurGlow" />
+            <div className="nftCardCollectibleRadial" />
+            <div className="nftCardCollectibleReadOverlay" />
+          </div>
           {showSkeleton ? <div className="nftCardImgSkel" aria-hidden="true" /> : null}
           {showRealImage ? (
             <img

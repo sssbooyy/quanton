@@ -145,9 +145,27 @@
   aspect-ratio: 1 / 1;
   border-radius: var(--nft-card-media-radius);
   overflow: hidden;
-  background: #0a0c10;
+  background: transparent;
   flex-shrink: 0;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 14px 32px rgba(0, 0, 0, 0.42),
+    0 0 0 1px rgba(0, 0, 0, 0.2);
+}
+
+/* Same hero pipeline as GiftDetailSheet backdrop (gradient, pattern, glow, vignette). */
+.nftCardHeroBackdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  overflow: hidden;
+}
+
+.nftCardHeroBackdrop .giftCollectibleHero {
+  min-height: 100%;
+  height: 100%;
 }
 
 .nftCardMediaInner {
@@ -157,10 +175,75 @@
   overflow: hidden;
 }
 
+.nftCardMediaInner--onHero {
+  position: absolute;
+  z-index: 1;
+}
+
+/* Soft aura + radial lift behind the collectible (above hero layers, below image). */
+.nftCardCollectibleAtmos {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  overflow: hidden;
+}
+
+.nftCardCollectibleBlurGlow {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  width: 92%;
+  height: 92%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 50% 40%,
+    rgba(255, 255, 255, 0.2) 0%,
+    rgba(160, 190, 255, 0.12) 28%,
+    rgba(80, 120, 200, 0.06) 48%,
+    transparent 72%
+  );
+  filter: blur(20px);
+  opacity: 0.62;
+  mix-blend-mode: screen;
+}
+
+.nftCardCollectibleRadial {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 100% 82% at 50% 36%, rgba(255, 255, 255, 0.07) 0%, transparent 58%);
+  opacity: 0.95;
+  mix-blend-mode: soft-light;
+}
+
+.nftCardCollectibleReadOverlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    185deg,
+    rgba(2, 4, 12, 0.04) 0%,
+    rgba(2, 4, 12, 0.02) 38%,
+    rgba(2, 4, 12, 0.33) 100%
+  );
+  mix-blend-mode: multiply;
+  opacity: 0.92;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nftCardCollectibleBlurGlow {
+    filter: blur(11px);
+    opacity: 0.42;
+  }
+}
+
+.nftCardMediaWrap--collectibleHero {
+  isolation: isolate;
+}
+
 .nftCardMediaWrap--ogFallback {
-  background:
-    radial-gradient(ellipse 90% 80% at 50% 42%, rgba(56, 189, 248, 0.08), transparent 55%),
-    radial-gradient(ellipse 70% 60% at 50% 55%, rgba(30, 41, 59, 0.55), rgba(5, 8, 16, 0.98));
+  background: transparent;
 }
 
 .nftCardImg--ogFallback {
@@ -213,6 +296,7 @@
 .nftCardImg {
   position: absolute;
   inset: 0;
+  z-index: 2;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -237,17 +321,21 @@
   object-position: center;
   padding: 5%;
   box-sizing: border-box;
-  background:
-    radial-gradient(ellipse 80% 70% at 50% 45%, rgba(30, 41, 59, 0.5), rgba(5, 8, 16, 0.92));
+  background: transparent;
 }
 
 .nftCardImg--loaded {
   opacity: 1;
 }
 
+.nftCardMediaInner--onHero .nftCardImg--loaded {
+  filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.5)) drop-shadow(0 4px 14px rgba(0, 0, 0, 0.35));
+}
+
 .nftCardImgSkel {
   position: absolute;
   inset: 0;
+  z-index: 1;
   background: linear-gradient(
     105deg,
     rgba(15, 23, 42, 0.95) 0%,
@@ -270,13 +358,16 @@
 .nftCardFb {
   position: absolute;
   inset: 0;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 12px;
   text-align: center;
-  background: linear-gradient(145deg, #0f172a, #1e1b4b 50%, #0c4a6e);
+  background: rgba(6, 10, 18, 0.58);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
 .nftCardFbName {

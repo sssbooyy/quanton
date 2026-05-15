@@ -2,9 +2,10 @@ import crypto from "crypto";
 import express from "express";
 import dotenv from "dotenv";
 import { initTelegramBot, sendAdminAlert, stopTelegramBot } from "./services/telegramBot.js";
-import { PORT, isProduction, METADATA_SYNC_SECRET } from "./config.js";
+import { PORT, isProduction, METADATA_SYNC_SECRET, CLEAR_LISTINGS_SECRET } from "./config.js";
 import { createCorsMiddleware } from "./middleware/cors.js";
 import { connectMongo, disconnectMongo, isMongoConnected } from "./db/connect.js";
+import { Gift } from "./models/Gift.js";
 import {
   assertDebugProvidersAllowed,
   getProvidersDebugResponse,
@@ -154,6 +155,61 @@ app.post("/gifts/metadata/sync-stale", async (req, res, next) => {
       limit: Number.isFinite(limit) ? limit : undefined,
     });
     res.json(out);
+  } catch (e) {
+    next(e);
+  }
+});
+
+const CLEAR_LISTINGS_BODY_CONFIRM = "DELETE_ALL_MARKETPLACE_LISTINGS";
+
+/**
+ * Wipe all Gift documents (marketplace listings). Disabled unless CLEAR_LISTINGS_SECRET is set.
+ * Requires header X-Clear-Listings-Secret or Authorization: Bearer <secret>.
+ * In production, also requires body.allowProduction === true or CLEAR_LISTINGS_ALLOW_HTTP_IN_PRODUCTION=1.
+ */
+app.post("/admin/clear-listings", async (req, res, next) => {
+  try {
+    if (!CLEAR_LISTINGS_SECRET) {
+      return res.status(503).json({
+        error:
+          "CLEAR_LISTINGS_SECRET is not set; this endpoint is disabled. Use scripts/clearListings.js instead.",
+      });
+    }
+    const h = String(req.headers["x-clear-listings-secret"] ?? "").trim();
+    const auth = String(req.headers.authorization ?? "").trim();
+    const bearer = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : "";
+    if (h !== CLEAR_LISTINGS_SECRET && bearer !== CLEAR_LISTINGS_SECRET) {
+      return res.status(401).json({ error: "Invalid or missing clear-listings credentials." });
+    }
+    const confirm = String(req.body?.confirm ?? "").trim();
+    if (confirm !== CLEAR_LISTINGS_BODY_CONFIRM) {
+      return res.status(400).json({
+        error: `Body must include { "confirm": "${CLEAR_LISTINGS_BODY_CONFIRM}" }.`,
+      });
+    }
+    if (isProduction) {
+      const bypass =
+        req.body?.allowProduction === true ||
+        String(process.env.CLEAR_LISTINGS_ALLOW_HTTP_IN_PRODUCTION ?? "").trim() === "1";
+      if (!bypass) {
+        return res.status(403).json({
+          error:
+            "Production: set body.allowProduction to true or set CLEAR_LISTINGS_ALLOW_HTTP_IN_PRODUCTION=1.",
+        });
+      }
+    }
+
+    const before = await Gift.countDocuments();
+    const result = await Gift.deleteMany({});
+    const after = await Gift.countDocuments();
+
+    res.json({
+      ok: true,
+      collection: Gift.collection.name,
+      before,
+      deletedCount: result.deletedCount,
+      after,
+    });
   } catch (e) {
     next(e);
   }

@@ -46,8 +46,8 @@ export const GIFT_ASSET_PROBE_NAME =
 export const GIFT_ASSET_PROBE_COLLECTION_NAME =
   process.env.GIFT_ASSET_PROBE_COLLECTION?.trim() || "Plush Pepe";
 
-/** Optional shared secret for POST /gifts/metadata/sync-stale */
-export const METADATA_SYNC_SECRET = process.env.METADATA_SYNC_SECRET?.trim() || "";
+/** Optional shared secret for POST /admin/clear-listings (dangerous). */
+export const CLEAR_LISTINGS_SECRET = process.env.CLEAR_LISTINGS_SECRET?.trim() || "";
 
 const _floorTtl = Number.parseInt(process.env.FLOOR_CACHE_TTL_MS, 10);
 /** In-memory + request coalescing TTL for Gift Asset floor rows (60s–180s). */

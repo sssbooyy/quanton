@@ -5,7 +5,6 @@ import GiftCollectibleHeroStage from "./GiftCollectibleHeroStage.jsx";
 import {
   cacheBustMediaUrl,
   bestStaticRasterUrl,
-  cardRasterSources,
   giftImageFieldsForDebug,
   giftMediaFit,
   isImageDebugEnabled,
@@ -802,24 +801,23 @@ function giftCardTitleLines(gift) {
 function GiftCard({ gift, lang, tk, onOpen, onAddToCart, inCart }) {
   const [imgLoaded, setImgLoaded] = useState(false);
   const mainRaster = useGiftMainRasterImage(gift);
-  const baseRaster = cardRasterSources(gift);
   const { primary: cardTitle, secondary: modelLine } = giftCardTitleLines(gift);
 
   const rawRasterUrl = mainRaster.url;
   const imageUrl = cacheBustMediaUrl(rawRasterUrl, gift);
-  const srcSet = mainRaster.index === 0 ? baseRaster.srcSet : undefined;
   const renderable = isRenderableMediaUrl(imageUrl);
   const fit = giftMediaFit(gift);
   const fitClass = fit === "cover" ? "nftCardImg--cover" : "nftCardImg--contain";
-  const ogFallback = baseRaster.ogOnly || isOpenGraphMediaFallback(gift);
+  const ogFallback = isOpenGraphMediaFallback(gift);
+  const showCardImageDebug = isImageDebugEnabled();
 
   useEffect(() => {
-    logGiftImageChoice("card", gift, { src: imageUrl, srcSet });
-  }, [gift, imageUrl, srcSet]);
+    logGiftImageChoice("card", gift, { src: imageUrl, srcSet: undefined, heroPoster: imageUrl });
+  }, [gift, imageUrl]);
 
   useEffect(() => {
     setImgLoaded(false);
-  }, [rawRasterUrl, srcSet, gift.id]);
+  }, [rawRasterUrl, gift.id, mainRaster.index]);
 
   const showRealImage = renderable && Boolean(rawRasterUrl);
   const showSkeleton = showRealImage && !imgLoaded;
@@ -852,7 +850,6 @@ function GiftCard({ gift, lang, tk, onOpen, onAddToCart, inCart }) {
             {showRealImage ? (
               <img
                 src={imageUrl}
-                srcSet={srcSet}
                 alt=""
                 width={512}
                 height={512}
@@ -860,13 +857,13 @@ function GiftCard({ gift, lang, tk, onOpen, onAddToCart, inCart }) {
                 loading="lazy"
                 decoding="async"
                 referrerPolicy="no-referrer"
-                sizes="(max-width: 480px) 42vw, (max-width: 900px) 28vw, 240px"
                 draggable={false}
                 fetchPriority="low"
                 onLoad={() => setImgLoaded(true)}
-                onError={() => {
+                onError={(e) => {
                   setImgLoaded(false);
-                  mainRaster.markFailed(imageUrl);
+                  const failed = e?.currentTarget?.currentSrc || e?.currentTarget?.src || imageUrl;
+                  mainRaster.markFailed(failed);
                 }}
               />
             ) : null}
@@ -874,6 +871,11 @@ function GiftCard({ gift, lang, tk, onOpen, onAddToCart, inCart }) {
               <div className="nftCardFb" role="img" aria-label={gift.name}>
                 <span className="nftCardFbName">{gift.name}</span>
               </div>
+            ) : null}
+            {showCardImageDebug ? (
+              <pre className="nftCardImageDebug mono">
+                {`cardActiveImageUrl: ${rawRasterUrl || "—"}\ncardActiveImageSource: ${mainRaster.source || "—"}\ncardFailedImageUrls: ${mainRaster.failedUrls?.length ? mainRaster.failedUrls.join(", ") : "—"}\ncardImageCandidates: ${JSON.stringify(mainRaster.candidates)}`}
+              </pre>
             ) : null}
           </div>
           <span className="nftCardScore" title={tk("badgeScoreTitle")}>
@@ -995,12 +997,7 @@ function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
   ];
 
   useEffect(() => {
-    const card = cardRasterSources(gift);
-    logGiftImageChoice("detail", gift, {
-      src: card.src,
-      srcSet: card.srcSet,
-      heroPoster,
-    });
+    logGiftImageChoice("detail", gift, { src: heroPoster, srcSet: undefined, heroPoster });
   }, [gift, heroPoster]);
 
   useEffect(() => {

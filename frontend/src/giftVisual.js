@@ -152,6 +152,7 @@ export function bestStaticRasterUrl(gift) {
 
 /**
  * Grid card: **imageThumb** for grid; hi-res only via srcSet when not upscaled.
+ * @deprecated Prefer `useGiftMainRasterImage` in React so card and detail share one candidate chain (avoids src/srcSet mismatch).
  * @param {Record<string, unknown>} gift
  */
 export function cardImageSources(gift) {
@@ -178,6 +179,7 @@ export function cardImageSources(gift) {
 
 /**
  * While backend upscale is pending, show the original OpenGraph / source raster.
+ * @deprecated Prefer `useGiftMainRasterImage` in React; kept for non-UI callers if any.
  * @param {Record<string, unknown>} gift
  */
 export function cardRasterSources(gift) {

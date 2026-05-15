@@ -367,6 +367,28 @@
   filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.5)) drop-shadow(0 4px 14px rgba(0, 0, 0, 0.35));
 }
 
+.nftCardImageDebug {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 4;
+  max-height: 42%;
+  margin: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 6px 8px;
+  font-size: 8px;
+  line-height: 1.35;
+  color: #e2e8f0;
+  background: rgba(0, 0, 0, 0.82);
+  border-top: 1px solid rgba(148, 163, 184, 0.35);
+  pointer-events: auto;
+  text-align: left;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
 .nftCardImgSkel {
   position: absolute;
   inset: 0;

@@ -602,14 +602,14 @@ function GiftCard({ gift, lang, tk, onOpen }) {
         aria-busy={showSkeleton}
       >
         <div className="nftCardHeroBackdrop" aria-hidden="true">
-          <GiftCollectibleHeroStage gift={gift} variant="collectibleProfile" backdropOnly />
+          <GiftCollectibleHeroStage gift={gift} variant="collectibleProfile" backdropOnly surface="card" />
+        </div>
+        <div className="nftCardMidAtmos" aria-hidden="true">
+          <div className="nftCardCollectibleBlurGlow" />
+          <div className="nftCardCollectibleRadial" />
+          <div className="nftCardCollectibleReadOverlay" />
         </div>
         <div className="nftCardMediaInner nftCardMediaInner--onHero">
-          <div className="nftCardCollectibleAtmos" aria-hidden="true">
-            <div className="nftCardCollectibleBlurGlow" />
-            <div className="nftCardCollectibleRadial" />
-            <div className="nftCardCollectibleReadOverlay" />
-          </div>
           {showSkeleton ? <div className="nftCardImgSkel" aria-hidden="true" /> : null}
           {showRealImage ? (
             <img

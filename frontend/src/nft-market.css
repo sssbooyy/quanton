@@ -175,21 +175,22 @@
   overflow: hidden;
 }
 
-.nftCardMediaInner--onHero {
-  position: absolute;
-  z-index: 1;
-}
-
-/* Soft aura + radial lift behind the collectible (above hero layers, below image). */
-.nftCardCollectibleAtmos {
+/* Mid atmosphere: above hero (gradient + pattern + theme glow), below collectible. */
+.nftCardMidAtmos {
   position: absolute;
   inset: 0;
-  z-index: 0;
+  z-index: 1;
   pointer-events: none;
   border-radius: inherit;
   overflow: hidden;
 }
 
+.nftCardMediaInner--onHero {
+  position: absolute;
+  z-index: 2;
+}
+
+/* Soft aura + radial lift behind the collectible (above symbol tiling, below image). */
 .nftCardCollectibleBlurGlow {
   position: absolute;
   left: 50%;
@@ -240,6 +241,40 @@
 
 .nftCardMediaWrap--collectibleHero {
   isolation: isolate;
+}
+
+/* Symbol tiling drift on marketplace cards (GiftCollectibleHeroStage surface="card"). */
+@keyframes nftCardHeroPatternDrift {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  20% {
+    transform: translate(4px, -5px) scale(1.025);
+  }
+  45% {
+    transform: translate(-5px, 3px) scale(1.01);
+  }
+  70% {
+    transform: translate(3px, 4px) scale(1.02);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+.giftCollectibleHero--cardSurface .giftHeroPatternWrap--cardMotion {
+  will-change: transform;
+  animation: nftCardHeroPatternDrift 28s ease-in-out infinite;
+}
+
+.giftCollectibleHero--cardSurface .giftPatternLayer__svg {
+  filter: blur(0.25px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .giftCollectibleHero--cardSurface .giftHeroPatternWrap--cardMotion {
+    animation: none;
+  }
 }
 
 .nftCardMediaWrap--ogFallback {
@@ -386,7 +421,7 @@
   position: absolute;
   top: 8px;
   right: 8px;
-  z-index: 4;
+  z-index: 6;
   font-family: var(--font-mono);
   font-size: 9px;
   font-weight: 800;
@@ -1101,7 +1136,7 @@
   position: absolute;
   bottom: 7px;
   left: 8px;
-  z-index: 4;
+  z-index: 6;
   font-family: var(--font-mono);
   font-size: 8px;
   font-weight: 800;
@@ -1119,7 +1154,7 @@
   position: absolute;
   bottom: 7px;
   right: 8px;
-  z-index: 4;
+  z-index: 6;
   font-family: var(--font-mono);
   font-size: 8px;
   font-weight: 800;

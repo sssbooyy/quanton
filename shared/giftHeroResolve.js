@@ -163,6 +163,8 @@ const SYMBOL_ALIASES = {
   flame: "flame",
   snow: "snowflake",
   snowflake: "snowflake",
+  snowdrop: "snowflake",
+  frost: "snowflake",
   music: "note",
   note: "note",
   peace: "peace",

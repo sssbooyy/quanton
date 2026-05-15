@@ -26,7 +26,7 @@ function isLottieAnimationUrl(u) {
  * Detail hero: Lottie JSON (Gift Asset `lottie_anim`), muted looping video, or static image.
  * Listing cards should omit `animationUrl` so the Mini App does not run many players at once.
  */
-export default function GiftAnimatedHero({ animationUrl, posterUrl, alt, mediaFit = "contain" }) {
+export default function GiftAnimatedHero({ animationUrl, posterUrl, alt, mediaFit = "contain", onRasterError }) {
   const lottieHostRef = useRef(null);
   const [preferRaster, setPreferRaster] = useState(false);
   const [imgFailed, setImgFailed] = useState(false);
@@ -168,7 +168,10 @@ export default function GiftAnimatedHero({ animationUrl, posterUrl, alt, mediaFi
               fetchPriority="high"
               referrerPolicy="no-referrer"
               onLoad={() => setImgLoaded(true)}
-              onError={() => setImgFailed(true)}
+              onError={() => {
+                setImgFailed(true);
+                onRasterError?.(rasterUrl);
+              }}
             />
           ) : null}
           <div ref={lottieHostRef} className="giftLottieHost" aria-hidden="true" />
@@ -188,6 +191,7 @@ export default function GiftAnimatedHero({ animationUrl, posterUrl, alt, mediaFi
           onError={() => {
             setImgFailed(true);
             setImgLoaded(false);
+            onRasterError?.(rasterUrl);
           }}
         />
       ) : (

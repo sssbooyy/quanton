@@ -1,8 +1,8 @@
-import {
-  resolveMainGiftRasterImage,
-  listGiftPublicKeys,
-  isThemeOrSymbolAssetRasterUrl,
-} from "@shared/giftPublicImageResolve.js";
+import { resolveMainGiftRasterImage, listGiftPublicKeys, isThemeOrSymbolAssetRasterUrl } from "@shared/giftPublicImageResolve.js";
+import { getMainGiftRasterCandidatesForDisplay } from "./useGiftMainRasterImage.js";
+
+export { getMainGiftRasterCandidates } from "@shared/giftPublicImageResolve.js";
+export { getMainGiftRasterCandidatesForDisplay } from "./useGiftMainRasterImage.js";
 
 /** @param {unknown} u */
 function trimUrl(u) {
@@ -83,8 +83,10 @@ export function cacheBustMediaUrl(url, gift) {
 /**
  * Raw API fields (for dev logging / debug overlay).
  * @param {Record<string, unknown>} gift
+ * @param {{ failedUrls?: string[]; activeIndex?: number; activeSource?: string }} [runtime]
  */
-export function giftImageFieldsForDebug(gift) {
+export function giftImageFieldsForDebug(gift, runtime = {}) {
+  const displayC = getMainGiftRasterCandidatesForDisplay(gift);
   const main = resolveMainGiftRasterImage(gift);
   const legacyChosen = pickMainRasterUrl(
     gift.imageHiRes,
@@ -94,6 +96,11 @@ export function giftImageFieldsForDebug(gift) {
   );
   const resolvedImageUrl = main.url || legacyChosen;
   const imageFromPublic = main.source === "gift_asset_public";
+  const activeIdx =
+    typeof runtime.activeIndex === "number" ? runtime.activeIndex : displayC.length ? 0 : -1;
+  const activeSrc =
+    runtime.activeSource ||
+    (activeIdx >= 0 && displayC[activeIdx] ? displayC[activeIdx].source : displayC[0]?.source || "none");
   return {
     collection: String(gift.collection || ""),
     model: String(gift.model || ""),
@@ -123,6 +130,11 @@ export function giftImageFieldsForDebug(gift) {
     imageRejectedReason: main.imageRejectedReason || "",
     rejectedImageUrl: main.rejectedImageUrl || "",
     rejectedField: main.rejectedField || "",
+    imageCandidates: displayC.map((c) => `${c.source}:${c.field}`).join(" → ") || "—",
+    imageCandidateUrls: displayC.map((c) => c.url).join("\n") || "—",
+    failedImageUrls: runtime.failedUrls?.length ? runtime.failedUrls.join(", ") : "—",
+    activeImageCandidateIndex: activeIdx,
+    activeImageSource: activeSrc,
     chosenImageUrl: legacyChosen,
     imageSrcSet: trimUrl(gift.imageSrcSet),
     imageUpscaled: Boolean(gift.imageUpscaled),
@@ -135,7 +147,7 @@ export function giftImageFieldsForDebug(gift) {
  * @param {Record<string, unknown>} gift
  */
 export function bestStaticRasterUrl(gift) {
-  return trimUrl(resolveMainGiftRasterImage(gift).url);
+  return trimUrl(getMainGiftRasterCandidatesForDisplay(gift)[0]?.url || "");
 }
 
 /**
@@ -143,8 +155,7 @@ export function bestStaticRasterUrl(gift) {
  * @param {Record<string, unknown>} gift
  */
 export function cardImageSources(gift) {
-  const r = resolveMainGiftRasterImage(gift);
-  const hi = trimUrl(r.url);
+  const hi = trimUrl(getMainGiftRasterCandidatesForDisplay(gift)[0]?.url || "");
   const thumb = pickMainRasterUrl(gift.imageThumb);
   const poster = pickMainRasterUrl(gift.animationPosterUrl);
   const ogOnly = isOpenGraphMediaFallback(gift);
@@ -170,19 +181,13 @@ export function cardImageSources(gift) {
  * @param {Record<string, unknown>} gift
  */
 export function cardRasterSources(gift) {
-  if (gift.imageUpscaleStatus === "pending" && pickMainRasterUrl(gift.imageOriginal)) {
-    const o = pickMainRasterUrl(gift.imageOriginal);
-    const r = resolveMainGiftRasterImage(gift);
-    const hi = pickMainRasterUrl(gift.imageHiRes, gift.image, r.url, o);
-    return {
-      src: o,
-      srcSet: undefined,
-      hiRes: hi,
-      pending: true,
-      ogOnly: true,
-    };
-  }
-  const base = { ...cardImageSources(gift), pending: false };
+  const core = cardImageSources(gift);
+  const pending = gift.imageUpscaleStatus === "pending" && Boolean(pickMainRasterUrl(gift.imageOriginal));
+  const base = {
+    ...core,
+    ogOnly: pending || core.ogOnly,
+    pending,
+  };
   return {
     ...base,
     src: cacheBustMediaUrl(base.src, gift),
@@ -203,9 +208,6 @@ export function detailStaticRaster(gift) {
  * @param {Record<string, unknown>} gift
  */
 export function detailRasterWhileUpscale(gift) {
-  if (gift.imageUpscaleStatus === "pending" && pickMainRasterUrl(gift.imageOriginal)) {
-    return pickMainRasterUrl(gift.imageOriginal);
-  }
   return detailStaticRaster(gift);
 }
 
@@ -214,9 +216,6 @@ export function detailRasterWhileUpscale(gift) {
  * @param {Record<string, unknown>} gift
  */
 export function stackedPosterUrl(gift) {
-  if (gift.imageUpscaleStatus === "pending" && pickMainRasterUrl(gift.imageOriginal)) {
-    return pickMainRasterUrl(gift.imageOriginal) || bestStaticRasterUrl(gift);
-  }
   return bestStaticRasterUrl(gift);
 }
 

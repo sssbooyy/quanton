@@ -3,9 +3,9 @@ import { addGift, getGifts, sendTestAlert } from "./api";
 import GiftAnimatedHero from "./GiftAnimatedHero.jsx";
 import GiftCollectibleHeroStage from "./GiftCollectibleHeroStage.jsx";
 import {
+  cacheBustMediaUrl,
   bestStaticRasterUrl,
   cardRasterSources,
-  detailHeroPosterUrl,
   giftImageFieldsForDebug,
   giftMediaFit,
   isImageDebugEnabled,
@@ -13,6 +13,7 @@ import {
   isRenderableMediaUrl,
   logGiftImageChoice,
 } from "./giftVisual.js";
+import { useGiftMainRasterImage } from "./useGiftMainRasterImage.js";
 import {
   LANG_STORAGE_KEY,
   getInitialLanguage,
@@ -565,28 +566,30 @@ function giftCardTitleLines(gift) {
 }
 
 function GiftCard({ gift, lang, tk, onOpen }) {
-  const [imgFailed, setImgFailed] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
+  const mainRaster = useGiftMainRasterImage(gift);
+  const baseRaster = cardRasterSources(gift);
   const { primary: cardTitle, secondary: cardSub } = giftCardTitleLines(gift);
 
-  const { src: imageUrl, srcSet, ogOnly } = cardRasterSources(gift);
+  const rawRasterUrl = mainRaster.url;
+  const imageUrl = cacheBustMediaUrl(rawRasterUrl, gift);
+  const srcSet = mainRaster.index === 0 ? baseRaster.srcSet : undefined;
   const renderable = isRenderableMediaUrl(imageUrl);
   const fit = giftMediaFit(gift);
   const fitClass = fit === "cover" ? "nftCardImg--cover" : "nftCardImg--contain";
-  const ogFallback = ogOnly || isOpenGraphMediaFallback(gift);
+  const ogFallback = baseRaster.ogOnly || isOpenGraphMediaFallback(gift);
 
   useEffect(() => {
     logGiftImageChoice("card", gift, { src: imageUrl, srcSet });
   }, [gift, imageUrl, srcSet]);
 
   useEffect(() => {
-    setImgFailed(false);
     setImgLoaded(false);
-  }, [imageUrl, srcSet, gift.id]);
+  }, [rawRasterUrl, srcSet, gift.id]);
 
-  const showRealImage = renderable && !imgFailed;
+  const showRealImage = renderable && Boolean(rawRasterUrl);
   const showSkeleton = showRealImage && !imgLoaded;
-  const showFallback = !renderable || imgFailed;
+  const showFallback = !renderable || !rawRasterUrl;
 
   const mod = nftCardModifier(gift.signal);
 
@@ -627,8 +630,8 @@ function GiftCard({ gift, lang, tk, onOpen }) {
               fetchPriority="low"
               onLoad={() => setImgLoaded(true)}
               onError={() => {
-                setImgFailed(true);
                 setImgLoaded(false);
+                mainRaster.markFailed(imageUrl);
               }}
             />
           ) : null}
@@ -686,6 +689,8 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
   const volTone =
     gift.volumeGrowth > 0 ? "text-bull" : gift.volumeGrowth < 0 ? "text-bear" : "text-muted";
 
+  const mainRaster = useGiftMainRasterImage(gift);
+
   const liveFloorTon = (() => {
     const r = Number(gift.realFloorTon);
     if (Number.isFinite(r) && r > 0) return r;
@@ -693,12 +698,18 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
     return Number.isFinite(f) && f > 0 ? f : 0;
   })();
 
-  const heroPoster = detailHeroPosterUrl(gift);
+  const heroPoster = cacheBustMediaUrl(mainRaster.url, gift);
   const staticRaster = bestStaticRasterUrl(gift);
   const mediaFit = giftMediaFit(gift);
   const ogFallback = isOpenGraphMediaFallback(gift);
   const showImageDebug = isImageDebugEnabled();
-  const debugFields = showImageDebug ? giftImageFieldsForDebug(gift) : null;
+  const debugFields = showImageDebug
+    ? giftImageFieldsForDebug(gift, {
+        failedUrls: mainRaster.failedUrls,
+        activeIndex: mainRaster.index,
+        activeSource: mainRaster.source,
+      })
+    : null;
 
   useEffect(() => {
     const card = cardRasterSources(gift);
@@ -773,6 +784,7 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
                   posterUrl={heroPoster}
                   alt={gift.name}
                   mediaFit={mediaFit}
+                  onRasterError={(failed) => mainRaster.markFailed(failed)}
                 />
               </div>
             </div>
@@ -860,7 +872,7 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
                       opacity: 0.95,
                     }}
                   >
-                    {`resolvedImageUrl: ${debugFields.resolvedImageUrl || "—"}\nconstructedModelImageUrl: ${debugFields.constructedModelImageUrl || "—"}\nimageSourceField: ${debugFields.imageSourceField || "—"}\nimageResolutionSource: ${debugFields.imageResolutionSource || "—"}\nimageFromPublicField: ${String(debugFields.imageFromPublicField)}\nimageRejectedReason: ${debugFields.imageRejectedReason || "—"}\nrejectedImageUrl: ${debugFields.rejectedImageUrl || "—"}\nrejectedField: ${debugFields.rejectedField || "—"}\nimageCheckedFields: ${debugFields.imageCheckedFields || "—"}\ngift.public keys: ${debugFields.giftPublicKeys || "—"}`}
+                    {`resolvedImageUrl: ${debugFields.resolvedImageUrl || "—"}\nconstructedModelImageUrl: ${debugFields.constructedModelImageUrl || "—"}\nimageCandidates: ${debugFields.imageCandidates || "—"}\nimageCandidateUrls:\n${debugFields.imageCandidateUrls || "—"}\nfailedImageUrls: ${debugFields.failedImageUrls || "—"}\nactiveImageCandidateIndex: ${debugFields.activeImageCandidateIndex}\nactiveImageSource: ${debugFields.activeImageSource || "—"}\nimageSourceField: ${debugFields.imageSourceField || "—"}\nimageResolutionSource: ${debugFields.imageResolutionSource || "—"}\nimageFromPublicField: ${String(debugFields.imageFromPublicField)}\nimageRejectedReason: ${debugFields.imageRejectedReason || "—"}\nrejectedImageUrl: ${debugFields.rejectedImageUrl || "—"}\nrejectedField: ${debugFields.rejectedField || "—"}\nimageCheckedFields: ${debugFields.imageCheckedFields || "—"}\ngift.public keys: ${debugFields.giftPublicKeys || "—"}`}
                   </pre>
                 </div>
                 <div>

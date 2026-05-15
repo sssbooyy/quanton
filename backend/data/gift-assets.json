@@ -1,0 +1,9 @@
+{
+  "perfume-bottle": {
+    "imageThumb": "/assets/gifts/perfume-bottle/thumb.svg",
+    "imageHiRes": "/assets/gifts/perfume-bottle/hd.svg",
+    "animationUrl": "",
+    "animationPosterUrl": "/assets/gifts/perfume-bottle/hd.svg",
+    "imageFit": "contain"
+  }
+}

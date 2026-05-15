@@ -20,6 +20,7 @@ import {
   isProduction,
 } from "../config.js";
 import { Gift } from "../models/Gift.js";
+import { shouldScheduleAiUpscale } from "./giftMediaProvider.js";
 
 const ALLOWED_CT = new Set([
   "image/jpeg",
@@ -57,8 +58,6 @@ function cacheSet(hash, url, provider) {
   upscaleUrlCache.set(hash, { url, provider, expires: Date.now() + CACHE_TTL_MS });
 }
 
-const UPSCALE_METADATA_SOURCES = new Set(["opengraph", "gift-asset"]);
-
 /** Replicate Real-ESRGAN is on when explicitly enabled, or legacy `AI_UPSCALER_PROVIDER=replicate`. */
 export function isReplicateUpscalerReady() {
   if (!REPLICATE_API_TOKEN) return false;
@@ -80,17 +79,19 @@ export function isUpscalerConfigured() {
  * @returns {boolean} whether an async upscale job should be scheduled
  */
 export function syncUpscaleMetadataFields(doc, resolved) {
-  const source = String(resolved.source || "");
-  if (!UPSCALE_METADATA_SOURCES.has(source)) {
-    doc.imageOriginal = "";
-    doc.imageUpscaleStatus = "none";
+  const mediaSource = String(resolved.mediaSource || doc.mediaSource || "").trim();
+  const hi = String(resolved.imageHiRes || resolved.image || "").trim();
+
+  if (!shouldScheduleAiUpscale(mediaSource, hi)) {
+    doc.imageOriginal = mediaSource === "opengraph" ? hi : "";
+    doc.imageUpscaleStatus = "skipped";
     doc.imageUpscaled = false;
     doc.imageUpscaleProvider = "";
     doc.imageUpscaledAt = null;
     return false;
   }
 
-  const raster = String(resolved.imageHiRes || resolved.image || "").trim();
+  const raster = hi;
   doc.imageOriginal = raster;
 
   if (!raster.startsWith("http")) {
@@ -211,6 +212,7 @@ function applyUpscaleSuccessToDoc(doc, enhancedUrl, provider) {
   doc.imageUpscaledAt = new Date();
   doc.imageUpscaleStatus = "done";
   doc.imageThumb = "";
+  doc.mediaSource = "ai_upscaled";
 }
 
 function logUpscaleVerification(listingId, enhancedUrl, provider) {

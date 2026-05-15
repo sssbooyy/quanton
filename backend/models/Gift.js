@@ -47,6 +47,10 @@ const giftSchema = new mongoose.Schema(
     },
     /** Fragment / Telegram lottie JSON URL when available */
     animationUrl: { type: String, default: "", trim: true },
+    /**
+     * Media provenance: local_asset | gift_asset | telegram_cdn | ai_upscaled | opengraph
+     */
+    mediaSource: { type: String, default: "", trim: true },
     priceTon: { type: Number, required: true },
     floorTon: { type: Number, required: true },
     /** Normalized key for cross-alias floor cache (e.g. freshsocks / fresh-socks). */

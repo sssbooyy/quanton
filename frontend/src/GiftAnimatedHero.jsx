@@ -6,6 +6,7 @@ function isRenderableImageUrl(url) {
   if (!u) return false;
   if (/^https?:\/\//i.test(u)) return true;
   if (/^data:image\//i.test(u)) return true;
+  if (u.startsWith("/")) return true;
   return false;
 }
 

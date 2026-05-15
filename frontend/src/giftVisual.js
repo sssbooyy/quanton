@@ -4,9 +4,18 @@ function trimUrl(u) {
 }
 
 /** @param {string} u */
-function isRenderableHttpOrDataUrl(u) {
+export function isRenderableMediaUrl(u) {
   const s = trimUrl(u);
-  return /^https?:\/\//i.test(s) || /^data:image\//i.test(s);
+  if (!s) return false;
+  if (/^https?:\/\//i.test(s)) return true;
+  if (/^data:image\//i.test(s)) return true;
+  if (s.startsWith("/")) return true;
+  return false;
+}
+
+/** @deprecated alias */
+export function isRenderableImageUrl(u) {
+  return isRenderableMediaUrl(u);
 }
 
 /** Successful upscale terminal states (legacy `complete` + new `done`). */
@@ -35,6 +44,13 @@ export function isImageDebugEnabled() {
 }
 
 /**
+ * @param {Record<string, unknown>} gift
+ */
+export function isOpenGraphMediaFallback(gift) {
+  return String(gift?.mediaSource || "").trim() === "opengraph";
+}
+
+/**
  * Bust CDN/browser cache after server swaps in a new Replicate URL.
  * @param {string} url
  * @param {Record<string, unknown>} gift
@@ -60,6 +76,8 @@ export function giftImageFieldsForDebug(gift) {
     imageThumb: trimUrl(gift.imageThumb),
     imageOriginal: trimUrl(gift.imageOriginal),
     animationPosterUrl: trimUrl(gift.animationPosterUrl),
+    animationUrl: trimUrl(gift.animationUrl),
+    mediaSource: String(gift.mediaSource || ""),
     imageSrcSet: trimUrl(gift.imageSrcSet),
     imageUpscaled: Boolean(gift.imageUpscaled),
     imageUpscaleStatus: String(gift.imageUpscaleStatus || ""),
@@ -67,48 +85,58 @@ export function giftImageFieldsForDebug(gift) {
 }
 
 /**
- * Best static raster: **imageHiRes** first, then image, thumb, animation poster (never OG before hi when hi exists).
+ * Best static raster for detail: hi-res first.
  * @param {Record<string, unknown>} gift
  */
 export function bestStaticRasterUrl(gift) {
   return (
     trimUrl(gift.imageHiRes) ||
     trimUrl(gift.image) ||
-    trimUrl(gift.imageThumb) ||
-    trimUrl(gift.animationPosterUrl)
+    trimUrl(gift.animationPosterUrl) ||
+    trimUrl(gift.imageThumb)
   );
 }
 
 /**
- * Grid card: always prefer **imageHiRes** over thumb / poster so upscaled Replicate output is not shadowed by OG thumb.
- * When `imageUpscaled`, do not emit thumb@1x / hi@2x srcSet (stale thumb would win on 1x DPR).
+ * Grid card: **imageThumb** for grid; hi-res only via srcSet when not upscaled.
  * @param {Record<string, unknown>} gift
  */
 export function cardImageSources(gift) {
   const hi = trimUrl(gift.imageHiRes) || trimUrl(gift.image);
   const thumb = trimUrl(gift.imageThumb);
   const poster = trimUrl(gift.animationPosterUrl);
-  const src = hi || thumb || poster;
+  const ogOnly = isOpenGraphMediaFallback(gift);
+
+  let src = thumb || hi || poster;
+  if (ogOnly && src) {
+    src = thumb || hi || poster;
+  } else {
+    src = thumb && hi ? thumb : hi || thumb || poster;
+  }
+
   const apiSet = trimUrl(gift.imageSrcSet);
   let srcSet = apiSet || undefined;
-  if (!gift.imageUpscaled && thumb && hi && thumb !== hi) {
+  if (!gift.imageUpscaled && thumb && hi && thumb !== hi && !ogOnly) {
     srcSet = srcSet || `${thumb} 1x, ${hi} 2x`;
   }
-  return { src, srcSet, hiRes: hi || src };
+
+  return { src, srcSet, hiRes: hi || src, ogOnly };
 }
 
 /**
- * While backend upscale is pending, show the original OpenGraph / source raster until Mongo swaps in hi-res.
+ * While backend upscale is pending, show the original OpenGraph / source raster.
  * @param {Record<string, unknown>} gift
  */
 export function cardRasterSources(gift) {
   if (gift.imageUpscaleStatus === "pending" && trimUrl(gift.imageOriginal)) {
     const o = trimUrl(gift.imageOriginal);
     const hi = trimUrl(gift.imageHiRes) || trimUrl(gift.image) || o;
-    const raw = { src: o, srcSet: undefined, hiRes: hi, pending: true };
     return {
-      ...raw,
-      src: cacheBustMediaUrl(raw.src, gift),
+      src: o,
+      srcSet: undefined,
+      hiRes: hi,
+      pending: true,
+      ogOnly: true,
     };
   }
   const base = { ...cardImageSources(gift), pending: false };
@@ -120,7 +148,7 @@ export function cardRasterSources(gift) {
 }
 
 /**
- * Detail static raster (full quality): hi-res chain only (no animation poster before hi).
+ * Detail static raster (full quality): hi-res chain only.
  * @param {Record<string, unknown>} gift
  */
 export function detailStaticRaster(gift) {
@@ -128,7 +156,7 @@ export function detailStaticRaster(gift) {
 }
 
 /**
- * Detail hero raster while upscale job runs: keep OG visible until server marks finished.
+ * Detail hero raster while upscale job runs.
  * @param {Record<string, unknown>} gift
  */
 export function detailRasterWhileUpscale(gift) {
@@ -139,7 +167,7 @@ export function detailRasterWhileUpscale(gift) {
 }
 
 /**
- * Poster / hero stack: **imageHiRes** before animationPosterUrl so Lottie/video posters show the upscaled raster.
+ * Poster / hero stack for Lottie/video.
  * @param {Record<string, unknown>} gift
  */
 export function stackedPosterUrl(gift) {
@@ -167,7 +195,7 @@ export function stackedPosterUrl(gift) {
  */
 export function detailHeroPosterUrl(gift) {
   const stack = stackedPosterUrl(gift);
-  if (isRenderableHttpOrDataUrl(stack)) return cacheBustMediaUrl(stack, gift);
+  if (isRenderableMediaUrl(stack)) return cacheBustMediaUrl(stack, gift);
   const hero = detailRasterWhileUpscale(gift);
   return cacheBustMediaUrl(hero, gift);
 }
@@ -177,6 +205,7 @@ export function detailHeroPosterUrl(gift) {
  * @returns {"contain" | "cover"}
  */
 export function giftMediaFit(gift) {
+  if (isOpenGraphMediaFallback(gift)) return "cover";
   return gift.imageFit === "cover" ? "cover" : "contain";
 }
 

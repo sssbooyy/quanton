@@ -8,6 +8,8 @@ import {
   giftImageFieldsForDebug,
   giftMediaFit,
   isImageDebugEnabled,
+  isOpenGraphMediaFallback,
+  isRenderableMediaUrl,
   logGiftImageChoice,
 } from "./giftVisual.js";
 import {
@@ -44,15 +46,6 @@ function signalClass(signal) {
 function formatSignedPct(n) {
   if (n > 0) return `+${n}%`;
   return `${n}%`;
-}
-
-/** Only load <img> for plausible URLs (avoids broken-icon flashes for bad strings). */
-function isRenderableImageUrl(url) {
-  const u = typeof url === "string" ? url.trim() : "";
-  if (!u) return false;
-  if (/^https?:\/\//i.test(u)) return true;
-  if (/^data:image\//i.test(u)) return true;
-  return false;
 }
 
 function statusBadgeClass(status) {
@@ -570,10 +563,11 @@ function GiftCard({ gift, lang, tk, onOpen }) {
   const [imgLoaded, setImgLoaded] = useState(false);
   const { primary: cardTitle, secondary: cardSub } = giftCardTitleLines(gift);
 
-  const { src: imageUrl, srcSet } = cardRasterSources(gift);
-  const renderable = isRenderableImageUrl(imageUrl);
+  const { src: imageUrl, srcSet, ogOnly } = cardRasterSources(gift);
+  const renderable = isRenderableMediaUrl(imageUrl);
   const fit = giftMediaFit(gift);
   const fitClass = fit === "cover" ? "nftCardImg--cover" : "nftCardImg--contain";
+  const ogFallback = ogOnly || isOpenGraphMediaFallback(gift);
 
   useEffect(() => {
     logGiftImageChoice("card", gift, { src: imageUrl, srcSet });
@@ -597,7 +591,10 @@ function GiftCard({ gift, lang, tk, onOpen }) {
       onClick={onOpen}
       aria-label={`${gift.name}, ${gift.priceTon} TON`}
     >
-      <div className="nftCardMediaWrap" aria-busy={showSkeleton}>
+      <div
+        className={`nftCardMediaWrap${ogFallback ? " nftCardMediaWrap--ogFallback" : ""}`}
+        aria-busy={showSkeleton}
+      >
         <div className="nftCardMediaInner">
           {showSkeleton ? <div className="nftCardImgSkel" aria-hidden="true" /> : null}
           {showRealImage ? (
@@ -607,7 +604,7 @@ function GiftCard({ gift, lang, tk, onOpen }) {
               alt=""
               width={512}
               height={512}
-              className={`nftCardImg ${fitClass} ${imgLoaded ? "nftCardImg--loaded" : ""}`}
+              className={`nftCardImg ${fitClass} ${ogFallback ? "nftCardImg--ogFallback " : ""}${imgLoaded ? "nftCardImg--loaded" : ""}`}
               loading="lazy"
               decoding="async"
               referrerPolicy="no-referrer"
@@ -675,6 +672,7 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
   const heroPoster = detailHeroPosterUrl(gift);
   const staticRaster = bestStaticRasterUrl(gift);
   const mediaFit = giftMediaFit(gift);
+  const ogFallback = isOpenGraphMediaFallback(gift);
   const showImageDebug = isImageDebugEnabled();
   const debugFields = showImageDebug ? giftImageFieldsForDebug(gift) : null;
 
@@ -689,7 +687,7 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
 
   useEffect(() => {
     const href = heroPoster || staticRaster;
-    if (!isRenderableImageUrl(href)) return undefined;
+    if (!isRenderableMediaUrl(href)) return undefined;
     const link = document.createElement("link");
     link.rel = "preload";
     link.as = "image";
@@ -727,7 +725,7 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
         </header>
 
         <div className="nftDetailScroll">
-          <div className="nftDetailHeroImg">
+          <div className={`nftDetailHeroImg${ogFallback ? " nftDetailHeroImg--ogFallback" : ""}`}>
             <GiftAnimatedHero
               animationUrl={gift.animationUrl}
               posterUrl={heroPoster}
@@ -756,6 +754,11 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
             {showHdBadge ? (
               <span className="nftDetailChip nftDetailChip--enhanced" title={tk("badgeEnhancedTitle")}>
                 {tk("badgeEnhancedShort")}
+              </span>
+            ) : null}
+            {showImageDebug && gift.mediaSource ? (
+              <span className="nftDetailChip nftDetailChip--media" title="Media source">
+                {gift.mediaSource}
               </span>
             ) : null}
           </div>
@@ -849,6 +852,19 @@ function GiftDetailSheet({ gift, lang, tk, onClose }) {
                     }}
                   >
                     {heroPoster || "—"}
+                  </pre>
+                </div>
+                <div>
+                  <strong style={{ color: "#94a3b8" }}>mediaSource</strong>
+                  <pre
+                    style={{
+                      margin: "4px 0 0",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-all",
+                      opacity: 0.95,
+                    }}
+                  >
+                    {debugFields.mediaSource || "—"}
                   </pre>
                 </div>
                 <div className="mono" style={{ opacity: 0.9 }}>

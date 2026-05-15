@@ -157,6 +157,59 @@
   overflow: hidden;
 }
 
+.nftCardMediaWrap--ogFallback {
+  background:
+    radial-gradient(ellipse 90% 80% at 50% 42%, rgba(56, 189, 248, 0.08), transparent 55%),
+    radial-gradient(ellipse 70% 60% at 50% 55%, rgba(30, 41, 59, 0.55), rgba(5, 8, 16, 0.98));
+}
+
+.nftCardImg--ogFallback {
+  position: relative !important;
+  inset: auto !important;
+  width: 72% !important;
+  height: 72% !important;
+  max-width: 72%;
+  max-height: 72%;
+  margin: auto;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  object-fit: contain !important;
+  padding: 0 !important;
+}
+
+.nftCardMediaWrap--ogFallback .nftCardMediaInner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nftDetailHeroImg--ogFallback {
+  background:
+    radial-gradient(ellipse 85% 75% at 50% 40%, rgba(56, 189, 248, 0.1), transparent 50%),
+    linear-gradient(165deg, #0f172a 0%, #06080f 100%);
+}
+
+.nftDetailHeroImg--ogFallback .giftAnimHeroRoot,
+.nftDetailHeroImg--ogFallback .nftHeroImg {
+  max-width: 78%;
+  max-height: 78%;
+  margin: auto;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+}
+
+.nftDetailChip--media {
+  border-color: rgba(251, 191, 36, 0.35);
+  color: #fbbf24;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: lowercase;
+}
+
 .nftCardImg {
   position: absolute;
   inset: 0;

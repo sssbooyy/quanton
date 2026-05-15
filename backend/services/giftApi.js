@@ -41,9 +41,10 @@ export function giftToApiResponse(doc) {
   if (plain.sellerNote) base.sellerNote = plain.sellerNote;
   if (Array.isArray(plain.traits) && plain.traits.length) base.traits = plain.traits;
   if (plain.metadataSource) base.metadataSource = plain.metadataSource;
-  if (plain.animationUrl) base.animationUrl = plain.animationUrl;
+  base.animationUrl = String(plain.animationUrl || "").trim();
+  base.animationPosterUrl = String(plain.animationPosterUrl || "").trim();
+  base.mediaSource = String(plain.mediaSource || "").trim();
   if (plain.giftAssetName) base.giftAssetName = plain.giftAssetName;
-  if (plain.animationPosterUrl) base.animationPosterUrl = plain.animationPosterUrl;
   if (plain.imageOriginal) base.imageOriginal = plain.imageOriginal;
   base.imageUpscaled = Boolean(plain.imageUpscaled);
   if (plain.imageUpscaleProvider) base.imageUpscaleProvider = plain.imageUpscaleProvider;
@@ -258,6 +259,7 @@ export async function seedGiftsFromJsonIfEmpty() {
         imageUpscaledAt: null,
         imageUpscaleStatus: "none",
         animationUrl: "",
+        mediaSource: "",
         priceTon: Number(row.priceTon) || 0,
         floorTon: Number(row.floorTon) || 0,
         rarity: Number(row.rarity) || 1,

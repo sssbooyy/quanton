@@ -17,10 +17,8 @@ import { fileURLToPath } from "url";
 import path from "path";
 import { GIFTS_FILE_PATH } from "../config.js";
 import { fetchOpenGraphMeta } from "./openGraphResolve.js";
-import {
-  openGraphRasterVariants,
-  pickGiftAssetRasterLayers,
-} from "./giftImageAssets.js";
+import { resolveGiftMedia } from "./giftMediaProvider.js";
+import { pickGiftAssetRasterLayers } from "./giftImageAssets.js";
 import {
   normalizeCollectionFloorKeyFromGiftAssetName,
   normalizeCollectionFloorKeyFromLabel,
@@ -392,58 +390,72 @@ export async function resolveGiftMetadata(giftLink) {
   if (pageUrl && nftSlug) {
     const { collection: slugCollection, displayName } = collectionAndDisplayNameFromNftSlug(nftSlug);
     const og = await fetchOpenGraphMeta(pageUrl);
+    const site = (og?.siteName && og.siteName.trim()) || "";
+    const collection =
+      site && site.toLowerCase() !== "telegram" ? site : slugCollection || "Telegram NFT";
+    const name = ((og?.title || displayName) ?? displayName).trim() || displayName;
 
-    if (og && og.image) {
-      const name = (og.title || displayName).trim() || displayName;
-      const ogRaw = String(og.image || "").trim();
-      const variants = openGraphRasterVariants(ogRaw);
-      const hi = String(variants.hiRes || "").trim() || ogRaw;
-      const th = String(variants.thumb || "").trim();
-      const thumb = th && th !== hi ? th : "";
-      const site = (og.siteName && og.siteName.trim()) || "";
-      const collection =
-        site && site.toLowerCase() !== "telegram" ? site : slugCollection || "Telegram NFT";
+    const media = await resolveGiftMedia({
+      nftSlug,
+      giftAssetName: GIFT_ASSET_NAME_RE.test(nftSlug) ? nftSlug : "",
+      collection,
+      giftLink: pageUrl,
+      ogImage: og?.image || "",
+      name,
+    });
 
+    const imageHiRes = String(media?.imageHiRes || media?.image || "").trim();
+    if (!imageHiRes) {
       return {
-        ok: true,
-        name,
-        collection,
-        image: hi,
-        imageHiRes: hi,
-        imageThumb: thumb,
-        animation: "",
-        animationPoster: hi,
-        mediaFit: "cover",
-        rarity: 58,
-        floorTon: 0,
-        sales24h: 0,
-        volumeGrowth: 0,
-        liquidity: "Unknown",
-        risk: "Unknown",
-        traits: [
-          { key: "giftLink", value: pageUrl },
-          { key: "nftSlug", value: nftSlug },
-          { key: "resolver", value: "opengraph" },
-          ...(og.title ? [{ key: "og:title", value: og.title }] : []),
-          ...(og.image ? [{ key: "og:image", value: og.image }] : []),
-        ],
-        source: "opengraph",
-        giftAssetName: GIFT_ASSET_NAME_RE.test(nftSlug) ? nftSlug : "",
-        ownerInfo: null,
-        cachePayload: {
-          opengraph: { title: og.title, image: og.image, imageUpgraded: hi, siteName: og.siteName },
-        },
-        collectionFloorKey:
-          normalizeCollectionFloorKeyFromGiftAssetName(nftSlug) ||
-          normalizeCollectionFloorKeyFromLabel(collection),
-        __giftAssetPayload: null,
+        ok: false,
+        error:
+          "Could not resolve gift metadata. Paste a valid https://t.me/nft/… link with a public preview image, or use a known catalog id.",
       };
     }
 
+    const imageThumb = String(media?.imageThumb || "").trim();
+    const thumb = imageThumb && imageThumb !== imageHiRes ? imageThumb : "";
+    const mediaSource = String(media?.mediaSource || "opengraph");
+    const resolverSource = mediaSource === "opengraph" ? "opengraph" : "gift-media";
+
     return {
-      ok: false,
-      error:
-        "Could not resolve gift metadata. Paste a valid https://t.me/nft/… link with a public preview image, or use a known catalog id.",
+      ok: true,
+      name,
+      collection,
+      image: imageHiRes,
+      imageHiRes,
+      imageThumb: thumb || imageHiRes,
+      animation: String(media?.animationUrl || ""),
+      animationPoster: String(media?.animationPosterUrl || imageHiRes),
+      mediaFit: media?.imageFit === "cover" ? "cover" : "contain",
+      mediaSource,
+      rarity: 58,
+      floorTon: 0,
+      sales24h: 0,
+      volumeGrowth: 0,
+      liquidity: "Unknown",
+      risk: "Unknown",
+      traits: [
+        { key: "giftLink", value: pageUrl },
+        { key: "nftSlug", value: nftSlug },
+        { key: "resolver", value: resolverSource },
+        { key: "mediaSource", value: mediaSource },
+        ...(og?.title ? [{ key: "og:title", value: og.title }] : []),
+        ...(og?.image ? [{ key: "og:image", value: og.image }] : []),
+      ],
+      source: resolverSource,
+      giftAssetName: GIFT_ASSET_NAME_RE.test(nftSlug) ? nftSlug : "",
+      ownerInfo: null,
+      cachePayload: {
+        opengraph: og
+          ? { title: og.title, image: og.image, siteName: og.siteName }
+          : null,
+        mediaSource,
+      },
+      collectionFloorKey:
+        normalizeCollectionFloorKeyFromGiftAssetName(nftSlug) ||
+        normalizeCollectionFloorKeyFromLabel(collection),
+      __giftAssetPayload: null,
     };
   }
 
@@ -471,6 +483,7 @@ export function applyResolvedMetadataToGiftDocument(doc, resolved) {
   doc.animationPosterUrl = String(resolved.animationPoster || "").trim();
   doc.imageFit = resolved.mediaFit === "cover" ? "cover" : "contain";
   doc.animationUrl = resolved.animation || "";
+  doc.mediaSource = String(resolved.mediaSource || "").trim();
   doc.floorTon = resolved.floorTon;
   doc.collectionFloorKey = String(resolved.collectionFloorKey || "").trim();
   const rf = Number(resolved.resolvedFloorTon);

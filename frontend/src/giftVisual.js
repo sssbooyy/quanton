@@ -6,10 +6,15 @@ import {
 } from "@shared/giftPublicImageResolve.js";
 import {
   extractBackdropLabelFromGift,
+  extractSymbolLabelFromGift,
   resolveCollectibleHeroPresentation,
   resolveBackdropTraitSolid,
+  resolveSymbolPattern,
+  symbolRasterPatternStyleForHex,
+  traitSolidPatternOpacityForHex,
 } from "@shared/giftHeroResolve.js";
 import { resolveGiftCollectibleVisualLayers } from "@shared/giftCollectibleLayers.js";
+import { GIFT_PATTERN_SYMBOL_IDS } from "./giftPatternLayer.js";
 
 export { getMainGiftRasterCandidates, getMainGiftRasterCandidatesForDisplay } from "@shared/giftPublicImageResolve.js";
 
@@ -116,6 +121,33 @@ export function giftImageFieldsForDebug(gift, runtime = {}) {
   const pres = resolveCollectibleHeroPresentation(gift);
   const solid = resolveBackdropTraitSolid(pres.backdropTheme, backdropLabel);
 
+  const symbolUrl = layers.symbolPatternUrl;
+  const symTrait = resolveSymbolPattern(extractSymbolLabelFromGift(gift));
+  const traitSvgId = symTrait?.id && GIFT_PATTERN_SYMBOL_IDS.has(symTrait.id) ? symTrait.id : "";
+  const apiSp =
+    gift.symbolPattern && typeof gift.symbolPattern === "object" && gift.symbolPattern.enabled
+      ? String(gift.symbolPattern.id || "")
+      : "";
+  const apiSvgId = apiSp && GIFT_PATTERN_SYMBOL_IDS.has(apiSp) ? apiSp : "";
+  const symbolPatternRendered = Boolean(symbolUrl || traitSvgId || apiSvgId);
+
+  let symbolPatternOpacity = /** @type {number | null} */ (null);
+  let symbolPatternBlendMode = "";
+  if (symbolPatternRendered) {
+    if (symbolUrl) {
+      const st = symbolRasterPatternStyleForHex(layers.backdropColor, {
+        isCardSurface: false,
+        reducedMotion: false,
+      });
+      symbolPatternOpacity = st.opacity;
+      symbolPatternBlendMode = st.mixBlendMode;
+    } else {
+      const st = traitSolidPatternOpacityForHex(solid.hex, { isCardSurface: false, reducedMotion: false });
+      symbolPatternOpacity = st.opacity;
+      symbolPatternBlendMode = st.mixBlendMode;
+    }
+  }
+
   return {
     collection: String(gift.collection || ""),
     model: String(gift.model || ""),
@@ -160,6 +192,9 @@ export function giftImageFieldsForDebug(gift, runtime = {}) {
     backdropColor: layers.backdropColor,
     backdropColorSource: solid.backdropColorMatchPath,
     symbolPatternUrl: layers.symbolPatternUrl,
+    symbolPatternRendered,
+    symbolPatternOpacity,
+    symbolPatternBlendMode,
     modelImageUrl: layers.modelImageUrl,
     modelAnimationUrl: layers.modelAnimationUrl,
   };

@@ -480,6 +480,37 @@ export function traitSolidPatternOpacityForHex(hex, opts) {
   return { opacity, mixBlendMode };
 }
 
+/**
+ * Opacity / blend for **URL-tiled** symbol rasters (Gift Asset `/symbols/…`) on trait-solid backdrops.
+ * Colorful backdrops use a fixed subtle opacity so pills stay visible (e.g. cobalt + drug).
+ * @param {string} hex
+ * @param {{ isCardSurface: boolean; reducedMotion: boolean }} opts
+ * @returns {{ opacity: number; mixBlendMode: string }}
+ */
+export function symbolRasterPatternStyleForHex(hex, opts) {
+  const { isCardSurface, reducedMotion } = opts;
+  const rgb = parseHex6(hex);
+  if (!rgb) {
+    return { opacity: 0.08, mixBlendMode: "overlay" };
+  }
+  const L = relativeLuminanceRgb(rgb);
+  const S = saturationRgb(rgb);
+  const dark = L < 0.38;
+  const light = L > 0.72;
+  const colorful = !dark && !light && S > 0.22;
+
+  if (light) {
+    return { opacity: reducedMotion ? 0.06 : 0.07, mixBlendMode: "multiply" };
+  }
+  if (colorful) {
+    return {
+      opacity: reducedMotion ? 0.07 : 0.08,
+      mixBlendMode: isCardSurface ? "soft-light" : "overlay",
+    };
+  }
+  return { opacity: reducedMotion ? 0.09 : 0.1, mixBlendMode: "soft-light" };
+}
+
 /** @deprecated use {@link getBackdropTraitSolidColor} */
 export function solidBackdropFillFromTheme(backdropTheme, backdropLabelFromGift) {
   return getBackdropTraitSolidColor(backdropTheme, backdropLabelFromGift);

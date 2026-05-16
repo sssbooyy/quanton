@@ -218,12 +218,36 @@ function SymbolGlyph({ symbolId }) {
 }
 
 /**
+ * Repeating raster tiles from Gift Asset `/symbols/*.png` (CSS background).
+ */
+function GiftRasterPatternTiles({ url, seed }) {
+  const size = 48 + (hashPresentationSeed(String(seed) + "symTile") % 40);
+  const posX = hashPresentationSeed(String(seed) + "symPx") % 72;
+  const posY = hashPresentationSeed(String(seed) + "symPy") % 72;
+  const safe = typeof url === "string" ? url.trim() : "";
+  if (!safe) return null;
+
+  return (
+    <div
+      className="giftPatternLayer__raster"
+      style={{
+        backgroundImage: `url(${JSON.stringify(safe)})`,
+        backgroundSize: `${size}px ${size}px`,
+        backgroundPosition: `${posX}px ${posY}px`,
+      }}
+    />
+  );
+}
+
+/**
  * Scattered low-contrast symbol tiles (Fragment-style atmosphere).
  */
-function GiftPatternLayerInner({ symbolId, color, seed, reducedMotion, tileCount = 32 }) {
+function GiftPatternLayerInner({ symbolId, symbolRasterUrl, color, seed, reducedMotion, tileCount = 32 }) {
+  const raster = typeof symbolRasterUrl === "string" ? symbolRasterUrl.trim() : "";
   const clipUid = useId().replace(/:/g, "");
   const clipId = `giftPatClip-${clipUid}`;
   const tiles = useMemo(() => {
+    if (raster || !symbolId) return [];
     const seedN = hashPresentationSeed(seed);
     const n = reducedMotion ? Math.min(tileCount, 14) : tileCount;
     const out = [];
@@ -236,7 +260,11 @@ function GiftPatternLayerInner({ symbolId, color, seed, reducedMotion, tileCount
       out.push({ x, y, r, s, o });
     }
     return out;
-  }, [seed, reducedMotion, tileCount]);
+  }, [seed, reducedMotion, tileCount, raster, symbolId]);
+
+  if (raster) {
+    return <GiftRasterPatternTiles url={raster} seed={seed} />;
+  }
 
   if (!symbolId) return null;
 

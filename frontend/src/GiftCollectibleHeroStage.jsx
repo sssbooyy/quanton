@@ -4,9 +4,10 @@ import {
   extractSymbolLabelFromGift,
   resolveCollectibleHeroPresentation,
   resolveSymbolPattern,
+  symbolRasterPatternStyleForHex,
   traitSolidPatternOpacityForHex,
 } from "@shared/giftHeroResolve.js";
-import { resolveBackdropPaintLayer } from "@shared/giftCollectibleLayers.js";
+import { resolveBackdropPaintLayer, resolveSymbolPatternUrl } from "@shared/giftCollectibleLayers.js";
 import { GiftPatternLayer, GIFT_PATTERN_SYMBOL_IDS, hashPresentationSeed } from "./giftPatternLayer.js";
 
 /**
@@ -96,6 +97,8 @@ export default function GiftCollectibleHeroStage({
   const hb = presentation.heroBackground;
 
   const symId = resolvePatternSymbolId(presentation, gift);
+  const symbolPatternUrl = useMemo(() => resolveSymbolPatternUrl(gift), [gift]);
+  const useRasterSymbol = Boolean(symbolPatternUrl);
 
   const symColor = String(bt?.symbolColor || "rgba(255,255,255,0.1)");
   const seed = String(gift?.id || gift?.listingId || "seed");
@@ -107,14 +110,27 @@ export default function GiftCollectibleHeroStage({
     [traitSolidFill, isCardSurface, reducedMotion],
   );
 
+  const rasterPatternStyle = useMemo(
+    () => symbolRasterPatternStyleForHex(traitSolidFill, { isCardSurface, reducedMotion }),
+    [traitSolidFill, isCardSurface, reducedMotion],
+  );
+
   const backdropBg = isProfile
     ? traitSolidFill
     : String(hb?.gradient || bt?.background || "#06080f");
 
-  const patternOpacity = isProfile ? patternStyle.opacity : reducedMotion ? 0.32 : 0.52;
+  const patternOpacity = isProfile
+    ? useRasterSymbol
+      ? rasterPatternStyle.opacity
+      : patternStyle.opacity
+    : reducedMotion
+      ? 0.32
+      : 0.52;
 
   const patternBlendMode = isProfile
-    ? patternStyle.mixBlendMode
+    ? useRasterSymbol
+      ? rasterPatternStyle.mixBlendMode
+      : patternStyle.mixBlendMode
     : isCardSurface
       ? inferCardPatternBlendMode(bt?.key)
       : undefined;
@@ -132,16 +148,22 @@ export default function GiftCollectibleHeroStage({
       className={`giftCollectibleHero${isProfile ? " giftCollectibleHero--profile giftCollectibleHero--traitSolid" : ""}${isCardSurface ? " giftCollectibleHero--cardSurface" : ""}`}
     >
       <div className="giftHeroBackdrop" style={{ background: backdropBg }} />
-      {symId ? (
+      {useRasterSymbol || symId ? (
         <div
-          className={`giftHeroPatternWrap${reducedMotion ? " giftHeroPatternWrap--reduced" : ""}${isProfile ? " giftHeroPatternWrap--profile" : ""}${isCardSurface && !reducedMotion ? " giftHeroPatternWrap--cardMotion" : ""}`}
+          className={`giftHeroPatternWrap${reducedMotion ? " giftHeroPatternWrap--reduced" : ""}${isProfile ? " giftHeroPatternWrap--profile" : ""}${isCardSurface && !reducedMotion ? " giftHeroPatternWrap--cardMotion" : ""}${useRasterSymbol ? " giftHeroPatternWrap--rasterSymbol" : ""}`}
           style={{
             opacity: patternOpacity,
             transform: patternTransform,
             mixBlendMode: patternBlendMode,
           }}
         >
-          <GiftPatternLayer symbolId={symId} color={symColor} seed={seed} reducedMotion={reducedMotion} />
+          <GiftPatternLayer
+            symbolId={symId}
+            symbolRasterUrl={symbolPatternUrl}
+            color={symColor}
+            seed={seed}
+            reducedMotion={reducedMotion}
+          />
         </div>
       ) : null}
       <div className="giftHeroOverlayTint" style={{ background: overlayBg }} />

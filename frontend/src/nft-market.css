@@ -1078,6 +1078,28 @@
   filter: blur(0.55px);
 }
 
+/* Raster `/symbols/*.png` tiling: keep sharp (no blur) and above bottom shade on trait-solid heroes */
+.giftHeroPatternWrap--rasterSymbol {
+  filter: none;
+}
+
+.giftPatternLayer__raster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background-repeat: repeat;
+  pointer-events: none;
+}
+
+.giftCollectibleHero--traitSolid .giftHeroPatternWrap--rasterSymbol {
+  z-index: 4;
+}
+
+.giftCollectibleHero--traitSolid .giftHeroPatternWrap--rasterSymbol ~ .giftHeroBottomShade--profile {
+  z-index: 2;
+}
+
 .giftHeroBottomShade--profile {
   height: 26%;
   background: linear-gradient(to top, rgba(0, 0, 0, 0.22) 0%, transparent 100%);

@@ -1039,10 +1039,6 @@ function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
         aria-labelledby="nft-detail-title"
       >
         <div className="tgCollectibleCard">
-          <div className="tgCollectibleCard__backdrop" aria-hidden="true">
-            <GiftCollectibleHeroStage gift={gift} variant="collectibleProfile" backdropOnly />
-          </div>
-
           <div className="tgCollectibleCard__body tgCollectibleCard__body--portals">
             <div className="portalsToolbar">
               <button
@@ -1080,7 +1076,10 @@ function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
               </button>
             </div>
 
-            <div className="tgCollectibleHero">
+            <div className="tgCollectibleHero tgCollectibleHero--portalsSlot">
+              <div className="tgCollectibleHero__backdrop" aria-hidden="true">
+                <GiftCollectibleHeroStage gift={gift} variant="collectibleProfile" backdropOnly />
+              </div>
               <div className={`tgCollectibleHeroImg${ogFallback ? " tgCollectibleHeroImg--ogFallback" : ""}`}>
                 <GiftAnimatedHero
                   animationUrl={portalLayers.modelAnimationUrl}
@@ -1111,19 +1110,29 @@ function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
               ) : null}
             </div>
 
-            <div className="portalsFloorCard">
-              <div className="portalsFloorCard__top">
-                <span className="portalsFloorCard__label">{tk("portalsFloorTitle")}</span>
-                {gift.floorIsLive ? (
-                  <span className="portalsLivePill">
-                    <span className="nftDetailLiveFloorDot" aria-hidden="true" />
-                    {tk("livePill")}
-                  </span>
-                ) : null}
+            <div className="portalsPriceStack">
+              <div className="portalsFloorCard portalsFloorCard--sellerPrimary">
+                <div className="portalsFloorCard__top">
+                  <span className="portalsFloorCard__label">{tk("portalsSellerPrice")}</span>
+                </div>
+                <p className="portalsFloorCard__value mono">
+                  {formatTonAmount(gift.priceTon) ? `${formatTonAmount(gift.priceTon)} TON` : "—"}
+                </p>
               </div>
-              <p className="portalsFloorCard__value mono">
-                {formatTonAmount(liveFloorTon) ? `${formatTonAmount(liveFloorTon)} TON` : "—"}
-              </p>
+              <div className="portalsFloorCard portalsFloorCard--floorSecondary">
+                <div className="portalsFloorCard__top">
+                  <span className="portalsFloorCard__label">{tk("portalsReferenceFloor")}</span>
+                  {gift.floorIsLive ? (
+                    <span className="portalsLivePill">
+                      <span className="nftDetailLiveFloorDot" aria-hidden="true" />
+                      {tk("livePill")}
+                    </span>
+                  ) : null}
+                </div>
+                <p className="portalsFloorCard__value portalsFloorCard__value--secondary mono">
+                  {formatTonAmount(liveFloorTon) ? `${formatTonAmount(liveFloorTon)} TON` : "—"}
+                </p>
+              </div>
             </div>
 
             <div className="portalsActionsRow">
@@ -1152,24 +1161,6 @@ function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
                       </span>
                     </div>
                   ))}
-                </div>
-              </section>
-
-              <section className="portalsGlassSection">
-                <h3 className="portalsSectionTitle">{tk("portalsPriceCompare")}</h3>
-                <div className="portalsPriceRows">
-                  <div className="portalsPriceRow">
-                    <span className="portalsPriceRow__label">{tk("portalsSellerPrice")}</span>
-                    <span className="portalsPriceRow__value mono">
-                      {formatTonAmount(gift.priceTon) ? `${formatTonAmount(gift.priceTon)} TON` : "—"}
-                    </span>
-                  </div>
-                  <div className="portalsPriceRow">
-                    <span className="portalsPriceRow__label">{tk("portalsReferenceFloor")}</span>
-                    <span className="portalsPriceRow__value mono">
-                      {formatTonAmount(liveFloorTon) ? `${formatTonAmount(liveFloorTon)} TON` : "—"}
-                    </span>
-                  </div>
                 </div>
               </section>
 

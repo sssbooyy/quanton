@@ -28,6 +28,7 @@ import {
   sortGiftList,
   uniqueCollections,
 } from "./marketplaceBrowse.js";
+import { resolveCollectibleHeroPresentation, isOnyxBlackBackdropTheme } from "@shared/giftHeroResolve.js";
 import { useMarketplaceCart } from "./useMarketplaceCart.js";
 import {
   giftBackdropLabel,
@@ -803,6 +804,11 @@ function GiftCard({ gift, lang, tk, onOpen, onAddToCart, inCart }) {
   const mainRaster = useGiftMainRasterImage(gift);
   const { primary: cardTitle, secondary: modelLine } = giftCardTitleLines(gift);
 
+  const profileBackdropOnyx = useMemo(
+    () => isOnyxBlackBackdropTheme(resolveCollectibleHeroPresentation(gift).backdropTheme),
+    [gift],
+  );
+
   const rawRasterUrl = mainRaster.url;
   const imageUrl = cacheBustMediaUrl(rawRasterUrl, gift);
   const renderable = isRenderableMediaUrl(imageUrl);
@@ -834,7 +840,7 @@ function GiftCard({ gift, lang, tk, onOpen, onAddToCart, inCart }) {
         aria-label={`${gift.name}, ${gift.priceTon} TON`}
       >
         <div
-          className={`nftCardMediaWrap nftCardMediaWrap--collectibleHero${ogFallback ? " nftCardMediaWrap--ogFallback" : ""}`}
+          className={`nftCardMediaWrap nftCardMediaWrap--collectibleHero${ogFallback ? " nftCardMediaWrap--ogFallback" : ""}${profileBackdropOnyx ? " nftCardMediaWrap--onyxBlack" : ""}`}
           aria-busy={showSkeleton}
         >
           <div className="nftCardHeroBackdrop" aria-hidden="true">
@@ -916,6 +922,11 @@ function GiftCard({ gift, lang, tk, onOpen, onAddToCart, inCart }) {
 
 function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
   const mainRaster = useGiftMainRasterImage(gift);
+
+  const detailBackdropOnyx = useMemo(
+    () => isOnyxBlackBackdropTheme(resolveCollectibleHeroPresentation(gift).backdropTheme),
+    [gift],
+  );
 
   const liveFloorTon = (() => {
     const r = Number(gift.realFloorTon);
@@ -1022,7 +1033,7 @@ function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
         aria-modal="true"
         aria-labelledby="nft-detail-title"
       >
-        <div className="tgCollectibleCard">
+        <div className={`tgCollectibleCard${detailBackdropOnyx ? " tgCollectibleCard--onyxBlack" : ""}`}>
           <div className="tgCollectibleCard__backdrop" aria-hidden="true">
             <GiftCollectibleHeroStage gift={gift} variant="collectibleProfile" backdropOnly />
           </div>

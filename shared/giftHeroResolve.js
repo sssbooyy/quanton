@@ -130,13 +130,33 @@ export function resolveBackdropTheme(backdropName) {
   };
 }
 
+/** Portals/Telegram Onyx Black: flat graphite, not pure black from gradient end-stops. */
+export const ONYX_BLACK_TRAIT_SOLID = "#303637";
+
+/**
+ * @param {{ key?: unknown; label?: unknown } | null | undefined} backdropTheme
+ * @returns {boolean}
+ */
+export function isOnyxBlackBackdropTheme(backdropTheme) {
+  const key = String(backdropTheme?.key ?? "").trim().toLowerCase();
+  const label = String(backdropTheme?.label ?? "").trim().toLowerCase();
+  return (
+    key === "onyx-black" ||
+    label === "onyx black" ||
+    (label.includes("onyx") && label.includes("black"))
+  );
+}
+
 /**
  * Portals-style flat fill: one color from theme `background` gradient.
  * Dark traits → darkest stop; light traits (champagne, pearl) → lightest stop.
- * @param {{ background?: unknown } | null | undefined} backdropTheme
+ * Onyx Black always uses {@link ONYX_BLACK_TRAIT_SOLID} (never the near-black gradient tail).
+ * @param {{ key?: unknown; label?: unknown; background?: unknown } | null | undefined} backdropTheme
  * @returns {string}
  */
 export function solidBackdropFillFromTheme(backdropTheme) {
+  if (isOnyxBlackBackdropTheme(backdropTheme)) return ONYX_BLACK_TRAIT_SOLID;
+
   const bg = String(backdropTheme?.background ?? "").trim();
   if (!bg) return "#06080f";
   const hexes = [...bg.matchAll(/#[0-9a-fA-F]{6}\b/gi)].map((m) => m[0]);

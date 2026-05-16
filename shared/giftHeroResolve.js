@@ -482,39 +482,30 @@ export function traitSolidPatternOpacityForHex(hex, opts) {
 
 /**
  * Opacity / blend for **URL-tiled** symbol rasters (Gift Asset `/symbols/…`) on trait-solid backdrops.
- * Faint embedded texture: wrap opacity stays low; per-tile filter in CSS pre-darkens rasters.
+ * Wrap opacity is fixed; blend mode still follows backdrop category (Telegram-style).
  * @param {string} hex
  * @param {{ isCardSurface: boolean; reducedMotion: boolean }} opts
  * @returns {{ opacity: number; mixBlendMode: string }}
  */
 export function symbolRasterPatternStyleForHex(hex, opts) {
-  const { isCardSurface, reducedMotion } = opts;
+  const { isCardSurface } = opts;
+  const opacity = 0.2;
   const rgb = parseHex6(hex);
   if (!rgb) {
-    return { opacity: reducedMotion ? 0.04 : 0.046, mixBlendMode: "overlay" };
+    return { opacity, mixBlendMode: "overlay" };
   }
   const L = relativeLuminanceRgb(rgb);
   const S = saturationRgb(rgb);
-  const dark = L < 0.38;
   const light = L > 0.72;
-  const colorful = !dark && !light && S > 0.22;
+  const colorful = L >= 0.38 && L <= 0.72 && S > 0.22;
 
   if (light) {
-    return {
-      opacity: reducedMotion ? 0.034 : 0.04,
-      mixBlendMode: "multiply",
-    };
+    return { opacity, mixBlendMode: "multiply" };
   }
   if (colorful) {
-    return {
-      opacity: reducedMotion ? 0.036 : 0.042,
-      mixBlendMode: isCardSurface ? "soft-light" : "overlay",
-    };
+    return { opacity, mixBlendMode: isCardSurface ? "soft-light" : "overlay" };
   }
-  return {
-    opacity: reducedMotion ? 0.05 : 0.056,
-    mixBlendMode: "soft-light",
-  };
+  return { opacity, mixBlendMode: "soft-light" };
 }
 
 /** @deprecated use {@link getBackdropTraitSolidColor} */

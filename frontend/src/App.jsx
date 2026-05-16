@@ -28,8 +28,12 @@ import {
   sortGiftList,
   uniqueCollections,
 } from "./marketplaceBrowse.js";
-import { resolveCollectibleHeroPresentation, isOnyxBlackBackdropTheme } from "@shared/giftHeroResolve.js";
 import { useMarketplaceCart } from "./useMarketplaceCart.js";
+import {
+  extractBackdropLabelFromGift,
+  resolveBackdropTraitSolid,
+  resolveCollectibleHeroPresentation,
+} from "@shared/giftHeroResolve.js";
 import {
   giftBackdropLabel,
   giftListingIdDisplay,
@@ -804,11 +808,6 @@ function GiftCard({ gift, lang, tk, onOpen, onAddToCart, inCart }) {
   const mainRaster = useGiftMainRasterImage(gift);
   const { primary: cardTitle, secondary: modelLine } = giftCardTitleLines(gift);
 
-  const profileBackdropOnyx = useMemo(
-    () => isOnyxBlackBackdropTheme(resolveCollectibleHeroPresentation(gift).backdropTheme),
-    [gift],
-  );
-
   const rawRasterUrl = mainRaster.url;
   const imageUrl = cacheBustMediaUrl(rawRasterUrl, gift);
   const renderable = isRenderableMediaUrl(imageUrl);
@@ -816,6 +815,13 @@ function GiftCard({ gift, lang, tk, onOpen, onAddToCart, inCart }) {
   const fitClass = fit === "cover" ? "nftCardImg--cover" : "nftCardImg--contain";
   const ogFallback = isOpenGraphMediaFallback(gift);
   const showCardImageDebug = isImageDebugEnabled();
+
+  const backdropSolidDebug = useMemo(() => {
+    const pres = resolveCollectibleHeroPresentation(gift);
+    return resolveBackdropTraitSolid(pres.backdropTheme);
+  }, [gift]);
+
+  const backdropLabelDebug = useMemo(() => extractBackdropLabelFromGift(gift), [gift]);
 
   useEffect(() => {
     logGiftImageChoice("card", gift, { src: imageUrl, srcSet: undefined, heroPoster: imageUrl });
@@ -840,7 +846,7 @@ function GiftCard({ gift, lang, tk, onOpen, onAddToCart, inCart }) {
         aria-label={`${gift.name}, ${gift.priceTon} TON`}
       >
         <div
-          className={`nftCardMediaWrap nftCardMediaWrap--collectibleHero${ogFallback ? " nftCardMediaWrap--ogFallback" : ""}${profileBackdropOnyx ? " nftCardMediaWrap--onyxBlack" : ""}`}
+          className={`nftCardMediaWrap nftCardMediaWrap--collectibleHero${ogFallback ? " nftCardMediaWrap--ogFallback" : ""}`}
           aria-busy={showSkeleton}
         >
           <div className="nftCardHeroBackdrop" aria-hidden="true">
@@ -880,7 +886,7 @@ function GiftCard({ gift, lang, tk, onOpen, onAddToCart, inCart }) {
             ) : null}
             {showCardImageDebug ? (
               <pre className="nftCardImageDebug mono">
-                {`cardActiveImageUrl: ${rawRasterUrl || "—"}\ncardActiveImageSource: ${mainRaster.source || "—"}\ncardFailedImageUrls: ${mainRaster.failedUrls?.length ? mainRaster.failedUrls.join(", ") : "—"}\ncardImageCandidates: ${JSON.stringify(mainRaster.candidates)}`}
+                {`cardActiveImageUrl: ${rawRasterUrl || "—"}\ncardActiveImageSource: ${mainRaster.source || "—"}\ncardFailedImageUrls: ${mainRaster.failedUrls?.length ? mainRaster.failedUrls.join(", ") : "—"}\ncardImageCandidates: ${JSON.stringify(mainRaster.candidates)}\nbackdropLabel: ${backdropLabelDebug || "—"}\nbackdropSolidColor: ${backdropSolidDebug.hex}\nbackdropColorSource: ${backdropSolidDebug.source}`}
               </pre>
             ) : null}
           </div>
@@ -922,11 +928,6 @@ function GiftCard({ gift, lang, tk, onOpen, onAddToCart, inCart }) {
 
 function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
   const mainRaster = useGiftMainRasterImage(gift);
-
-  const detailBackdropOnyx = useMemo(
-    () => isOnyxBlackBackdropTheme(resolveCollectibleHeroPresentation(gift).backdropTheme),
-    [gift],
-  );
 
   const liveFloorTon = (() => {
     const r = Number(gift.realFloorTon);
@@ -1033,7 +1034,7 @@ function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
         aria-modal="true"
         aria-labelledby="nft-detail-title"
       >
-        <div className={`tgCollectibleCard${detailBackdropOnyx ? " tgCollectibleCard--onyxBlack" : ""}`}>
+        <div className="tgCollectibleCard">
           <div className="tgCollectibleCard__backdrop" aria-hidden="true">
             <GiftCollectibleHeroStage gift={gift} variant="collectibleProfile" backdropOnly />
           </div>

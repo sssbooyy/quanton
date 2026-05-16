@@ -130,62 +130,283 @@ export function resolveBackdropTheme(backdropName) {
   };
 }
 
-/** Portals/Telegram Onyx Black: flat graphite, not pure black from gradient end-stops. */
+/**
+ * Normalize backdrop label for trait color matching (lowercase, no punctuation, collapsed spaces).
+ * @param {unknown} raw
+ * @returns {string}
+ */
+export function normalizeBackdropLabelForMatch(raw) {
+  return String(raw ?? "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** @param {string} hex */
+function parseHex6(hex) {
+  const h = String(hex).replace("#", "").trim();
+  if (h.length !== 6 || !/^[0-9a-fA-F]{6}$/i.test(h)) return null;
+  return {
+    r: parseInt(h.slice(0, 2), 16),
+    g: parseInt(h.slice(2, 4), 16),
+    b: parseInt(h.slice(4, 6), 16),
+  };
+}
+
+/** @param {{ r: number; g: number; b: number }} rgb */
+function rgbToHex6(rgb) {
+  const c = (n) =>
+    Math.max(0, Math.min(255, Math.round(n)))
+      .toString(16)
+      .padStart(2, "0");
+  return `#${c(rgb.r)}${c(rgb.g)}${c(rgb.b)}`.toUpperCase();
+}
+
+/** @param {{ r: number; g: number; b: number }} rgb */
+function relativeLuminanceRgb(rgb) {
+  const lin = (c) => {
+    const x = c / 255;
+    return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+  };
+  const R = lin(rgb.r);
+  const G = lin(rgb.g);
+  const B = lin(rgb.b);
+  return 0.2126 * R + 0.7152 * G + 0.0722 * B;
+}
+
+/** @param {{ r: number; g: number; b: number }} rgb */
+function saturationRgb(rgb) {
+  const r = rgb.r / 255;
+  const g = rgb.g / 255;
+  const b = rgb.b / 255;
+  const mx = Math.max(r, g, b);
+  const mn = Math.min(r, g, b);
+  if (mx === 0) return 0;
+  return (mx - mn) / mx;
+}
+
+/** @param {string} hex */
+function relativeLuminanceHex(hex) {
+  const rgb = parseHex6(hex);
+  return rgb ? relativeLuminanceRgb(rgb) : 0;
+}
+
+/** @param {string} hex @param {number} minL */
+function liftHexUntilLuminance(hex, minL = 0.28) {
+  let rgb = parseHex6(hex);
+  if (!rgb) return "#6A7380";
+  let h = rgbToHex6(rgb);
+  let t = 0;
+  while (relativeLuminanceHex(h) < minL && t < 0.92) {
+    t += 0.07;
+    rgb = {
+      r: rgb.r + (255 - rgb.r) * 0.12,
+      g: rgb.g + (255 - rgb.g) * 0.12,
+      b: rgb.b + (255 - rgb.b) * 0.12,
+    };
+    h = rgbToHex6(rgb);
+  }
+  return h;
+}
+
+/**
+ * @param {{ background?: unknown } | null | undefined} backdropTheme
+ * @returns {string[]}
+ */
+function extractGradientHexStops(backdropTheme) {
+  const bg = String(backdropTheme?.background ?? "").trim();
+  return [...bg.matchAll(/#[0-9a-fA-F]{6}\b/gi)].map((m) => m[0].toUpperCase());
+}
+
+/**
+ * Unknown traits: prefer saturated mid gradient stop, never darkest; lift if too dark.
+ * @param {{ background?: unknown } | null | undefined} backdropTheme
+ * @returns {string}
+ */
+export function deriveBackdropTraitSolidFromTheme(backdropTheme) {
+  const hexes = extractGradientHexStops(backdropTheme);
+  if (hexes.length === 0) return liftHexUntilLuminance("#5A6570", 0.28);
+  if (hexes.length === 1) return liftHexUntilLuminance(hexes[0], 0.28);
+
+  let bestHex = hexes[0];
+  let bestSat = -1;
+  for (const h of hexes) {
+    const rgb = parseHex6(h);
+    if (!rgb) continue;
+    const s = saturationRgb(rgb);
+    if (s > bestSat) {
+      bestSat = s;
+      bestHex = h;
+    }
+  }
+  const mid = hexes[Math.floor((hexes.length - 1) / 2)] || bestHex;
+  const pick = bestSat >= 0.12 ? bestHex : mid;
+  return liftHexUntilLuminance(pick, 0.28);
+}
+
+/** Telegram/Portals-style solid per known theme JSON key (brighter than darkest gradient stop). */
+const THEME_KEY_TRAIT_SOLID = {
+  "onyx-black": "#303637",
+  "midnight-blue": "#394D8F",
+  "deep-blue": "#4F8DFF",
+  "royal-blue": "#4E7BEF",
+  "sky-blue": "#6FA8FF",
+  "ice-blue": "#7AB8FF",
+  "purple": "#7B5CE6",
+  "violet": "#8B6CE8",
+  "candy-pink": "#F178B6",
+  "rose-gold": "#E8B896",
+  "golden": "#D8A84F",
+  "emerald": "#37A66B",
+  "forest-green": "#3FAF70",
+  "crimson": "#D94A4A",
+  "ruby-red": "#D94A4A",
+  "sunset-orange": "#E58A3A",
+  "coral": "#F09072",
+  "mint": "#69CFA5",
+  "slate": "#8A929A",
+  "silver-mist": "#8A929A",
+  "champagne": "#E8E4DC",
+  "aquamarine": "#52D4C0",
+  "lavender": "#9B7CFF",
+  neutral: "#6A7380",
+};
+
+/**
+ * @param {string} blob normalized "label keywords" string
+ * @returns {{ hex: string; matched: string } | null}
+ */
+function matchExplicitBackdropBlob(blob) {
+  if (/\bonyx black\b/.test(blob) || /\bonyx\b/.test(blob)) return { hex: "#303637", matched: "onyx" };
+  if (/\bnavy blue\b/.test(blob) || /\bnavy\b/.test(blob)) return { hex: "#394D8F", matched: "navy" };
+  if (/\bcobalt blue\b/.test(blob) || /\bcobalt\b/.test(blob)) return { hex: "#5B73D6", matched: "cobalt" };
+  if (/\bsapphire blue\b/.test(blob) || /\bsapphire\b/.test(blob)) return { hex: "#4E7BEF", matched: "sapphire" };
+  if (/\bsky blue\b/.test(blob) || (/\bsky\b/.test(blob) && /\bblue\b/.test(blob))) return { hex: "#6FA8FF", matched: "sky blue" };
+  if (/\bazure blue\b/.test(blob) || /\bazure\b/.test(blob)) return { hex: "#4F8DFF", matched: "azure" };
+  if (/\bkhaki green\b/.test(blob) || /\bkhaki\b/.test(blob)) return { hex: "#8A9460", matched: "khaki" };
+  if (/\blavender\b/.test(blob)) return { hex: "#9B7CFF", matched: "lavender" };
+  if (/\bgrape\b/.test(blob) || /\bpurple\b/.test(blob) || /\bplum\b/.test(blob) || /\bviolet\b/.test(blob)) {
+    return { hex: "#7B5CE6", matched: "purple" };
+  }
+  if (/\bcandy pink\b/.test(blob) || /\bmagenta\b/.test(blob) || /\bfuchsia\b/.test(blob) || /\bpink\b/.test(blob)) {
+    return { hex: "#F178B6", matched: "pink" };
+  }
+  if (/\brose gold\b/.test(blob)) return { hex: "#E8B896", matched: "rose gold" };
+  if (/\brose\b/.test(blob)) return { hex: "#E85B8F", matched: "rose" };
+  if (/\bruby\b/.test(blob) || /\bscarlet\b/.test(blob) || /\bcrimson\b/.test(blob) || /\bburgundy\b/.test(blob)) {
+    return { hex: "#D94A4A", matched: "red" };
+  }
+  if (/\bred\b/.test(blob) && !/\brose\b/.test(blob)) return { hex: "#D94A4A", matched: "red" };
+  if (/\bmint\b/.test(blob) || /\bseafoam\b/.test(blob)) return { hex: "#69CFA5", matched: "mint" };
+  if (/\bemerald\b/.test(blob) || /\bforest\b/.test(blob) || /\bjade\b/.test(blob)) return { hex: "#37A66B", matched: "emerald" };
+  if (/\bgreen\b/.test(blob) && !/\bkhaki\b/.test(blob) && !/\bmint\b/.test(blob)) return { hex: "#37A66B", matched: "green" };
+  if (/\bgold\b/.test(blob) || /\bgolden\b/.test(blob) || /\bamber\b/.test(blob) || /\bhoney\b/.test(blob)) {
+    return { hex: "#D8A84F", matched: "gold" };
+  }
+  if (/\borange\b/.test(blob) || /\bsunset\b/.test(blob) || /\btangerine\b/.test(blob) || /\bpeach\b/.test(blob)) {
+    return { hex: "#E58A3A", matched: "orange" };
+  }
+  if (/\bwhite\b/.test(blob) || /\bpearl\b/.test(blob) || /\bivory\b/.test(blob)) return { hex: "#DDE3EA", matched: "white" };
+  if (/\bsilver\b/.test(blob) || /\bplatinum\b/.test(blob) || /\bgrey\b/.test(blob) || /\bgray\b/.test(blob) || /\bsteel\b/.test(blob) || /\bslate\b/.test(blob) || /\bmist\b/.test(blob)) {
+    return { hex: "#8A929A", matched: "silver" };
+  }
+
+  return null;
+}
+
+/**
+ * @typedef {{ hex: string; source: "explicit" | "derived"; labelNorm: string; themeKey: string }} BackdropTraitSolidResult
+ */
+
+/**
+ * Central resolver: Portals-style flat trait color (explicit aliases, theme keys, or derived gradient).
+ * @param {{ key?: unknown; label?: unknown; background?: unknown } | null | undefined} backdropTheme
+ * @returns {BackdropTraitSolidResult}
+ */
+export function resolveBackdropTraitSolid(backdropTheme) {
+  const labelNorm = normalizeBackdropLabelForMatch(backdropTheme?.label);
+  const themeKey = String(backdropTheme?.key ?? "").trim().toLowerCase();
+  const keyWords = themeKey.replace(/-/g, " ").trim();
+  const blob = `${labelNorm} ${keyWords}`.trim();
+
+  const explicit = matchExplicitBackdropBlob(blob);
+  if (explicit) {
+    return { hex: explicit.hex, source: "explicit", labelNorm: blob, themeKey };
+  }
+
+  const nk = normalizeTraitKey(themeKey);
+  if (nk && THEME_KEY_TRAIT_SOLID[nk]) {
+    return { hex: THEME_KEY_TRAIT_SOLID[nk], source: "explicit", labelNorm: blob, themeKey };
+  }
+
+  const derived = deriveBackdropTraitSolidFromTheme(backdropTheme);
+  return { hex: derived, source: "derived", labelNorm: blob, themeKey };
+}
+
+/**
+ * @param {{ key?: unknown; label?: unknown; background?: unknown } | null | undefined} backdropTheme
+ * @returns {string}
+ */
+export function getBackdropTraitSolidColor(backdropTheme) {
+  return resolveBackdropTraitSolid(backdropTheme).hex;
+}
+
+/**
+ * Symbol tiling opacity / blend for trait-solid profile heroes (luminance/saturation aware).
+ * @param {string} hex
+ * @param {{ isCardSurface: boolean; reducedMotion: boolean }} opts
+ * @returns {{ opacity: number; mixBlendMode: string }}
+ */
+export function traitSolidPatternOpacityForHex(hex, opts) {
+  const { isCardSurface, reducedMotion } = opts;
+  const rgb = parseHex6(hex);
+  if (!rgb) {
+    return { opacity: isCardSurface ? 0.072 : 0.07, mixBlendMode: "soft-light" };
+  }
+  const L = relativeLuminanceRgb(rgb);
+  const S = saturationRgb(rgb);
+  const dark = L < 0.38;
+  const light = L > 0.72;
+  const colorful = !dark && !light && S > 0.22;
+
+  let opacity;
+  let mixBlendMode = "soft-light";
+
+  if (light) {
+    opacity = reducedMotion ? 0.05 : 0.055;
+    mixBlendMode = "multiply";
+  } else if (colorful) {
+    opacity = isCardSurface ? (reducedMotion ? 0.042 : 0.058) : reducedMotion ? 0.045 : 0.065;
+    mixBlendMode = isCardSurface ? "overlay" : "soft-light";
+    opacity = Math.min(opacity, 0.07);
+  } else {
+    opacity = isCardSurface ? (reducedMotion ? 0.065 : 0.085) : reducedMotion ? 0.062 : 0.078;
+    opacity = Math.min(Math.max(opacity, 0.06), 0.09);
+  }
+
+  return { opacity, mixBlendMode };
+}
+
+/** @deprecated use {@link getBackdropTraitSolidColor} */
+export function solidBackdropFillFromTheme(backdropTheme) {
+  return getBackdropTraitSolidColor(backdropTheme);
+}
+
+/** Portals/Telegram Onyx Black solid (alias for explicit map). */
 export const ONYX_BLACK_TRAIT_SOLID = "#303637";
 
 /**
+ * @deprecated Onyx uses {@link getBackdropTraitSolidColor}; kept for callers/tests.
  * @param {{ key?: unknown; label?: unknown } | null | undefined} backdropTheme
  * @returns {boolean}
  */
 export function isOnyxBlackBackdropTheme(backdropTheme) {
   const key = String(backdropTheme?.key ?? "").trim().toLowerCase();
-  const label = String(backdropTheme?.label ?? "").trim().toLowerCase();
-  return (
-    key === "onyx-black" ||
-    label === "onyx black" ||
-    (label.includes("onyx") && label.includes("black"))
-  );
-}
-
-/**
- * Portals-style flat fill: one color from theme `background` gradient.
- * Dark traits → darkest stop; light traits (champagne, pearl) → lightest stop.
- * Onyx Black always uses {@link ONYX_BLACK_TRAIT_SOLID} (never the near-black gradient tail).
- * @param {{ key?: unknown; label?: unknown; background?: unknown } | null | undefined} backdropTheme
- * @returns {string}
- */
-export function solidBackdropFillFromTheme(backdropTheme) {
-  if (isOnyxBlackBackdropTheme(backdropTheme)) return ONYX_BLACK_TRAIT_SOLID;
-
-  const bg = String(backdropTheme?.background ?? "").trim();
-  if (!bg) return "#06080f";
-  const hexes = [...bg.matchAll(/#[0-9a-fA-F]{6}\b/gi)].map((m) => m[0]);
-  if (hexes.length === 0) {
-    if (/^#[0-9a-fA-F]{3,8}\b/i.test(bg)) {
-      const one = bg.match(/^#[0-9a-fA-F]{3,8}\b/i);
-      return one ? one[0] : "#06080f";
-    }
-    return "#06080f";
-  }
-  if (hexes.length === 1) return hexes[0];
-
-  /** @param {string} hx */
-  const lum = (hx) => {
-    const h = hx.replace("#", "");
-    const r = parseInt(h.slice(0, 2), 16) / 255;
-    const g = parseInt(h.slice(2, 4), 16) / 255;
-    const b = parseInt(h.slice(4, 6), 16) / 255;
-    const L = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
-    return 0.2126 * L(r) + 0.7152 * L(g) + 0.0722 * L(b);
-  };
-
-  const first = hexes[0];
-  const last = hexes[hexes.length - 1];
-  const lF = lum(first);
-  const lL = lum(last);
-  if (lL < 0.22 && lF > lL) return last;
-  if (lF > 0.72 && lF > lL) return first;
-  return hexes[Math.floor((hexes.length - 1) / 2)];
+  const label = normalizeBackdropLabelForMatch(backdropTheme?.label);
+  return key === "onyx-black" || /\bonyx black\b/.test(label) || (/\bonyx\b/.test(label) && /\bblack\b/.test(label));
 }
 
 /** Known Telegram / Fragment symbol slugs → tile id */

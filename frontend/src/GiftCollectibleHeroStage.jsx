@@ -4,8 +4,8 @@ import {
   extractSymbolLabelFromGift,
   resolveCollectibleHeroPresentation,
   resolveSymbolPattern,
-  solidBackdropFillFromTheme,
-  isOnyxBlackBackdropTheme,
+  getBackdropTraitSolidColor,
+  traitSolidPatternOpacityForHex,
 } from "@shared/giftHeroResolve.js";
 import { GiftPatternLayer, GIFT_PATTERN_SYMBOL_IDS, hashPresentationSeed } from "./giftPatternLayer.js";
 
@@ -100,26 +100,24 @@ export default function GiftCollectibleHeroStage({
   const symColor = String(bt?.symbolColor || "rgba(255,255,255,0.1)");
   const seed = String(gift?.id || gift?.listingId || "seed");
 
-  const isOnyxBlack = isOnyxBlackBackdropTheme(bt);
+  const traitSolidFill = useMemo(() => getBackdropTraitSolidColor(bt), [bt]);
 
-  /** Trait solid (Telegram/Portals-style); matches resolved backdropTheme, not image palette. */
-  const traitSolidFill = useMemo(() => solidBackdropFillFromTheme(bt), [bt]);
+  const patternStyle = useMemo(
+    () => traitSolidPatternOpacityForHex(traitSolidFill, { isCardSurface, reducedMotion }),
+    [traitSolidFill, isCardSurface, reducedMotion],
+  );
 
   const backdropBg = isProfile
     ? traitSolidFill
     : String(hb?.gradient || bt?.background || "#06080f");
 
-  const patternOpacity = (() => {
-    if (isProfile && isOnyxBlack) {
-      if (isCardSurface) return reducedMotion ? 0.065 : 0.082;
-      return reducedMotion ? 0.062 : 0.076;
-    }
-    if (isCardSurface) return reducedMotion ? 0.04 : 0.065;
-    if (isProfile) return reducedMotion ? 0.035 : 0.052;
-    return reducedMotion ? 0.32 : 0.52;
-  })();
+  const patternOpacity = isProfile ? patternStyle.opacity : reducedMotion ? 0.32 : 0.52;
 
-  const patternBlendMode = isCardSurface ? inferCardPatternBlendMode(bt?.key) : undefined;
+  const patternBlendMode = isProfile
+    ? patternStyle.mixBlendMode
+    : isCardSurface
+      ? inferCardPatternBlendMode(bt?.key)
+      : undefined;
 
   const patternTransform = isProfile ? undefined : `translate(${(hashPresentationSeed(seed) % 9) - 4}px, ${(hashPresentationSeed(seed + "y") % 7) - 3}px)`;
 
@@ -131,7 +129,7 @@ export default function GiftCollectibleHeroStage({
 
   return (
     <div
-      className={`giftCollectibleHero${isProfile ? " giftCollectibleHero--profile giftCollectibleHero--traitSolid" : ""}${isProfile && isOnyxBlack ? " giftCollectibleHero--onyxBlack" : ""}${isCardSurface ? " giftCollectibleHero--cardSurface" : ""}`}
+      className={`giftCollectibleHero${isProfile ? " giftCollectibleHero--profile giftCollectibleHero--traitSolid" : ""}${isCardSurface ? " giftCollectibleHero--cardSurface" : ""}`}
     >
       <div className="giftHeroBackdrop" style={{ background: backdropBg }} />
       {symId ? (

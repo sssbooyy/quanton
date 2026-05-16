@@ -482,30 +482,18 @@ export function traitSolidPatternOpacityForHex(hex, opts) {
 
 /**
  * Opacity / blend for **URL-tiled** symbol rasters (Gift Asset `/symbols/…`) on trait-solid backdrops.
- * Wrap opacity is fixed; blend mode still follows backdrop category (Telegram-style).
- * @param {string} hex
- * @param {{ isCardSurface: boolean; reducedMotion: boolean }} opts
+ * Fixed wrap opacity; blend mode differs only by surface (card vs detail hero), not backdrop analysis.
+ * @param {unknown} _hex unused (API stability)
+ * @param {{ isCardSurface: boolean; reducedMotion?: boolean }} opts
  * @returns {{ opacity: number; mixBlendMode: string }}
  */
-export function symbolRasterPatternStyleForHex(hex, opts) {
+export function symbolRasterPatternStyleForHex(_hex, opts) {
+  void _hex;
   const { isCardSurface } = opts;
-  const opacity = 0.2;
-  const rgb = parseHex6(hex);
-  if (!rgb) {
-    return { opacity, mixBlendMode: "overlay" };
-  }
-  const L = relativeLuminanceRgb(rgb);
-  const S = saturationRgb(rgb);
-  const light = L > 0.72;
-  const colorful = L >= 0.38 && L <= 0.72 && S > 0.22;
-
-  if (light) {
-    return { opacity, mixBlendMode: "multiply" };
-  }
-  if (colorful) {
-    return { opacity, mixBlendMode: isCardSurface ? "soft-light" : "overlay" };
-  }
-  return { opacity, mixBlendMode: "soft-light" };
+  return {
+    opacity: 0.5,
+    mixBlendMode: isCardSurface ? "soft-light" : "overlay",
+  };
 }
 
 /** @deprecated use {@link getBackdropTraitSolidColor} */

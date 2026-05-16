@@ -1096,7 +1096,7 @@
   background-position: center;
   background-size: contain;
   transform-origin: center center;
-  filter: brightness(0.26) contrast(1.22) saturate(0.78);
+  filter: brightness(0.18) contrast(1.28) saturate(0.58);
   pointer-events: none;
 }
 

@@ -491,7 +491,7 @@ export function symbolRasterPatternStyleForHex(hex, opts) {
   const { isCardSurface, reducedMotion } = opts;
   const rgb = parseHex6(hex);
   if (!rgb) {
-    return { opacity: 0.08, mixBlendMode: "overlay" };
+    return { opacity: reducedMotion ? 0.055 : 0.062, mixBlendMode: "overlay" };
   }
   const L = relativeLuminanceRgb(rgb);
   const S = saturationRgb(rgb);
@@ -500,15 +500,21 @@ export function symbolRasterPatternStyleForHex(hex, opts) {
   const colorful = !dark && !light && S > 0.22;
 
   if (light) {
-    return { opacity: reducedMotion ? 0.06 : 0.07, mixBlendMode: "multiply" };
+    return {
+      opacity: reducedMotion ? 0.048 : 0.056,
+      mixBlendMode: "multiply",
+    };
   }
   if (colorful) {
     return {
-      opacity: reducedMotion ? 0.062 : 0.07,
+      opacity: reducedMotion ? 0.05 : 0.056,
       mixBlendMode: isCardSurface ? "soft-light" : "overlay",
     };
   }
-  return { opacity: reducedMotion ? 0.09 : 0.1, mixBlendMode: "soft-light" };
+  return {
+    opacity: reducedMotion ? 0.065 : 0.072,
+    mixBlendMode: "soft-light",
+  };
 }
 
 /** @deprecated use {@link getBackdropTraitSolidColor} */

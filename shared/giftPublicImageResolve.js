@@ -1,23 +1,62 @@
 /**
  * Resolve static raster URLs from Gift Asset–style public payloads (Trial-safe: no User-Data).
  *
- * Main collectible image: `resolveMainGiftRasterImage` / `getMainGiftRasterCandidates` (public → constructed /models/ URL → root → media).
- * Symbol/backdrop/pattern/icon CDN paths must not be used as the main poster (`isThemeOrSymbolAssetRasterUrl`).
+ * **Model image layer** (main poster): `resolveMainGiftRasterImage` / `getMainGiftRasterCandidates` — public →
+ * constructed `/models/` URL → root → media. Never accepts `/symbols/`, `/backdrops/`, `/patterns/`, or `/icons/`
+ * (`isThemeOrSymbolAssetRasterUrl`). `/models/` URLs are reserved for that layer only.
+ *
+ * Symbol/backdrop CDN rasters are resolved separately (see `giftCollectibleLayers.js`).
  */
 
-/** Path segments that indicate theme/decoration assets, not the gift poster. */
+/** Path segments excluded from the main model raster pipeline (Portals-style separation). */
 export const MAIN_RASTER_EXCLUDED_PATH_SEGMENTS = ["/symbols/", "/backdrops/", "/patterns/", "/icons/"];
 
 const GIFT_ASSET_DATA_BASE = "https://giftasset.gifts/api/v1/data";
 
 /**
  * @param {unknown} url
+ * @returns {string}
+ */
+function lowerTrimUrl(url) {
+  return typeof url === "string" ? url.trim().toLowerCase() : "";
+}
+
+/**
+ * Gift Asset symbol trait raster (`…/symbols/{name}.png`).
+ * @param {unknown} url
+ * @returns {boolean}
+ */
+export function isSymbolAssetRasterUrl(url) {
+  const u = lowerTrimUrl(url);
+  return Boolean(u && u.includes("/symbols/"));
+}
+
+/**
+ * Gift Asset backdrop trait raster (`…/backdrops/{name}.png`).
+ * @param {unknown} url
+ * @returns {boolean}
+ */
+export function isBackdropAssetRasterUrl(url) {
+  const u = lowerTrimUrl(url);
+  return Boolean(u && u.includes("/backdrops/"));
+}
+
+/**
+ * @param {unknown} url
+ * @returns {boolean}
+ */
+export function isPatternOrIconAssetRasterUrl(url) {
+  const u = lowerTrimUrl(url);
+  return Boolean(u && (u.includes("/patterns/") || u.includes("/icons/")));
+}
+
+/**
+ * True when URL must not be used as the main collectible static image (model layer).
+ * @param {unknown} url
  * @returns {boolean}
  */
 export function isThemeOrSymbolAssetRasterUrl(url) {
-  const u = typeof url === "string" ? url.trim().toLowerCase() : "";
-  if (!u) return false;
-  return MAIN_RASTER_EXCLUDED_PATH_SEGMENTS.some((seg) => u.includes(seg));
+  return isSymbolAssetRasterUrl(url) || isBackdropAssetRasterUrl(url) || isPatternOrIconAssetRasterUrl(url);
 }
 
 /**
@@ -44,6 +83,32 @@ export function buildGiftAssetModelUrl(collection, model) {
   const m = normalizeGiftAssetSlug(model);
   if (!c || !m) return "";
   return `${GIFT_ASSET_DATA_BASE}/${c}/models/${m}.png`;
+}
+
+/**
+ * Canonical Gift Asset **symbol** raster (symbol layer / debug only; not the main model poster).
+ * @param {unknown} collection
+ * @param {unknown} symbol
+ * @returns {string}
+ */
+export function buildGiftAssetSymbolUrl(collection, symbol) {
+  const c = normalizeGiftAssetSlug(collection);
+  const s = normalizeGiftAssetSlug(symbol);
+  if (!c || !s) return "";
+  return `${GIFT_ASSET_DATA_BASE}/${c}/symbols/${s}.png`;
+}
+
+/**
+ * Canonical Gift Asset **backdrop** raster (backdrop layer if a raster is needed; trait-solid uses color).
+ * @param {unknown} collection
+ * @param {unknown} backdrop
+ * @returns {string}
+ */
+export function buildGiftAssetBackdropUrl(collection, backdrop) {
+  const c = normalizeGiftAssetSlug(collection);
+  const b = normalizeGiftAssetSlug(backdrop);
+  if (!c || !b) return "";
+  return `${GIFT_ASSET_DATA_BASE}/${c}/backdrops/${b}.png`;
 }
 
 /**
@@ -210,13 +275,41 @@ export function getMainGiftRasterCandidates(gift) {
 }
 
 /**
- * Chosen main raster is `getMainGiftRasterCandidates(gift)[0]` (single source of truth for ordering).
+ * Model-layer candidates with upscale-pending `imageOriginal` hoisted first (shared ordering for UI + layer debug).
+ * @param {Record<string, unknown> | null | undefined} gift
+ * @returns {MainRasterCandidate[]}
+ */
+export function getMainGiftRasterCandidatesForDisplay(gift) {
+  if (!gift || typeof gift !== "object") {
+    return getMainGiftRasterCandidates(gift);
+  }
+  if (gift.imageUpscaleStatus === "pending") {
+    const o = typeof gift.imageOriginal === "string" ? gift.imageOriginal.trim() : "";
+    if (o && !isThemeOrSymbolAssetRasterUrl(o)) {
+      const rest = getMainGiftRasterCandidates(gift);
+      const seen = new Set([o]);
+      /** @type {MainRasterCandidate[]} */
+      const out = [{ url: o, field: "imageOriginal", source: "gift_original_pending" }];
+      for (const c of rest) {
+        if (!seen.has(c.url)) {
+          seen.add(c.url);
+          out.push(c);
+        }
+      }
+      return out;
+    }
+  }
+  return getMainGiftRasterCandidates(gift);
+}
+
+/**
+ * Chosen main raster is `getMainGiftRasterCandidatesForDisplay(gift)[0]` (aligned with card/detail + layer model URL).
  * @param {Record<string, unknown> | null | undefined} gift
  * @returns {MainRasterResolution}
  */
 export function resolveMainGiftRasterImage(gift) {
   const constructedModelImageUrl = buildGiftAssetModelUrl(gift?.collection, gift?.model);
-  const candidates = getMainGiftRasterCandidates(gift);
+  const candidates = getMainGiftRasterCandidatesForDisplay(gift);
 
   if (candidates.length > 0) {
     const first = candidates[0];

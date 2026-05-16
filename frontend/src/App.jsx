@@ -34,6 +34,7 @@ import {
   resolveBackdropTraitSolid,
   resolveCollectibleHeroPresentation,
 } from "@shared/giftHeroResolve.js";
+import { resolveGiftCollectibleVisualLayers } from "@shared/giftCollectibleLayers.js";
 import {
   giftBackdropLabel,
   giftListingIdDisplay,
@@ -816,6 +817,8 @@ function GiftCard({ gift, lang, tk, onOpen, onAddToCart, inCart }) {
   const ogFallback = isOpenGraphMediaFallback(gift);
   const showCardImageDebug = isImageDebugEnabled();
 
+  const portalLayersDebug = useMemo(() => resolveGiftCollectibleVisualLayers(gift), [gift]);
+
   const backdropSolidDebug = useMemo(() => {
     const pres = resolveCollectibleHeroPresentation(gift);
     return resolveBackdropTraitSolid(pres.backdropTheme, extractBackdropLabelFromGift(gift));
@@ -886,7 +889,7 @@ function GiftCard({ gift, lang, tk, onOpen, onAddToCart, inCart }) {
             ) : null}
             {showCardImageDebug ? (
               <pre className="nftCardImageDebug mono">
-                {`cardActiveImageUrl: ${rawRasterUrl || "—"}\ncardActiveImageSource: ${mainRaster.source || "—"}\ncardFailedImageUrls: ${mainRaster.failedUrls?.length ? mainRaster.failedUrls.join(", ") : "—"}\ncardImageCandidates: ${JSON.stringify(mainRaster.candidates)}\nbackdropLabel: ${backdropLabelDebug || "—"}\nbackdropLabelUsedForColor: ${backdropSolidDebug.backdropLabelUsedForColor || "—"}\nbackdropSolidColor: ${backdropSolidDebug.hex}\nbackdropColorSource: ${backdropSolidDebug.backdropColorMatchPath}`}
+                {`cardActiveImageUrl: ${rawRasterUrl || "—"}\ncardActiveImageSource: ${mainRaster.source || "—"}\ncardFailedImageUrls: ${mainRaster.failedUrls?.length ? mainRaster.failedUrls.join(", ") : "—"}\ncardImageCandidates: ${JSON.stringify(mainRaster.candidates)}\nbackdropLabel: ${backdropLabelDebug || "—"}\nbackdropLabelUsedForColor: ${backdropSolidDebug.backdropLabelUsedForColor || "—"}\nbackdropColor: ${portalLayersDebug.backdropColor}\nbackdropColorSource: ${backdropSolidDebug.backdropColorMatchPath}\nsymbolPatternUrl: ${portalLayersDebug.symbolPatternUrl || "—"}\nmodelImageUrl: ${portalLayersDebug.modelImageUrl || "—"}\nmodelAnimationUrl: ${portalLayersDebug.modelAnimationUrl || "—"}`}
               </pre>
             ) : null}
           </div>
@@ -928,6 +931,7 @@ function GiftCard({ gift, lang, tk, onOpen, onAddToCart, inCart }) {
 
 function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
   const mainRaster = useGiftMainRasterImage(gift);
+  const portalLayers = useMemo(() => resolveGiftCollectibleVisualLayers(gift), [gift]);
 
   const liveFloorTon = (() => {
     const r = Number(gift.realFloorTon);
@@ -962,7 +966,7 @@ function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
           ? tk("floorDeltaBelow").replace("{pct}", String(floorDeltaBadge.pct))
           : tk("floorDeltaAbove").replace("{pct}", String(floorDeltaBadge.pct));
 
-  const heroPoster = cacheBustMediaUrl(mainRaster.url, gift);
+  const heroPoster = cacheBustMediaUrl(mainRaster.url || portalLayers.modelImageUrl, gift);
   const staticRaster = bestStaticRasterUrl(gift);
   const mediaFit = giftMediaFit(gift);
   const ogFallback = isOpenGraphMediaFallback(gift);
@@ -1079,7 +1083,7 @@ function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
             <div className="tgCollectibleHero">
               <div className={`tgCollectibleHeroImg${ogFallback ? " tgCollectibleHeroImg--ogFallback" : ""}`}>
                 <GiftAnimatedHero
-                  animationUrl={gift.animationUrl}
+                  animationUrl={portalLayers.modelAnimationUrl}
                   posterUrl={heroPoster}
                   alt={gift.name}
                   mediaFit={mediaFit}

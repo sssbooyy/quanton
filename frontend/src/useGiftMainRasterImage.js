@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getMainGiftRasterCandidates, isThemeOrSymbolAssetRasterUrl } from "@shared/giftPublicImageResolve.js";
+import { getMainGiftRasterCandidatesForDisplay } from "@shared/giftPublicImageResolve.js";
+
+export { getMainGiftRasterCandidatesForDisplay } from "@shared/giftPublicImageResolve.js";
 
 function trimUrl(u) {
   return typeof u === "string" ? u.trim() : "";
@@ -11,30 +13,6 @@ function rasterFailureKey(url) {
   if (!u) return "";
   const q = u.indexOf("?");
   return q >= 0 ? u.slice(0, q) : u;
-}
-
-/**
- * Candidate list with upscale-pending `imageOriginal` first when present.
- * @param {Record<string, unknown>} gift
- */
-export function getMainGiftRasterCandidatesForDisplay(gift) {
-  if (gift.imageUpscaleStatus === "pending") {
-    const o = trimUrl(gift.imageOriginal);
-    if (o && !isThemeOrSymbolAssetRasterUrl(o)) {
-      const rest = getMainGiftRasterCandidates(gift);
-      const seen = new Set([o]);
-      /** @type {{ url: string; field: string; source: string }[]} */
-      const out = [{ url: o, field: "imageOriginal", source: "gift_original_pending" }];
-      for (const c of rest) {
-        if (!seen.has(c.url)) {
-          seen.add(c.url);
-          out.push(c);
-        }
-      }
-      return out;
-    }
-  }
-  return getMainGiftRasterCandidates(gift);
 }
 
 /**

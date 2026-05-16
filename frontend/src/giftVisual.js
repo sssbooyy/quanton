@@ -1,13 +1,17 @@
-import { resolveMainGiftRasterImage, listGiftPublicKeys, isThemeOrSymbolAssetRasterUrl } from "@shared/giftPublicImageResolve.js";
+import {
+  resolveMainGiftRasterImage,
+  listGiftPublicKeys,
+  isThemeOrSymbolAssetRasterUrl,
+  getMainGiftRasterCandidatesForDisplay,
+} from "@shared/giftPublicImageResolve.js";
 import {
   extractBackdropLabelFromGift,
   resolveCollectibleHeroPresentation,
   resolveBackdropTraitSolid,
 } from "@shared/giftHeroResolve.js";
-import { getMainGiftRasterCandidatesForDisplay } from "./useGiftMainRasterImage.js";
+import { resolveGiftCollectibleVisualLayers } from "@shared/giftCollectibleLayers.js";
 
-export { getMainGiftRasterCandidates } from "@shared/giftPublicImageResolve.js";
-export { getMainGiftRasterCandidatesForDisplay } from "./useGiftMainRasterImage.js";
+export { getMainGiftRasterCandidates, getMainGiftRasterCandidatesForDisplay } from "@shared/giftPublicImageResolve.js";
 
 /** @param {unknown} u */
 function trimUrl(u) {
@@ -93,6 +97,7 @@ export function cacheBustMediaUrl(url, gift) {
 export function giftImageFieldsForDebug(gift, runtime = {}) {
   const displayC = getMainGiftRasterCandidatesForDisplay(gift);
   const main = resolveMainGiftRasterImage(gift);
+  const layers = resolveGiftCollectibleVisualLayers(gift);
   const legacyChosen = pickMainRasterUrl(
     gift.imageHiRes,
     gift.image,
@@ -152,7 +157,11 @@ export function giftImageFieldsForDebug(gift, runtime = {}) {
     backdropLabel,
     backdropLabelUsedForColor: solid.backdropLabelUsedForColor,
     backdropSolidColor: solid.hex,
+    backdropColor: layers.backdropColor,
     backdropColorSource: solid.backdropColorMatchPath,
+    symbolPatternUrl: layers.symbolPatternUrl,
+    modelImageUrl: layers.modelImageUrl,
+    modelAnimationUrl: layers.modelAnimationUrl,
   };
 }
 

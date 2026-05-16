@@ -243,6 +243,23 @@
   isolation: isolate;
 }
 
+/* Softer lift behind collectible — trait-colored backdrops stay dominant. */
+.nftCardMediaWrap--collectibleHero .nftCardCollectibleBlurGlow {
+  opacity: 0.34;
+  filter: blur(16px);
+}
+
+.nftCardMediaWrap--collectibleHero .nftCardCollectibleRadial {
+  opacity: 0.58;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nftCardMediaWrap--collectibleHero .nftCardCollectibleBlurGlow {
+    filter: blur(11px);
+    opacity: 0.22;
+  }
+}
+
 /* Symbol tiling drift on marketplace cards (GiftCollectibleHeroStage surface="card"). */
 @keyframes nftCardHeroPatternDrift {
   0% {
@@ -741,18 +758,8 @@
   background: transparent;
 }
 
-.tgCollectibleHeroMediaFilter {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-}
-
-.tgCollectibleHeroMediaFilter .giftAnimHeroRoot {
-  filter: none;
-}
-
 .tgCollectibleHeroImg .giftAnimHeroRoot {
-  filter: drop-shadow(0 16px 24px rgba(0, 0, 0, 0.38));
+  filter: drop-shadow(0 12px 20px rgba(0, 0, 0, 0.34));
 }
 
 .tgCollectibleHeroImg .nftHeroImg,
@@ -1073,6 +1080,21 @@
 .giftHeroGlow--profileAware {
   mix-blend-mode: screen;
   opacity: 0.75;
+}
+
+/* Trait-native flat backdrop: hide scenic overlays / aura (Portals-style). */
+.giftCollectibleHero--traitSolid .giftHeroOverlayTint,
+.giftCollectibleHero--traitSolid .giftHeroVignette {
+  display: none;
+}
+
+.giftCollectibleHero--traitSolid .giftHeroGlow {
+  display: none;
+}
+
+.giftCollectibleHero--traitSolid .giftHeroBottomShade--profile {
+  height: 18%;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.09) 0%, transparent 100%);
 }
 
 .giftCollectibleHero--profile .giftHeroContent {

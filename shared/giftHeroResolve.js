@@ -130,6 +130,44 @@ export function resolveBackdropTheme(backdropName) {
   };
 }
 
+/**
+ * Portals-style flat fill: one color from theme `background` gradient.
+ * Dark traits → darkest stop; light traits (champagne, pearl) → lightest stop.
+ * @param {{ background?: unknown } | null | undefined} backdropTheme
+ * @returns {string}
+ */
+export function solidBackdropFillFromTheme(backdropTheme) {
+  const bg = String(backdropTheme?.background ?? "").trim();
+  if (!bg) return "#06080f";
+  const hexes = [...bg.matchAll(/#[0-9a-fA-F]{6}\b/gi)].map((m) => m[0]);
+  if (hexes.length === 0) {
+    if (/^#[0-9a-fA-F]{3,8}\b/i.test(bg)) {
+      const one = bg.match(/^#[0-9a-fA-F]{3,8}\b/i);
+      return one ? one[0] : "#06080f";
+    }
+    return "#06080f";
+  }
+  if (hexes.length === 1) return hexes[0];
+
+  /** @param {string} hx */
+  const lum = (hx) => {
+    const h = hx.replace("#", "");
+    const r = parseInt(h.slice(0, 2), 16) / 255;
+    const g = parseInt(h.slice(2, 4), 16) / 255;
+    const b = parseInt(h.slice(4, 6), 16) / 255;
+    const L = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+    return 0.2126 * L(r) + 0.7152 * L(g) + 0.0722 * L(b);
+  };
+
+  const first = hexes[0];
+  const last = hexes[hexes.length - 1];
+  const lF = lum(first);
+  const lL = lum(last);
+  if (lL < 0.22 && lF > lL) return last;
+  if (lF > 0.72 && lF > lL) return first;
+  return hexes[Math.floor((hexes.length - 1) / 2)];
+}
+
 /** Known Telegram / Fragment symbol slugs → tile id */
 const SYMBOL_ALIASES = {
   ladybug: "ladybug",

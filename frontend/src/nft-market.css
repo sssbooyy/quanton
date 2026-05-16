@@ -153,6 +153,15 @@
     0 0 0 1px rgba(0, 0, 0, 0.2);
 }
 
+/* Collectible cards: lighter chrome so trait backdrop + symbols read as the stage. */
+.nftCardMediaWrap--collectibleHero {
+  isolation: isolate;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.038),
+    0 10px 22px rgba(0, 0, 0, 0.32),
+    0 0 0 1px rgba(0, 0, 0, 0.14);
+}
+
 /* Same hero pipeline as GiftDetailSheet backdrop (gradient, pattern, glow, vignette). */
 .nftCardHeroBackdrop {
   position: absolute;
@@ -242,28 +251,28 @@
 .nftCardMediaWrap--collectibleHero .nftCardImg {
   object-fit: contain;
   object-position: center;
-  padding: 4%;
+  padding: 9%;
   box-sizing: border-box;
 }
 
 /* Softer lift behind collectible — trait-colored backdrops stay dominant. */
 .nftCardMediaWrap--collectibleHero .nftCardCollectibleBlurGlow {
-  opacity: 0.34;
+  opacity: 0.29;
   filter: blur(16px);
 }
 
 .nftCardMediaWrap--collectibleHero .nftCardCollectibleRadial {
-  opacity: 0.58;
+  opacity: 0.5;
 }
 
 .nftCardMediaWrap--collectibleHero .nftCardCollectibleReadOverlay {
   background: linear-gradient(
     185deg,
-    rgba(2, 4, 12, 0.02) 0%,
-    rgba(2, 4, 12, 0.01) 42%,
-    rgba(0, 0, 0, 0.12) 100%
+    rgba(2, 4, 12, 0.018) 0%,
+    rgba(2, 4, 12, 0.008) 42%,
+    rgba(0, 0, 0, 0.1) 100%
   );
-  opacity: 0.58;
+  opacity: 0.52;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -391,6 +400,10 @@
 
 .nftCardImg--loaded {
   opacity: 1;
+}
+
+.nftCardMediaWrap--collectibleHero .nftCardMediaInner--onHero .nftCardImg--loaded {
+  filter: drop-shadow(0 7px 14px rgba(0, 0, 0, 0.36)) drop-shadow(0 3px 9px rgba(0, 0, 0, 0.24));
 }
 
 .nftCardMediaInner--onHero .nftCardImg--loaded {
@@ -2019,6 +2032,18 @@
   aspect-ratio: unset;
   border-radius: 0;
   overflow: hidden;
+}
+
+/* Smaller floating gift + softer lift; inset shrinks absolute layers (padding does not). */
+.nftDetailSheet--portals .tgCollectibleHeroImg:not(.tgCollectibleHeroImg--ogFallback) .giftAnimHeroRoot {
+  inset: 11%;
+  filter: drop-shadow(0 8px 15px rgba(0, 0, 0, 0.27));
+}
+
+.nftDetailSheet--portals .tgCollectibleHeroImg:not(.tgCollectibleHeroImg--ogFallback) .nftHeroImg--contain,
+.nftDetailSheet--portals .tgCollectibleHeroImg:not(.tgCollectibleHeroImg--ogFallback) .giftAnimVideo--contain {
+  padding: 2%;
+  box-sizing: border-box;
 }
 
 .portalsPriceStack {

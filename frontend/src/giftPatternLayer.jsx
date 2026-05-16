@@ -19,8 +19,12 @@ export function hashPresentationSeed(seedStr) {
 
 /** @typedef {"card" | "detail"} ScatterSurface */
 
+/** Nominal hero square size (px) for collision math; matches ~card / modal width scale. */
+const SCATTER_BOX_PX = 512;
+
 /**
  * Portals / Telegram-style scattered raster symbols: edge-heavy, center exclusion, one shared angle.
+ * Non-overlapping: min center distance ≥ (sizeA + sizeB) * spacingK (deterministic K ∈ [0.48, 0.6]).
  * @param {string} seedStr
  * @param {ScatterSurface} surface
  * @param {boolean} reducedMotion
@@ -32,21 +36,43 @@ function buildRasterScatterLayout(seedStr, surface, reducedMotion) {
   /** Normalized Euclidean distance from center; skip below this (clean collectible zone). */
   const exclusion = isCard ? 0.26 : 0.34;
   const maxR = 0.72;
-  const count = reducedMotion ? (isCard ? 20 : 30) : isCard ? 44 : 66;
+  /** Slightly fewer tiles + collision culling → less noisy dense patches. */
+  const count = reducedMotion ? (isCard ? 18 : 26) : isCard ? 38 : 56;
+  /** Min-distance multiplier: (sizeA+sizeB)*k; k ∈ [0.48, 0.6] stays inside your 0.42–0.6 band while avoiding stacked glyphs. */
+  const spacingK = 0.48 + seeded01(seedN, 0, 88) * 0.12;
 
   /** One deterministic angle per collectible (all instances share). */
   const globalAngleDeg = -21 - (hashPresentationSeed(seedStr + "symAngle") % 5);
 
-  /** @type {{ xPct: number; yPct: number; sizePx: number; opacityMul: number }[]} */
+  /** @type {{ x: number; y: number; xPct: number; yPct: number; sizePx: number; opacityMul: number }[]} */
   const instances = [];
 
+  /**
+   * @param {number} x
+   * @param {number} y
+   * @param {number} sizePx
+   */
+  function collides(x, y, sizePx) {
+    for (const inst of instances) {
+      const distPx = Math.hypot((x - inst.x) * SCATTER_BOX_PX, (y - inst.y) * SCATTER_BOX_PX);
+      const minDist = (sizePx + inst.sizePx) * spacingK;
+      if (distPx < minDist) return true;
+    }
+    return false;
+  }
+
   for (let i = 0; i < count; i++) {
+    const scale = 0.75 + seeded01(seedN, i, 20) * 0.45;
+    const basePx = 34 + (hashPresentationSeed(seedStr + `bz${i}`) % 38);
+    const sizePx = basePx * scale;
+    const opacityMul = 0.5 + seeded01(seedN, i, 21) * 0.875;
+
     let x = 0.5;
     let y = 0.5;
     let placed = false;
     const preferPolar = seeded01(seedN, i, 2) < 0.82;
 
-    for (let attempt = 0; attempt < 56; attempt++) {
+    for (let attempt = 0; attempt < 88; attempt++) {
       if (preferPolar) {
         const theta = seeded01(seedN, i, attempt * 13 + 1) * Math.PI * 2;
         const uR = seeded01(seedN, i, attempt * 17 + 3);
@@ -58,12 +84,14 @@ function buildRasterScatterLayout(seedStr, surface, reducedMotion) {
         y = 0.02 + seeded01(seedN, i, attempt * 23 + 7) * 0.96;
       }
 
-      if (x < -0.02 || x > 1.02 || y < -0.02 || y > 1.02) continue;
+      if (x < 0.02 || x > 0.98 || y < 0.02 || y > 0.98) continue;
       const d = Math.hypot(x - 0.5, y - 0.5);
       if (d < exclusion) continue;
 
       const edge = d / maxR;
       if (preferPolar && edge < 0.55 && seeded01(seedN, i, attempt + 99) < 0.18) continue;
+
+      if (collides(x, y, sizePx)) continue;
 
       placed = true;
       break;
@@ -72,27 +100,33 @@ function buildRasterScatterLayout(seedStr, surface, reducedMotion) {
     if (!placed) {
       const corner = hashPresentationSeed(seedStr + `c${i}`) % 4;
       const pad = 0.04;
-      if (corner === 0) {
-        x = pad + seeded01(seedN, i, 400) * 0.12;
-        y = pad + seeded01(seedN, i, 401) * 0.12;
-      } else if (corner === 1) {
-        x = 1 - pad - seeded01(seedN, i, 402) * 0.12;
-        y = pad + seeded01(seedN, i, 403) * 0.12;
-      } else if (corner === 2) {
-        x = pad + seeded01(seedN, i, 404) * 0.12;
-        y = 1 - pad - seeded01(seedN, i, 405) * 0.12;
-      } else {
-        x = 1 - pad - seeded01(seedN, i, 406) * 0.12;
-        y = 1 - pad - seeded01(seedN, i, 407) * 0.12;
+      /** @type {[number, number][]} */
+      const cornerCandidates = [
+        [pad + seeded01(seedN, i, 400) * 0.12, pad + seeded01(seedN, i, 401) * 0.12],
+        [1 - pad - seeded01(seedN, i, 402) * 0.12, pad + seeded01(seedN, i, 403) * 0.12],
+        [pad + seeded01(seedN, i, 404) * 0.12, 1 - pad - seeded01(seedN, i, 405) * 0.12],
+        [1 - pad - seeded01(seedN, i, 406) * 0.12, 1 - pad - seeded01(seedN, i, 407) * 0.12],
+      ];
+      let [cx, cy] = cornerCandidates[corner];
+      for (let j = 0; j < 12; j++) {
+        const jitter = 0.015 * j;
+        const tx = Math.min(0.98, Math.max(0.02, cx + (seeded01(seedN, i, 500 + j) - 0.5) * jitter));
+        const ty = Math.min(0.98, Math.max(0.02, cy + (seeded01(seedN, i, 520 + j) - 0.5) * jitter));
+        if (Math.hypot(tx - 0.5, ty - 0.5) < exclusion) continue;
+        if (!collides(tx, ty, sizePx)) {
+          x = tx;
+          y = ty;
+          placed = true;
+          break;
+        }
       }
     }
 
-    const scale = 0.75 + seeded01(seedN, i, 20) * 0.45;
-    const basePx = 34 + (hashPresentationSeed(seedStr + `bz${i}`) % 38);
-    const sizePx = basePx * scale;
-    const opacityMul = 0.5 + seeded01(seedN, i, 21) * 0.875;
+    if (!placed) continue;
 
     instances.push({
+      x,
+      y,
       xPct: Math.min(100, Math.max(0, x * 100)),
       yPct: Math.min(100, Math.max(0, y * 100)),
       sizePx,

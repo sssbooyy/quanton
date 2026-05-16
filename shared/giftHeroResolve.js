@@ -504,7 +504,7 @@ export function symbolRasterPatternStyleForHex(hex, opts) {
   }
   if (colorful) {
     return {
-      opacity: reducedMotion ? 0.07 : 0.08,
+      opacity: reducedMotion ? 0.062 : 0.07,
       mixBlendMode: isCardSurface ? "soft-light" : "overlay",
     };
   }

@@ -1,6 +1,7 @@
 import { useMemo, useSyncExternalStore } from "react";
 import {
   buildHeroPresentationFieldsFromGift,
+  extractBackdropLabelFromGift,
   extractSymbolLabelFromGift,
   resolveCollectibleHeroPresentation,
   resolveSymbolPattern,
@@ -100,7 +101,12 @@ export default function GiftCollectibleHeroStage({
   const symColor = String(bt?.symbolColor || "rgba(255,255,255,0.1)");
   const seed = String(gift?.id || gift?.listingId || "seed");
 
-  const traitSolidFill = useMemo(() => getBackdropTraitSolidColor(bt), [bt]);
+  const backdropLabelForColor = useMemo(() => extractBackdropLabelFromGift(gift), [gift]);
+
+  const traitSolidFill = useMemo(
+    () => getBackdropTraitSolidColor(bt, backdropLabelForColor),
+    [bt, backdropLabelForColor],
+  );
 
   const patternStyle = useMemo(
     () => traitSolidPatternOpacityForHex(traitSolidFill, { isCardSurface, reducedMotion }),

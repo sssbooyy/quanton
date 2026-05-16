@@ -330,44 +330,118 @@ function matchExplicitBackdropBlob(blob) {
 }
 
 /**
- * @typedef {{ hex: string; source: "explicit" | "derived"; labelNorm: string; themeKey: string }} BackdropTraitSolidResult
+ * @typedef {{
+ *   hex: string;
+ *   source: "explicit" | "derived";
+ *   labelNorm: string;
+ *   themeKey: string;
+ *   backdropLabelUsedForColor: string;
+ *   backdropColorMatchPath: "gift_label" | "theme_key" | "theme_label" | "derived";
+ * }} BackdropTraitSolidResult
  */
 
 /**
- * Central resolver: Portals-style flat trait color (explicit aliases, theme keys, or derived gradient).
+ * Central resolver: Portals-style flat trait color.
+ * Priority: (a) gift backdrop label, (b) theme key, (c) backdropTheme.label, (d) derived gradient.
  * @param {{ key?: unknown; label?: unknown; background?: unknown } | null | undefined} backdropTheme
+ * @param {string | null | undefined} [backdropLabelFromGift] from {@link extractBackdropLabelFromGift} (includes cachedMetadata.backdropName)
  * @returns {BackdropTraitSolidResult}
  */
-export function resolveBackdropTraitSolid(backdropTheme) {
-  const labelNorm = normalizeBackdropLabelForMatch(backdropTheme?.label);
+export function resolveBackdropTraitSolid(backdropTheme, backdropLabelFromGift) {
   const themeKey = String(backdropTheme?.key ?? "").trim().toLowerCase();
   const keyWords = themeKey.replace(/-/g, " ").trim();
-  const blob = `${labelNorm} ${keyWords}`.trim();
-
-  const explicit = matchExplicitBackdropBlob(blob);
-  if (explicit) {
-    return { hex: explicit.hex, source: "explicit", labelNorm: blob, themeKey };
-  }
-
   const nk = normalizeTraitKey(themeKey);
+
+  const giftRaw = String(backdropLabelFromGift ?? "").trim();
+  const giftNorm = normalizeBackdropLabelForMatch(giftRaw);
+
+  const apiLabelRaw = String(backdropTheme?.label ?? "").trim();
+  const apiNorm = normalizeBackdropLabelForMatch(backdropTheme?.label);
+
+  // (a) Gift-extracted backdrop label (matches UI BACKGROUND / traits)
+  if (giftNorm) {
+    const ex = matchExplicitBackdropBlob(giftNorm);
+    if (ex) {
+      return {
+        hex: ex.hex,
+        source: "explicit",
+        labelNorm: giftNorm,
+        themeKey,
+        backdropLabelUsedForColor: giftRaw,
+        backdropColorMatchPath: "gift_label",
+      };
+    }
+  }
+
+  // (b) Theme key slug
+  if (keyWords) {
+    const exK = matchExplicitBackdropBlob(keyWords);
+    if (exK) {
+      return {
+        hex: exK.hex,
+        source: "explicit",
+        labelNorm: `${giftNorm} ${keyWords}`.trim(),
+        themeKey,
+        backdropLabelUsedForColor: giftRaw || themeKey,
+        backdropColorMatchPath: "theme_key",
+      };
+    }
+  }
   if (nk.includes("chestnut")) {
-    return { hex: "#A85B45", source: "explicit", labelNorm: blob, themeKey };
+    return {
+      hex: "#A85B45",
+      source: "explicit",
+      labelNorm: `${giftNorm} ${keyWords}`.trim(),
+      themeKey,
+      backdropLabelUsedForColor: giftRaw || keyWords || themeKey,
+      backdropColorMatchPath: "theme_key",
+    };
   }
-
   if (nk && THEME_KEY_TRAIT_SOLID[nk]) {
-    return { hex: THEME_KEY_TRAIT_SOLID[nk], source: "explicit", labelNorm: blob, themeKey };
+    return {
+      hex: THEME_KEY_TRAIT_SOLID[nk],
+      source: "explicit",
+      labelNorm: `${giftNorm} ${apiNorm} ${keyWords}`.trim(),
+      themeKey,
+      backdropLabelUsedForColor: giftRaw || apiLabelRaw || themeKey,
+      backdropColorMatchPath: "theme_key",
+    };
   }
 
+  // (c) API snapshot backdropTheme.label
+  if (apiNorm) {
+    const exA = matchExplicitBackdropBlob(apiNorm);
+    if (exA) {
+      return {
+        hex: exA.hex,
+        source: "explicit",
+        labelNorm: apiNorm,
+        themeKey,
+        backdropLabelUsedForColor: giftRaw || apiLabelRaw,
+        backdropColorMatchPath: "theme_label",
+      };
+    }
+  }
+
+  // (d) Derived from theme gradient
   const derived = deriveBackdropTraitSolidFromTheme(backdropTheme);
-  return { hex: derived, source: "derived", labelNorm: blob, themeKey };
+  return {
+    hex: derived,
+    source: "derived",
+    labelNorm: `${giftNorm} ${apiNorm} ${keyWords}`.trim(),
+    themeKey,
+    backdropLabelUsedForColor: giftRaw || apiLabelRaw || themeKey || "",
+    backdropColorMatchPath: "derived",
+  };
 }
 
 /**
  * @param {{ key?: unknown; label?: unknown; background?: unknown } | null | undefined} backdropTheme
+ * @param {string | null | undefined} [backdropLabelFromGift]
  * @returns {string}
  */
-export function getBackdropTraitSolidColor(backdropTheme) {
-  return resolveBackdropTraitSolid(backdropTheme).hex;
+export function getBackdropTraitSolidColor(backdropTheme, backdropLabelFromGift) {
+  return resolveBackdropTraitSolid(backdropTheme, backdropLabelFromGift).hex;
 }
 
 /**
@@ -407,8 +481,8 @@ export function traitSolidPatternOpacityForHex(hex, opts) {
 }
 
 /** @deprecated use {@link getBackdropTraitSolidColor} */
-export function solidBackdropFillFromTheme(backdropTheme) {
-  return getBackdropTraitSolidColor(backdropTheme);
+export function solidBackdropFillFromTheme(backdropTheme, backdropLabelFromGift) {
+  return getBackdropTraitSolidColor(backdropTheme, backdropLabelFromGift);
 }
 
 /** Portals/Telegram Onyx Black solid (alias for explicit map). */
@@ -506,6 +580,11 @@ export function resolveSymbolPattern(symbolName) {
 export function extractBackdropLabelFromGift(gift) {
   if (!gift || typeof gift !== "object") return "";
   const g = gift;
+
+  const cm = g.cachedMetadata;
+  if (cm && typeof cm === "object" && typeof cm.backdropName === "string" && cm.backdropName.trim()) {
+    return cm.backdropName.trim();
+  }
 
   const top = String(g.backdrop ?? g.backdropName ?? g.background ?? "").trim();
   if (top) return top;

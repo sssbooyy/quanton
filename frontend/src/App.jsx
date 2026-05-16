@@ -818,7 +818,7 @@ function GiftCard({ gift, lang, tk, onOpen, onAddToCart, inCart }) {
 
   const backdropSolidDebug = useMemo(() => {
     const pres = resolveCollectibleHeroPresentation(gift);
-    return resolveBackdropTraitSolid(pres.backdropTheme);
+    return resolveBackdropTraitSolid(pres.backdropTheme, extractBackdropLabelFromGift(gift));
   }, [gift]);
 
   const backdropLabelDebug = useMemo(() => extractBackdropLabelFromGift(gift), [gift]);
@@ -886,7 +886,7 @@ function GiftCard({ gift, lang, tk, onOpen, onAddToCart, inCart }) {
             ) : null}
             {showCardImageDebug ? (
               <pre className="nftCardImageDebug mono">
-                {`cardActiveImageUrl: ${rawRasterUrl || "—"}\ncardActiveImageSource: ${mainRaster.source || "—"}\ncardFailedImageUrls: ${mainRaster.failedUrls?.length ? mainRaster.failedUrls.join(", ") : "—"}\ncardImageCandidates: ${JSON.stringify(mainRaster.candidates)}\nbackdropLabel: ${backdropLabelDebug || "—"}\nbackdropSolidColor: ${backdropSolidDebug.hex}\nbackdropColorSource: ${backdropSolidDebug.source}`}
+                {`cardActiveImageUrl: ${rawRasterUrl || "—"}\ncardActiveImageSource: ${mainRaster.source || "—"}\ncardFailedImageUrls: ${mainRaster.failedUrls?.length ? mainRaster.failedUrls.join(", ") : "—"}\ncardImageCandidates: ${JSON.stringify(mainRaster.candidates)}\nbackdropLabel: ${backdropLabelDebug || "—"}\nbackdropLabelUsedForColor: ${backdropSolidDebug.backdropLabelUsedForColor || "—"}\nbackdropSolidColor: ${backdropSolidDebug.hex}\nbackdropColorSource: ${backdropSolidDebug.backdropColorMatchPath}`}
               </pre>
             ) : null}
           </div>

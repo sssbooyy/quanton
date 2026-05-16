@@ -1,4 +1,9 @@
 import { resolveMainGiftRasterImage, listGiftPublicKeys, isThemeOrSymbolAssetRasterUrl } from "@shared/giftPublicImageResolve.js";
+import {
+  extractBackdropLabelFromGift,
+  resolveCollectibleHeroPresentation,
+  resolveBackdropTraitSolid,
+} from "@shared/giftHeroResolve.js";
 import { getMainGiftRasterCandidatesForDisplay } from "./useGiftMainRasterImage.js";
 
 export { getMainGiftRasterCandidates } from "@shared/giftPublicImageResolve.js";
@@ -101,6 +106,11 @@ export function giftImageFieldsForDebug(gift, runtime = {}) {
   const activeSrc =
     runtime.activeSource ||
     (activeIdx >= 0 && displayC[activeIdx] ? displayC[activeIdx].source : displayC[0]?.source || "none");
+
+  const backdropLabel = extractBackdropLabelFromGift(gift) || String(gift.backdrop || "").trim();
+  const pres = resolveCollectibleHeroPresentation(gift);
+  const solid = resolveBackdropTraitSolid(pres.backdropTheme, backdropLabel);
+
   return {
     collection: String(gift.collection || ""),
     model: String(gift.model || ""),
@@ -139,6 +149,10 @@ export function giftImageFieldsForDebug(gift, runtime = {}) {
     imageSrcSet: trimUrl(gift.imageSrcSet),
     imageUpscaled: Boolean(gift.imageUpscaled),
     imageUpscaleStatus: String(gift.imageUpscaleStatus || ""),
+    backdropLabel,
+    backdropLabelUsedForColor: solid.backdropLabelUsedForColor,
+    backdropSolidColor: solid.hex,
+    backdropColorSource: solid.backdropColorMatchPath,
   };
 }
 

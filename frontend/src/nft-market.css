@@ -239,8 +239,11 @@
   }
 }
 
-.nftCardMediaWrap--collectibleHero {
-  isolation: isolate;
+.nftCardMediaWrap--collectibleHero .nftCardImg {
+  object-fit: contain;
+  object-position: center;
+  padding: 4%;
+  box-sizing: border-box;
 }
 
 /* Softer lift behind collectible — trait-colored backdrops stay dominant. */
@@ -1972,8 +1975,14 @@
 
 .nftDetailSheet--portals .tgCollectibleHero--portalsSlot {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: calc(100% - 28px);
   margin: 2px 14px 0;
-  padding: 14px 12px 18px;
+  padding: 0;
+  aspect-ratio: 1 / 1;
+  min-height: 0;
   border-radius: 0 0 22px 22px;
   overflow: hidden;
   isolation: isolate;
@@ -1992,9 +2001,24 @@
   height: 100%;
 }
 
+.nftDetailSheet--portals .tgCollectibleHeroImg .nftHeroImg,
+.nftDetailSheet--portals .tgCollectibleHeroImg .giftAnimVideo {
+  object-fit: contain;
+  object-position: center;
+}
+
 .nftDetailSheet--portals .tgCollectibleHero--portalsSlot .tgCollectibleHeroImg {
   position: relative;
   z-index: 1;
+  flex: 1 1 0;
+  align-self: stretch;
+  width: 100%;
+  min-height: 0;
+  max-width: none;
+  max-height: none;
+  aspect-ratio: unset;
+  border-radius: 0;
+  overflow: hidden;
 }
 
 .portalsPriceStack {

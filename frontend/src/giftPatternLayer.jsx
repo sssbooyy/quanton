@@ -36,8 +36,8 @@ function buildRasterScatterLayout(seedStr, surface, reducedMotion) {
   /** Normalized Euclidean distance from center; skip below this (clean collectible zone). */
   const exclusion = isCard ? 0.26 : 0.34;
   const maxR = 0.72;
-  /** Smaller tiles + higher count → denser Telegram-style field (collision still culls overlaps). */
-  const count = reducedMotion ? (isCard ? 25 : 38) : isCard ? 54 : 84;
+  /** ~40% fewer instances vs prior density; collision + exclusion unchanged. */
+  const count = reducedMotion ? (isCard ? 15 : 24) : isCard ? 32 : 52;
   /** Min-distance multiplier: (sizeA+sizeB)*k; k ∈ [0.48, 0.6] stays inside your 0.42–0.6 band while avoiding stacked glyphs. */
   const spacingK = 0.48 + seeded01(seedN, 0, 88) * 0.12;
 

@@ -65,7 +65,7 @@ function buildRasterScatterLayout(seedStr, surface, reducedMotion) {
     const scale = 0.75 + seeded01(seedN, i, 20) * 0.45;
     const basePx = 34 + (hashPresentationSeed(seedStr + `bz${i}`) % 38);
     const sizePx = basePx * scale;
-    const opacityMul = 0.5 + seeded01(seedN, i, 21) * 0.875;
+    const opacityMul = 0.36 + seeded01(seedN, i, 21) * 0.5;
 
     let x = 0.5;
     let y = 0.5;

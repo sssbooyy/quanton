@@ -482,7 +482,7 @@ export function traitSolidPatternOpacityForHex(hex, opts) {
 
 /**
  * Opacity / blend for **URL-tiled** symbol rasters (Gift Asset `/symbols/…`) on trait-solid backdrops.
- * Colorful backdrops use a fixed subtle opacity so pills stay visible (e.g. cobalt + drug).
+ * Faint embedded texture: wrap opacity stays low; per-tile filter in CSS pre-darkens rasters.
  * @param {string} hex
  * @param {{ isCardSurface: boolean; reducedMotion: boolean }} opts
  * @returns {{ opacity: number; mixBlendMode: string }}
@@ -491,7 +491,7 @@ export function symbolRasterPatternStyleForHex(hex, opts) {
   const { isCardSurface, reducedMotion } = opts;
   const rgb = parseHex6(hex);
   if (!rgb) {
-    return { opacity: reducedMotion ? 0.055 : 0.062, mixBlendMode: "overlay" };
+    return { opacity: reducedMotion ? 0.04 : 0.046, mixBlendMode: "overlay" };
   }
   const L = relativeLuminanceRgb(rgb);
   const S = saturationRgb(rgb);
@@ -501,18 +501,18 @@ export function symbolRasterPatternStyleForHex(hex, opts) {
 
   if (light) {
     return {
-      opacity: reducedMotion ? 0.048 : 0.056,
+      opacity: reducedMotion ? 0.034 : 0.04,
       mixBlendMode: "multiply",
     };
   }
   if (colorful) {
     return {
-      opacity: reducedMotion ? 0.05 : 0.056,
+      opacity: reducedMotion ? 0.036 : 0.042,
       mixBlendMode: isCardSurface ? "soft-light" : "overlay",
     };
   }
   return {
-    opacity: reducedMotion ? 0.065 : 0.072,
+    opacity: reducedMotion ? 0.05 : 0.056,
     mixBlendMode: "soft-light",
   };
 }

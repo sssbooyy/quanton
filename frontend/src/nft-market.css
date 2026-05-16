@@ -741,6 +741,16 @@
   background: transparent;
 }
 
+.tgCollectibleHeroMediaFilter {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.tgCollectibleHeroMediaFilter .giftAnimHeroRoot {
+  filter: none;
+}
+
 .tgCollectibleHeroImg .giftAnimHeroRoot {
   filter: drop-shadow(0 16px 24px rgba(0, 0, 0, 0.38));
 }

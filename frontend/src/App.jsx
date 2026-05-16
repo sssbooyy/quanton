@@ -13,6 +13,8 @@ import {
   logGiftImageChoice,
 } from "./giftVisual.js";
 import { useGiftMainRasterImage } from "./useGiftMainRasterImage.js";
+import { useGiftImagePalette } from "./useGiftImagePalette.js";
+import { hexToRgba } from "./giftImagePalette.js";
 import {
   LANG_STORAGE_KEY,
   getInitialLanguage,
@@ -823,6 +825,8 @@ function GiftCard({ gift, lang, tk, onOpen, onAddToCart, inCart }) {
   const showSkeleton = showRealImage && !imgLoaded;
   const showFallback = !renderable || !rawRasterUrl;
 
+  const giftPalette = useGiftImagePalette(imgLoaded && showRealImage ? imageUrl : "");
+
   const statusLabel = listingStatusLabel(lang, gift.status);
 
   return (
@@ -838,11 +842,17 @@ function GiftCard({ gift, lang, tk, onOpen, onAddToCart, inCart }) {
           aria-busy={showSkeleton}
         >
           <div className="nftCardHeroBackdrop" aria-hidden="true">
-            <GiftCollectibleHeroStage gift={gift} variant="collectibleProfile" backdropOnly surface="card" />
+            <GiftCollectibleHeroStage
+              gift={gift}
+              variant="collectibleProfile"
+              backdropOnly
+              surface="card"
+              imagePaletteEnhancement={giftPalette.enhancement}
+            />
           </div>
-          <div className="nftCardMidAtmos" aria-hidden="true">
-            <div className="nftCardCollectibleBlurGlow" />
-            <div className="nftCardCollectibleRadial" />
+          <div className="nftCardMidAtmos" aria-hidden="true" style={giftPalette.cssVars}>
+            <div className="nftCardCollectibleBlurGlow" style={giftPalette.cardBlurGlowStyle} />
+            <div className="nftCardCollectibleRadial" style={giftPalette.cardRadialStyle} />
             <div className="nftCardCollectibleReadOverlay" />
           </div>
           <div className="nftCardMediaInner nftCardMediaInner--onHero">
@@ -874,7 +884,7 @@ function GiftCard({ gift, lang, tk, onOpen, onAddToCart, inCart }) {
             ) : null}
             {showCardImageDebug ? (
               <pre className="nftCardImageDebug mono">
-                {`cardActiveImageUrl: ${rawRasterUrl || "—"}\ncardActiveImageSource: ${mainRaster.source || "—"}\ncardFailedImageUrls: ${mainRaster.failedUrls?.length ? mainRaster.failedUrls.join(", ") : "—"}\ncardImageCandidates: ${JSON.stringify(mainRaster.candidates)}`}
+                {`cardActiveImageUrl: ${rawRasterUrl || "—"}\ncardActiveImageSource: ${mainRaster.source || "—"}\ncardFailedImageUrls: ${mainRaster.failedUrls?.length ? mainRaster.failedUrls.join(", ") : "—"}\ncardImageCandidates: ${JSON.stringify(mainRaster.candidates)}\nextractedDominantColor: ${giftPalette.debug.extractedDominantColor}\nextractedSecondaryColor: ${giftPalette.debug.extractedSecondaryColor}\nextractedAccentColor: ${giftPalette.debug.extractedAccentColor}\npaletteSource: ${giftPalette.debug.paletteSource}`}
               </pre>
             ) : null}
           </div>
@@ -954,13 +964,19 @@ function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
   const staticRaster = bestStaticRasterUrl(gift);
   const mediaFit = giftMediaFit(gift);
   const ogFallback = isOpenGraphMediaFallback(gift);
+  const giftPalette = useGiftImagePalette(
+    mainRaster.url && isRenderableMediaUrl(heroPoster) ? heroPoster : "",
+  );
   const showImageDebug = isImageDebugEnabled();
   const debugFields = showImageDebug
-    ? giftImageFieldsForDebug(gift, {
-        failedUrls: mainRaster.failedUrls,
-        activeIndex: mainRaster.index,
-        activeSource: mainRaster.source,
-      })
+    ? {
+        ...giftImageFieldsForDebug(gift, {
+          failedUrls: mainRaster.failedUrls,
+          activeIndex: mainRaster.index,
+          activeSource: mainRaster.source,
+        }),
+        ...giftPalette.debug,
+      }
     : null;
 
   const listingNo = giftListingIdDisplay(gift);
@@ -1024,7 +1040,12 @@ function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
       >
         <div className="tgCollectibleCard">
           <div className="tgCollectibleCard__backdrop" aria-hidden="true">
-            <GiftCollectibleHeroStage gift={gift} variant="collectibleProfile" backdropOnly />
+            <GiftCollectibleHeroStage
+              gift={gift}
+              variant="collectibleProfile"
+              backdropOnly
+              imagePaletteEnhancement={giftPalette.enhancement}
+            />
           </div>
 
           <div className="tgCollectibleCard__body tgCollectibleCard__body--portals">
@@ -1066,15 +1087,41 @@ function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
 
             <div className="tgCollectibleHero">
               <div
-                className={`tgCollectibleHeroImg${ogFallback ? " tgCollectibleHeroImg--ogFallback" : ""}`}
+                className={`tgCollectibleHeroImg${ogFallback ? " tgCollectibleHeroImg--ogFallback" : ""}${giftPalette.enhancement ? " tgCollectibleHeroImg--giftPalette" : ""}`}
+                style={
+                  giftPalette.enhancement
+                    ? {
+                        ["--gift-dominant"]: giftPalette.enhancement.dominantColor,
+                        ["--gift-secondary"]: giftPalette.enhancement.secondaryColor,
+                        ["--gift-accent"]: giftPalette.enhancement.accentColor,
+                      }
+                    : undefined
+                }
               >
-                <GiftAnimatedHero
-                  animationUrl={gift.animationUrl}
-                  posterUrl={heroPoster}
-                  alt={gift.name}
-                  mediaFit={mediaFit}
-                  onRasterError={(failed) => mainRaster.markFailed(failed)}
-                />
+                {giftPalette.enhancement ? (
+                  <div
+                    className="tgCollectibleHeroMediaFilter"
+                    style={{
+                      filter: `drop-shadow(0 16px 24px rgba(0, 0, 0, 0.38)) drop-shadow(0 14px 36px ${hexToRgba(giftPalette.enhancement.accentColor, 0.34)})`,
+                    }}
+                  >
+                    <GiftAnimatedHero
+                      animationUrl={gift.animationUrl}
+                      posterUrl={heroPoster}
+                      alt={gift.name}
+                      mediaFit={mediaFit}
+                      onRasterError={(failed) => mainRaster.markFailed(failed)}
+                    />
+                  </div>
+                ) : (
+                  <GiftAnimatedHero
+                    animationUrl={gift.animationUrl}
+                    posterUrl={heroPoster}
+                    alt={gift.name}
+                    mediaFit={mediaFit}
+                    onRasterError={(failed) => mainRaster.markFailed(failed)}
+                  />
+                )}
               </div>
             </div>
 

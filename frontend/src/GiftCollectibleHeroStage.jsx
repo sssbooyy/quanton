@@ -5,6 +5,7 @@ import {
   resolveCollectibleHeroPresentation,
   resolveSymbolPattern,
 } from "@shared/giftHeroResolve.js";
+import { hexToRgba, mixThemeWithImageColor } from "./giftImagePalette.js";
 import { GiftPatternLayer, GIFT_PATTERN_SYMBOL_IDS, hashPresentationSeed } from "./giftPatternLayer.js";
 
 /**
@@ -54,6 +55,13 @@ function getReducedMotion() {
  *   variant?: "default" | "collectibleProfile";
  *   backdropOnly?: boolean;
  *   surface?: "default" | "card";
+ *   imagePaletteEnhancement?: {
+ *     dominantColor: string;
+ *     secondaryColor: string;
+ *     accentColor: string;
+ *     isDark?: boolean;
+ *     isLight?: boolean;
+ *   } | null;
  * }} props
  */
 export default function GiftCollectibleHeroStage({
@@ -62,6 +70,7 @@ export default function GiftCollectibleHeroStage({
   variant = "default",
   backdropOnly = false,
   surface = "default",
+  imagePaletteEnhancement = null,
 }) {
   const reducedMotion = useSyncExternalStore(subscribeReducedMotion, getReducedMotion, () => false);
   const isProfile = variant === "collectibleProfile";
@@ -120,13 +129,40 @@ export default function GiftCollectibleHeroStage({
 
   const vignetteBg = String(hb?.vignette || bt?.vignette || "transparent");
 
-  const glowBg = `radial-gradient(ellipse 72% 68% at 50% 46%, ${String(hb?.glowCenter || bt?.glowColor || "rgba(120,140,180,0.2)")} 0%, ${String(hb?.glowEdge || bt?.glowColorSoft || "rgba(0,0,0,0)")} 62%, transparent 78%)`;
+  const glowBg = useMemo(() => {
+    const themeCenter = String(hb?.glowCenter || bt?.glowColor || "rgba(120,140,180,0.2)");
+    const themeEdge = String(hb?.glowEdge || bt?.glowColorSoft || "rgba(0,0,0,0)");
+    const center = imagePaletteEnhancement
+      ? mixThemeWithImageColor(themeCenter, imagePaletteEnhancement.accentColor, 0.3)
+      : themeCenter;
+    const edge = imagePaletteEnhancement
+      ? mixThemeWithImageColor(themeEdge, imagePaletteEnhancement.secondaryColor, 0.3)
+      : themeEdge;
+    const base = `radial-gradient(ellipse 72% 68% at 50% 46%, ${center} 0%, ${edge} 62%, transparent 78%)`;
+    if (!imagePaletteEnhancement) return base;
+    const lift = `radial-gradient(ellipse 78% 66% at 50% 40%, ${hexToRgba(imagePaletteEnhancement.dominantColor, 0.16)} 0%, transparent 62%)`;
+    return `${base}, ${lift}`;
+  }, [bt, hb, imagePaletteEnhancement]);
 
   return (
     <div
       className={`giftCollectibleHero${isProfile ? " giftCollectibleHero--profile" : ""}${isCardSurface ? " giftCollectibleHero--cardSurface" : ""}`}
     >
       <div className="giftHeroBackdrop" style={{ background: backdropBg }} />
+      {imagePaletteEnhancement ? (
+        <div
+          className="giftHeroPaletteWash"
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 0,
+            pointerEvents: "none",
+            background: `linear-gradient(180deg, ${hexToRgba(imagePaletteEnhancement.dominantColor, 0.14)} 0%, transparent 46%, ${hexToRgba(imagePaletteEnhancement.secondaryColor, 0.1)} 100%)`,
+            mixBlendMode: "soft-light",
+          }}
+        />
+      ) : null}
       {symId ? (
         <div
           className={`giftHeroPatternWrap${reducedMotion ? " giftHeroPatternWrap--reduced" : ""}${isProfile ? " giftHeroPatternWrap--profile" : ""}${isCardSurface && !reducedMotion ? " giftHeroPatternWrap--cardMotion" : ""}`}

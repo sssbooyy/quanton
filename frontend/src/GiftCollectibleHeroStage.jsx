@@ -163,6 +163,7 @@ export default function GiftCollectibleHeroStage({
             color={symColor}
             seed={seed}
             reducedMotion={reducedMotion}
+            scatterSurface={isCardSurface ? "card" : "detail"}
           />
         </div>
       ) : null}

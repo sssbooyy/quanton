@@ -192,6 +192,7 @@ export function giftImageFieldsForDebug(gift, runtime = {}) {
     backdropColor: layers.backdropColor,
     backdropColorSource: solid.backdropColorMatchPath,
     symbolPatternUrl: layers.symbolPatternUrl,
+    symbolPatternScatter: Boolean(layers.symbolPatternUrl),
     symbolPatternRendered,
     symbolPatternOpacity,
     symbolPatternBlendMode,

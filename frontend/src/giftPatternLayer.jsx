@@ -17,6 +17,92 @@ export function hashPresentationSeed(seedStr) {
   return Math.abs(h) % 10000000;
 }
 
+/** @typedef {"card" | "detail"} ScatterSurface */
+
+/**
+ * Portals / Telegram-style scattered raster symbols: edge-heavy, center exclusion, one shared angle.
+ * @param {string} seedStr
+ * @param {ScatterSurface} surface
+ * @param {boolean} reducedMotion
+ * @returns {{ globalAngleDeg: number; instances: { xPct: number; yPct: number; sizePx: number; opacityMul: number }[] }}
+ */
+function buildRasterScatterLayout(seedStr, surface, reducedMotion) {
+  const seedN = hashPresentationSeed(seedStr);
+  const isCard = surface === "card";
+  /** Normalized Euclidean distance from center; skip below this (clean collectible zone). */
+  const exclusion = isCard ? 0.26 : 0.34;
+  const maxR = 0.72;
+  const count = reducedMotion ? (isCard ? 20 : 30) : isCard ? 44 : 66;
+
+  /** One deterministic angle per collectible (all instances share). */
+  const globalAngleDeg = -21 - (hashPresentationSeed(seedStr + "symAngle") % 5);
+
+  /** @type {{ xPct: number; yPct: number; sizePx: number; opacityMul: number }[]} */
+  const instances = [];
+
+  for (let i = 0; i < count; i++) {
+    let x = 0.5;
+    let y = 0.5;
+    let placed = false;
+    const preferPolar = seeded01(seedN, i, 2) < 0.82;
+
+    for (let attempt = 0; attempt < 56; attempt++) {
+      if (preferPolar) {
+        const theta = seeded01(seedN, i, attempt * 13 + 1) * Math.PI * 2;
+        const uR = seeded01(seedN, i, attempt * 17 + 3);
+        const r = exclusion + (maxR - exclusion) * uR ** 1.38;
+        x = 0.5 + r * Math.cos(theta);
+        y = 0.5 + r * Math.sin(theta);
+      } else {
+        x = 0.02 + seeded01(seedN, i, attempt * 19 + 5) * 0.96;
+        y = 0.02 + seeded01(seedN, i, attempt * 23 + 7) * 0.96;
+      }
+
+      if (x < -0.02 || x > 1.02 || y < -0.02 || y > 1.02) continue;
+      const d = Math.hypot(x - 0.5, y - 0.5);
+      if (d < exclusion) continue;
+
+      const edge = d / maxR;
+      if (preferPolar && edge < 0.55 && seeded01(seedN, i, attempt + 99) < 0.18) continue;
+
+      placed = true;
+      break;
+    }
+
+    if (!placed) {
+      const corner = hashPresentationSeed(seedStr + `c${i}`) % 4;
+      const pad = 0.04;
+      if (corner === 0) {
+        x = pad + seeded01(seedN, i, 400) * 0.12;
+        y = pad + seeded01(seedN, i, 401) * 0.12;
+      } else if (corner === 1) {
+        x = 1 - pad - seeded01(seedN, i, 402) * 0.12;
+        y = pad + seeded01(seedN, i, 403) * 0.12;
+      } else if (corner === 2) {
+        x = pad + seeded01(seedN, i, 404) * 0.12;
+        y = 1 - pad - seeded01(seedN, i, 405) * 0.12;
+      } else {
+        x = 1 - pad - seeded01(seedN, i, 406) * 0.12;
+        y = 1 - pad - seeded01(seedN, i, 407) * 0.12;
+      }
+    }
+
+    const scale = 0.75 + seeded01(seedN, i, 20) * 0.45;
+    const basePx = 34 + (hashPresentationSeed(seedStr + `bz${i}`) % 38);
+    const sizePx = basePx * scale;
+    const opacityMul = 0.5 + seeded01(seedN, i, 21) * 0.875;
+
+    instances.push({
+      xPct: Math.min(100, Math.max(0, x * 100)),
+      yPct: Math.min(100, Math.max(0, y * 100)),
+      sizePx,
+      opacityMul,
+    });
+  }
+
+  return { globalAngleDeg, instances };
+}
+
 /**
  * @param {string} symbolId
  */
@@ -218,34 +304,63 @@ function SymbolGlyph({ symbolId }) {
 }
 
 /**
- * Repeating raster tiles from Gift Asset `/symbols/*.png` (CSS background).
+ * Organic scattered raster symbols (Gift `/symbols/*.png`) — not a CSS repeat grid.
  */
-function GiftRasterPatternTiles({ url, seed }) {
-  const size = 48 + (hashPresentationSeed(String(seed) + "symTile") % 40);
-  const posX = hashPresentationSeed(String(seed) + "symPx") % 72;
-  const posY = hashPresentationSeed(String(seed) + "symPy") % 72;
+function GiftRasterPatternScatter({ url, seed, scatterSurface, reducedMotion }) {
   const safe = typeof url === "string" ? url.trim() : "";
+  const seedStr = String(seed ?? "0");
+  const layout = useMemo(() => {
+    if (!safe) return { globalAngleDeg: -22, instances: [] };
+    return buildRasterScatterLayout(seedStr, scatterSurface, reducedMotion);
+  }, [safe, seedStr, scatterSurface, reducedMotion]);
+
   if (!safe) return null;
 
+  const bg = `url(${JSON.stringify(safe)})`;
+
   return (
-    <div
-      className="giftPatternLayer__raster"
-      style={{
-        backgroundImage: `url(${JSON.stringify(safe)})`,
-        backgroundSize: `${size}px ${size}px`,
-        backgroundPosition: `${posX}px ${posY}px`,
-      }}
-    />
+    <div className="giftPatternLayer__rasterScatter" aria-hidden>
+      {layout.instances.map((inst, i) => (
+        <div
+          key={i}
+          className="giftPatternLayer__rasterTile"
+          style={{
+            left: `${inst.xPct}%`,
+            top: `${inst.yPct}%`,
+            width: `${inst.sizePx}px`,
+            height: `${inst.sizePx}px`,
+            opacity: inst.opacityMul,
+            transform: `translate(-50%, -50%) rotate(${layout.globalAngleDeg}deg)`,
+            backgroundImage: bg,
+          }}
+        />
+      ))}
+    </div>
   );
 }
 
 /**
  * Scattered low-contrast symbol tiles (Fragment-style atmosphere).
+ * @param {{ symbolId: string; symbolRasterUrl?: string; color: string; seed: string; reducedMotion: boolean; tileCount?: number; scatterSurface?: ScatterSurface }} props
  */
-function GiftPatternLayerInner({ symbolId, symbolRasterUrl, color, seed, reducedMotion, tileCount = 32 }) {
+function GiftPatternLayerInner({
+  symbolId,
+  symbolRasterUrl,
+  color,
+  seed,
+  reducedMotion,
+  tileCount = 32,
+  scatterSurface = "detail",
+}) {
   const raster = typeof symbolRasterUrl === "string" ? symbolRasterUrl.trim() : "";
   const clipUid = useId().replace(/:/g, "");
   const clipId = `giftPatClip-${clipUid}`;
+
+  const globalGlyphAngleDeg = useMemo(
+    () => -20 - (hashPresentationSeed(String(seed ?? "0") + "glyphAngle") % 9),
+    [seed],
+  );
+
   const tiles = useMemo(() => {
     if (raster || !symbolId) return [];
     const seedN = hashPresentationSeed(seed);
@@ -254,16 +369,22 @@ function GiftPatternLayerInner({ symbolId, symbolRasterUrl, color, seed, reduced
     for (let i = 0; i < n; i++) {
       const x = seeded01(seedN, i, 1) * 88 + 6;
       const y = seeded01(seedN, i, 2) * 88 + 6;
-      const r = seeded01(seedN, i, 3) * 38 - 19;
       const s = 0.75 + seeded01(seedN, i, 4) * 0.55;
       const o = 0.28 + seeded01(seedN, i, 5) * 0.42;
-      out.push({ x, y, r, s, o });
+      out.push({ x, y, s, o });
     }
     return out;
   }, [seed, reducedMotion, tileCount, raster, symbolId]);
 
   if (raster) {
-    return <GiftRasterPatternTiles url={raster} seed={seed} />;
+    return (
+      <GiftRasterPatternScatter
+        url={raster}
+        seed={seed}
+        scatterSurface={scatterSurface}
+        reducedMotion={reducedMotion}
+      />
+    );
   }
 
   if (!symbolId) return null;
@@ -285,7 +406,7 @@ function GiftPatternLayerInner({ symbolId, symbolRasterUrl, color, seed, reduced
         {tiles.map((t, i) => (
           <g
             key={i}
-            transform={`translate(${t.x} ${t.y}) rotate(${t.r}) scale(${t.s})`}
+            transform={`translate(${t.x} ${t.y}) rotate(${globalGlyphAngleDeg}) scale(${t.s})`}
             opacity={t.o}
           >
             <g transform="translate(-12 -12)" fill="currentColor">

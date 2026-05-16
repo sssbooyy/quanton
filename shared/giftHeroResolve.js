@@ -273,6 +273,9 @@ const THEME_KEY_TRAIT_SOLID = {
   "aquamarine": "#52D4C0",
   "lavender": "#9B7CFF",
   neutral: "#6A7380",
+  /** Warm brown / copper (Telegram Chestnut); not in giftHeroThemes.json yet — key may come from API. */
+  chestnut: "#A85B45",
+  "chestnut-brown": "#A85B45",
 };
 
 /**
@@ -309,6 +312,15 @@ function matchExplicitBackdropBlob(blob) {
   if (/\borange\b/.test(blob) || /\bsunset\b/.test(blob) || /\btangerine\b/.test(blob) || /\bpeach\b/.test(blob)) {
     return { hex: "#E58A3A", matched: "orange" };
   }
+  if (
+    /\bchestnut brown\b/.test(blob) ||
+    /\bchestnut\b/.test(blob) ||
+    /\bwooden\b/.test(blob) ||
+    /\bwood\b/.test(blob) ||
+    /\bbrown\b/.test(blob)
+  ) {
+    return { hex: "#A85B45", matched: "chestnut" };
+  }
   if (/\bwhite\b/.test(blob) || /\bpearl\b/.test(blob) || /\bivory\b/.test(blob)) return { hex: "#DDE3EA", matched: "white" };
   if (/\bsilver\b/.test(blob) || /\bplatinum\b/.test(blob) || /\bgrey\b/.test(blob) || /\bgray\b/.test(blob) || /\bsteel\b/.test(blob) || /\bslate\b/.test(blob) || /\bmist\b/.test(blob)) {
     return { hex: "#8A929A", matched: "silver" };
@@ -338,6 +350,10 @@ export function resolveBackdropTraitSolid(backdropTheme) {
   }
 
   const nk = normalizeTraitKey(themeKey);
+  if (nk.includes("chestnut")) {
+    return { hex: "#A85B45", source: "explicit", labelNorm: blob, themeKey };
+  }
+
   if (nk && THEME_KEY_TRAIT_SOLID[nk]) {
     return { hex: THEME_KEY_TRAIT_SOLID[nk], source: "explicit", labelNorm: blob, themeKey };
   }

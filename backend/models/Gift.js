@@ -73,6 +73,36 @@ const giftSchema = new mongoose.Schema(
     liquidity: { type: String, default: "Unknown" },
     risk: { type: String, default: "Unknown" },
     status: { type: String, default: "pending" },
+    /** Escrow marketplace state: only `listed` escrow gifts should be publicly buyable. */
+    escrowStatus: {
+      type: String,
+      enum: ["none", "pending_verification", "escrowed", "listed", "reserved", "sold", "transferred", "failed"],
+      default: "none",
+      index: true,
+    },
+    transferStatus: {
+      type: String,
+      enum: ["none", "not_ready", "pending", "transferred", "failed", "retrying"],
+      default: "none",
+      index: true,
+    },
+    payoutStatus: {
+      type: String,
+      enum: ["none", "pending", "paid", "failed"],
+      default: "none",
+      index: true,
+    },
+    /** Telegram escrow provenance. */
+    escrowOwnerTelegramId: { type: String, default: "", trim: true, index: true },
+    ownedGiftId: { type: String, default: "", trim: true, index: true },
+    receivedGiftId: { type: String, default: "", trim: true, index: true },
+    transferCooldown: { type: mongoose.Schema.Types.Mixed, default: null },
+    buyerTelegramId: { type: String, default: "", trim: true, index: true },
+    txHash: { type: String, default: "", trim: true, index: true },
+    paidAt: { type: Date, default: null },
+    transferredAt: { type: Date, default: null },
+    transferAttempts: { type: Number, default: 0 },
+    transferError: { type: String, default: "", trim: true },
     traits: { type: [traitEntrySchema], default: [] },
     /**
      * gift-asset | opengraph | catalog-json | seed-catalog
@@ -98,6 +128,10 @@ giftSchema.index({ name: 1 });
 giftSchema.index({ rarity: 1 });
 giftSchema.index({ aiScore: -1 });
 giftSchema.index({ metadataSyncedAt: 1 });
+giftSchema.index(
+  { ownedGiftId: 1 },
+  { unique: true, sparse: true, partialFilterExpression: { ownedGiftId: { $type: "string", $gt: "" } } }
+);
 
 function computeAiScoreForDoc(doc) {
   const base = {

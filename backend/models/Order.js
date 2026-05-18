@@ -17,6 +17,13 @@ const orderSchema = new mongoose.Schema(
     payload: { type: String, required: true, trim: true },
     createdAt: { type: Date, default: Date.now, index: true },
     paidAt: { type: Date, default: null },
+    transferStatus: {
+      type: String,
+      enum: ["none", "pending", "transferred", "failed", "partial"],
+      default: "none",
+      index: true,
+    },
+    transferResults: { type: [mongoose.Schema.Types.Mixed], default: [] },
   },
   { timestamps: true }
 );

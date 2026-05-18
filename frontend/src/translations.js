@@ -25,6 +25,10 @@ export const translations = {
     tabFloorDiscount: "−15%",
     tabHighScore: "Score 80+",
     addListing: "List",
+    escrowOnboardingTitle: "Sell with Telegram escrow",
+    escrowOnboardingBody: "Send the actual gift to Quanton bot. After escrow verification, set your TON price in Telegram.",
+    escrowSendGift: "Send gift to Quanton bot",
+    manualListingFallback: "Manual listing",
     testDeskAlert: "Test alert",
 
     loadingText: "Loading…",
@@ -93,6 +97,8 @@ export const translations = {
     statusPending: "Pending",
     statusLive: "Live",
     statusSold: "Sold",
+    statusReserved: "Reserved",
+    statusTransferred: "Transferred",
 
     searchPlaceholder: "Search name, collection, model, #…",
     filterPanelTitle: "Filters & sort",
@@ -183,6 +189,10 @@ export const translations = {
     tabFloorDiscount: "−15%",
     tabHighScore: "Скор 80+",
     addListing: "Лот",
+    escrowOnboardingTitle: "Продажа через Telegram escrow",
+    escrowOnboardingBody: "Отправьте настоящий подарок боту Quanton. После проверки escrow задайте цену в TON в Telegram.",
+    escrowSendGift: "Отправить подарок боту",
+    manualListingFallback: "Ручной лот",
     testDeskAlert: "Тест",
 
     loadingText: "Загрузка…",
@@ -251,6 +261,8 @@ export const translations = {
     statusPending: "ожидает",
     statusLive: "В продаже",
     statusSold: "Продано",
+    statusReserved: "Зарезервировано",
+    statusTransferred: "Передано",
 
     searchPlaceholder: "Поиск: имя, коллекция, модель, #…",
     filterPanelTitle: "Фильтры и сортировка",
@@ -388,7 +400,10 @@ export function listingStatusLabel(lang, status) {
   if (s === "approved") return lang === "ru" ? translations.ru.statusLive : translations.en.statusLive;
   if (s === "pending")
     return lang === "ru" ? translations.ru.statusPending : translations.en.statusPending;
+  if (s === "reserved") return lang === "ru" ? translations.ru.statusReserved : translations.en.statusReserved;
   if (s === "sold") return lang === "ru" ? translations.ru.statusSold : translations.en.statusSold;
+  if (s === "transferred")
+    return lang === "ru" ? translations.ru.statusTransferred : translations.en.statusTransferred;
   if (!status) return "";
   return translateStatus(lang, status);
 }

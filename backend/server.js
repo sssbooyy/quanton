@@ -2,7 +2,15 @@ import crypto from "crypto";
 import express from "express";
 import dotenv from "dotenv";
 import { initTelegramBot, sendAdminAlert, stopTelegramBot } from "./services/telegramBot.js";
-import { PORT, isProduction, METADATA_SYNC_SECRET, CLEAR_LISTINGS_SECRET, MARKETPLACE_WALLET_ADDRESS } from "./config.js";
+import {
+  PORT,
+  isProduction,
+  METADATA_SYNC_SECRET,
+  CLEAR_LISTINGS_SECRET,
+  MARKETPLACE_WALLET_ADDRESS,
+  ESCROW_INTAKE_SECRET,
+  ENABLE_MANUAL_LISTING_FALLBACK,
+} from "./config.js";
 import { createCorsMiddleware } from "./middleware/cors.js";
 import { connectMongo, disconnectMongo, isMongoConnected } from "./db/connect.js";
 import { Gift } from "./models/Gift.js";
@@ -20,6 +28,13 @@ import {
   seedGiftsFromJsonIfEmpty,
 } from "./services/giftApi.js";
 import { refreshGiftByListingId, syncStaleGiftMetadata } from "./services/metadataRefresh.js";
+import {
+  createEscrowListingFromOwnedGift,
+  setEscrowListingPrice,
+  syncBusinessGifts,
+  transferEscrowGiftToBuyer,
+  verifyGiftHeldByBusinessAccount,
+} from "./services/telegramGiftEscrow.js";
 
 dotenv.config();
 
@@ -119,12 +134,93 @@ app.post("/alerts/test", async (req, res, next) => {
 
 app.post("/gifts", async (req, res, next) => {
   try {
+    if (!ENABLE_MANUAL_LISTING_FALLBACK) {
+      return res.status(410).json({ error: "Manual listing is disabled. Send the Telegram gift to the Quanton bot for escrow listing." });
+    }
     const suffix = crypto.randomBytes(3).toString("hex");
     const result = await createGiftFromBody(req.body, suffix);
     if (result.error) {
       return res.status(result.error.status).json(result.error.body);
     }
     res.status(201).json(giftToApiResponse(result.gift));
+  } catch (e) {
+    next(e);
+  }
+});
+
+function assertEscrowIntakeAllowed(req, res) {
+  if (ESCROW_INTAKE_SECRET) {
+    const h = String(req.headers["x-escrow-intake-secret"] ?? "").trim();
+    const auth = String(req.headers.authorization ?? "").trim();
+    const bearer = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : "";
+    if (h === ESCROW_INTAKE_SECRET || bearer === ESCROW_INTAKE_SECRET) return true;
+    res.status(401).json({ error: "Invalid or missing escrow intake credentials." });
+    return false;
+  }
+  if (isProduction) {
+    res.status(503).json({ error: "Set ESCROW_INTAKE_SECRET to enable escrow intake in production." });
+    return false;
+  }
+  return true;
+}
+
+app.post("/escrow/intake/dev", async (req, res, next) => {
+  try {
+    if (!assertEscrowIntakeAllowed(req, res)) return;
+    const result = await createEscrowListingFromOwnedGift(req.body);
+    if (result.error) return res.status(result.error.status).json(result.error.body);
+    res.status(201).json({ ok: true, gift: giftToApiResponse(result.gift), escrow: result.escrow, verification: result.verification });
+  } catch (e) {
+    next(e);
+  }
+});
+
+app.post("/escrow/:listingId/price", async (req, res, next) => {
+  try {
+    const result = await setEscrowListingPrice({
+      listingId: req.params.listingId,
+      sellerTelegramId: req.body?.sellerTelegramId,
+      priceTon: req.body?.priceTon,
+    });
+    if (result.error) return res.status(result.error.status).json(result.error.body);
+    res.json({ ok: true, gift: giftToApiResponse(result.gift), escrow: result.escrow });
+  } catch (e) {
+    next(e);
+  }
+});
+
+app.post("/escrow/:listingId/verify", async (req, res, next) => {
+  try {
+    const gift = await Gift.findOne({ listingId: String(req.params.listingId || "").trim() });
+    if (!gift) return res.status(404).json({ error: "Listing not found." });
+    const verification = await verifyGiftHeldByBusinessAccount({ ownedGiftId: gift.ownedGiftId });
+    if (!verification.ok) return res.status(verification.status || 400).json({ error: verification.error });
+    if (gift.escrowStatus === "pending_verification") {
+      gift.escrowStatus = gift.priceTon > 0 ? "listed" : "escrowed";
+      gift.status = gift.priceTon > 0 ? "approved" : "pending";
+      await gift.save();
+    }
+    res.json({ ok: true, gift: giftToApiResponse(gift), verification });
+  } catch (e) {
+    next(e);
+  }
+});
+
+app.get("/escrow/my-listings", async (req, res, next) => {
+  try {
+    const sellerTelegramId = String(req.query.sellerTelegramId ?? "").trim();
+    if (!sellerTelegramId) return res.status(400).json({ error: "sellerTelegramId is required." });
+    const gifts = await Gift.find({ escrowOwnerTelegramId: sellerTelegramId }).sort({ createdAt: -1 });
+    res.json(gifts.map((g) => giftToApiResponse(g)));
+  } catch (e) {
+    next(e);
+  }
+});
+
+app.post("/escrow/sync-business-gifts", async (req, res, next) => {
+  try {
+    if (!assertEscrowIntakeAllowed(req, res)) return;
+    res.json(await syncBusinessGifts());
   } catch (e) {
     next(e);
   }
@@ -158,6 +254,8 @@ function publicOrder(order) {
     status: plain.status,
     txHash: plain.txHash || "",
     payload: plain.payload,
+    transferStatus: plain.transferStatus || "none",
+    transferResults: plain.transferResults || [],
     createdAt: plain.createdAt instanceof Date ? plain.createdAt.toISOString() : plain.createdAt,
     paidAt: plain.paidAt instanceof Date ? plain.paidAt.toISOString() : plain.paidAt,
   };
@@ -184,9 +282,9 @@ app.post("/orders/create", async (req, res, next) => {
       return res.status(400).json({ error: "One or more listings were not found." });
     }
 
-    const sold = gifts.find((g) => String(g.status || "").toLowerCase() === "sold");
-    if (sold) {
-      return res.status(409).json({ error: `${sold.name} is already sold.` });
+    const unavailable = gifts.find((g) => g.escrowStatus !== "listed" || String(g.status || "").toLowerCase() !== "approved");
+    if (unavailable) {
+      return res.status(409).json({ error: `${unavailable.name} is not available for escrow checkout.` });
     }
 
     const totalTon = Math.round(gifts.reduce((sum, g) => sum + (Number(g.priceTon) || 0), 0) * 1e9) / 1e9;
@@ -196,6 +294,14 @@ app.post("/orders/create", async (req, res, next) => {
 
     const orderId = `qton_${Date.now().toString(36)}_${crypto.randomBytes(4).toString("hex")}`;
     const payload = `Quanton order ${orderId}`;
+    const reserve = await Gift.updateMany(
+      { listingId: { $in: listingIds }, escrowStatus: "listed", status: "approved" },
+      { $set: { escrowStatus: "reserved", status: "reserved" } }
+    );
+    if (reserve.modifiedCount !== listingIds.length) {
+      return res.status(409).json({ error: "One or more listings were reserved by another buyer. Please refresh and try again." });
+    }
+
     const order = await Order.create({
       orderId,
       buyerTelegramId: String(req.body?.buyerTelegramId ?? "").trim(),
@@ -203,6 +309,7 @@ app.post("/orders/create", async (req, res, next) => {
       listingIds,
       totalTon,
       status: "pending_payment",
+      transferStatus: "none",
       payload,
     });
 
@@ -252,20 +359,49 @@ app.post("/orders/verify-payment", async (req, res, next) => {
     }
 
     const gifts = await Gift.find({ listingId: { $in: order.listingIds } });
-    const sold = gifts.find((g) => String(g.status || "").toLowerCase() === "sold");
-    if (sold) {
+    const badState = gifts.find(
+      (g) => !["reserved", "listed"].includes(g.escrowStatus) || ["sold", "transferred"].includes(String(g.status || "").toLowerCase())
+    );
+    if (badState) {
       order.status = "failed";
       await order.save();
-      return res.status(409).json({ error: `${sold.name} is already sold.`, order: publicOrder(order) });
+      return res.status(409).json({ error: `${badState.name} is no longer reserved for this order.`, order: publicOrder(order) });
     }
 
     order.status = "paid";
     order.txHash = payment.txHash;
     order.paidAt = new Date();
-    await order.save();
-    await Gift.updateMany({ listingId: { $in: order.listingIds } }, { $set: { status: "sold" } });
+    order.transferStatus = "pending";
+    await Gift.updateMany(
+      { listingId: { $in: order.listingIds } },
+      {
+        $set: {
+          status: "sold",
+          escrowStatus: "sold",
+          transferStatus: "pending",
+          buyerTelegramId: order.buyerTelegramId || "",
+          txHash: payment.txHash,
+          paidAt: order.paidAt,
+        },
+      }
+    );
 
-    res.json({ ok: true, order: publicOrder(order), payment });
+    const transferResults = [];
+    const paidGifts = await Gift.find({ listingId: { $in: order.listingIds } });
+    for (const gift of paidGifts) {
+      const result = await transferEscrowGiftToBuyer({
+        gift,
+        buyerTelegramId: order.buyerTelegramId,
+        orderId: order.orderId,
+      });
+      transferResults.push({ listingId: gift.listingId, ...result });
+    }
+    const allTransferred = transferResults.length > 0 && transferResults.every((r) => r.ok);
+    order.transferStatus = allTransferred ? "transferred" : "failed";
+    order.transferResults = transferResults;
+    await order.save();
+
+    res.json({ ok: true, order: publicOrder(order), payment, transferResults });
   } catch (e) {
     next(e);
   }

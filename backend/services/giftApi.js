@@ -3,7 +3,7 @@ import { calculateAiScore } from "./aiScore.js";
 import { computeRealFloorTon, computeFloorIsLive, finalizeResolvedFloorMetadata } from "./floorProvider.js";
 import { Gift } from "../models/Gift.js";
 import { User } from "../models/User.js";
-import { GIFTS_FILE_PATH, isProduction } from "../config.js";
+import { GIFTS_FILE_PATH, isProduction, ENABLE_MANUAL_LISTING_FALLBACK } from "../config.js";
 import { resolveGiftMetadata, applyResolvedMetadataToGiftDocument } from "./metadataProvider.js";
 import { scheduleGiftImageUpscale, syncUpscaleMetadataFields } from "./imageUpscaler.js";
 import { attachHeroPresentationToApiResponse } from "./giftHeroTheme.js";
@@ -51,6 +51,16 @@ export function giftToApiResponse(doc) {
     liquidity: plain.liquidity,
     risk: plain.risk,
     status: plain.status,
+    escrowStatus: plain.escrowStatus || "none",
+    transferStatus: plain.transferStatus || "none",
+    payoutStatus: plain.payoutStatus || "none",
+    ownedGiftId: plain.ownedGiftId || "",
+    receivedGiftId: plain.receivedGiftId || "",
+    transferCooldown: plain.transferCooldown || null,
+    buyerTelegramId: plain.buyerTelegramId || "",
+    txHash: plain.txHash || "",
+    paidAt: plain.paidAt instanceof Date ? plain.paidAt.toISOString() : plain.paidAt || null,
+    transferredAt: plain.transferredAt instanceof Date ? plain.transferredAt.toISOString() : plain.transferredAt || null,
     telegramUser: plain.telegramUserSnapshot ?? null,
     createdAt:
       plain.createdAt instanceof Date
@@ -146,7 +156,11 @@ export function giftToApiResponse(doc) {
 }
 
 export async function listGiftsForApi() {
-  const docs = await Gift.find().sort({ createdAt: -1 }).lean();
+  const escrowVisible = ["listed", "reserved", "sold", "transferred"];
+  const visibility = ENABLE_MANUAL_LISTING_FALLBACK
+    ? { $or: [{ escrowStatus: { $in: escrowVisible } }, { escrowStatus: { $in: [null, "", "none"] } }] }
+    : { escrowStatus: { $in: escrowVisible } };
+  const docs = await Gift.find(visibility).sort({ createdAt: -1 }).lean();
   return docs.map((d) => giftToApiResponse(d));
 }
 

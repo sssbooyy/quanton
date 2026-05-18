@@ -49,6 +49,9 @@ const emptyGiftForm = {
   sellerNote: "",
 };
 
+const MANUAL_LISTING_FALLBACK_ENABLED = import.meta.env.VITE_ENABLE_MANUAL_LISTING_FALLBACK === "true";
+const QUANTON_BOT_URL = String(import.meta.env.VITE_QUANTON_BOT_URL || "https://t.me/QuantonMarketBot");
+
 function getTelegramUser() {
   try {
     return window.Telegram?.WebApp?.initDataUnsafe?.user ?? null;
@@ -607,11 +610,23 @@ export default function App() {
           </details>
         </div>
 
+        <section className="escrowOnboarding">
+          <div>
+            <h2 className="escrowOnboarding__title">{tk("escrowOnboardingTitle")}</h2>
+            <p className="escrowOnboarding__body">{tk("escrowOnboardingBody")}</p>
+          </div>
+          <a className="escrowOnboarding__button" href={QUANTON_BOT_URL} target="_blank" rel="noopener noreferrer">
+            {tk("escrowSendGift")}
+          </a>
+        </section>
+
         <div className="toolbar">
           <div className="toolbarActions">
-            <button type="button" className="addGiftTrigger" onClick={openGiftModal}>
-              {tk("addListing")}
-            </button>
+            {MANUAL_LISTING_FALLBACK_ENABLED ? (
+              <button type="button" className="addGiftTrigger" onClick={openGiftModal}>
+                {tk("manualListingFallback")}
+              </button>
+            ) : null}
             <button type="button" className="alertButton" onClick={handleTestAlert}>
               {tk("testDeskAlert")}
             </button>
@@ -691,7 +706,7 @@ export default function App() {
         tk={tk}
       />
 
-      {giftModalOpen && (
+      {MANUAL_LISTING_FALLBACK_ENABLED && giftModalOpen && (
         <div className="modalOverlay" role="presentation">
           <button
             type="button"
@@ -846,6 +861,7 @@ function GiftCard({ gift, lang, tk, onOpen, onAddToCart, inCart }) {
   const showFallback = !renderable || !rawRasterUrl;
 
   const statusLabel = listingStatusLabel(lang, gift.status);
+  const isBuyable = String(gift.status || "").toLowerCase() === "approved" && String(gift.escrowStatus || "").toLowerCase() === "listed";
 
   return (
     <article className="nftCardCell">
@@ -920,13 +936,15 @@ function GiftCard({ gift, lang, tk, onOpen, onAddToCart, inCart }) {
         <button
           type="button"
           className={`nftCardAddCart ${inCart ? "nftCardAddCart--inCart" : ""}`}
+          disabled={!isBuyable}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
+            if (!isBuyable) return;
             onAddToCart();
           }}
         >
-          {inCart ? tk("inCart") : tk("addToCart")}
+          {isBuyable ? (inCart ? tk("inCart") : tk("addToCart")) : statusLabel || tk("statusPending")}
         </button>
       </div>
     </article>

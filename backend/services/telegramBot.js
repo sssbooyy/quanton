@@ -1,5 +1,6 @@
 import TelegramBot from "node-telegram-bot-api";
 import { isProduction } from "../config.js";
+import { setEscrowListingPrice } from "./telegramGiftEscrow.js";
 
 /**
  * Telegram Mini Apps
@@ -90,19 +91,57 @@ export function initTelegramBot() {
     const reply_markup = miniAppUrl ? buildOpenMarketKeyboard(miniAppUrl) : undefined;
 
     const lines = [
-      "Welcome to Quanton Market 🚀",
+      "Welcome to Quanton Market",
       "",
       miniAppUrl
         ? "Tap the button below to open Quanton Market inside Telegram."
         : "Mini App URL is not configured. Ask your admin to set MINI_APP_URL on the server. You can still receive desk alerts in this chat.",
       "",
-      "You will receive Quanton Market desk alerts here when they are enabled.",
+      "Seller flow: send your Telegram gift to the Quanton bot/business account. Quanton verifies escrow ownership, then asks you for a TON price.",
+      "Dev price command: /price <listingId> <amountTon>",
     ];
 
     const options = reply_markup ? { reply_markup } : {};
     bot.sendMessage(msg.chat.id, lines.join("\n"), options).catch((e) => {
       console.error("[telegram] sendMessage failed:", e?.message || e);
     });
+  });
+
+  bot.onText(/\/sell/, (msg) => {
+    bot.sendMessage(
+      msg.chat.id,
+      [
+        "To list a gift in escrow:",
+        "1. Send the actual Telegram gift to the Quanton bot/business account.",
+        "2. Quanton verifies the gift is held in escrow.",
+        "3. Set the price when the bot asks.",
+        "",
+        "Until Business API permissions are connected, admins can use the guarded dev escrow intake endpoint.",
+      ].join("\n")
+    ).catch((e) => console.error("[telegram] sendMessage failed:", e?.message || e));
+  });
+
+  bot.onText(/\/price\s+(\S+)\s+([0-9]+(?:\.[0-9]+)?)/, async (msg, match) => {
+    const listingId = match?.[1] || "";
+    const priceTon = match?.[2] || "";
+    try {
+      const result = await setEscrowListingPrice({
+        listingId,
+        priceTon,
+        sellerTelegramId: String(msg.from?.id || ""),
+      });
+      if (result.error) {
+        await bot.sendMessage(msg.chat.id, result.error.body.error);
+        return;
+      }
+      await bot.sendMessage(
+        msg.chat.id,
+        `Listing ${result.gift.listingId} is live at ${result.gift.priceTon} TON.`
+      );
+    } catch (e) {
+      console.error("[telegram] /price failed:", e);
+      await bot.sendMessage(msg.chat.id, "Could not set price. Please try again later.");
+    }
   });
 
   console.log("[telegram] Bot polling started");

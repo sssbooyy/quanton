@@ -52,6 +52,7 @@ export function giftToApiResponse(doc) {
     risk: plain.risk,
     status: plain.status,
     listingSource: plain.listingSource || "manual_url",
+    verificationStatus: plain.verificationStatus || "none",
     escrowStatus: plain.escrowStatus || "none",
     transferStatus: plain.transferStatus || "none",
     payoutStatus: plain.payoutStatus || "none",
@@ -59,6 +60,10 @@ export function giftToApiResponse(doc) {
     receivedGiftId: plain.receivedGiftId || "",
     transferCooldown: plain.transferCooldown || null,
     buyerTelegramId: plain.buyerTelegramId || "",
+    buyerUsername: plain.buyerUsername || "",
+    sellerTelegramId: plain.sellerTelegramId || plain.escrowOwnerTelegramId || "",
+    sellerUsername: plain.sellerUsername || "",
+    orderId: plain.orderId || "",
     txHash: plain.txHash || "",
     paidAt: plain.paidAt instanceof Date ? plain.paidAt.toISOString() : plain.paidAt || null,
     transferredAt: plain.transferredAt instanceof Date ? plain.transferredAt.toISOString() : plain.transferredAt || null,
@@ -158,9 +163,22 @@ export function giftToApiResponse(doc) {
 
 export async function listGiftsForApi() {
   const escrowVisible = ["listed", "reserved", "sold", "transferred"];
+  const manualAdminVisible = ["listed", "awaiting_seller_transfer", "completed_pending_payout", "completed", "disputed"];
   const visibility = ENABLE_MANUAL_LISTING_FALLBACK
-    ? { $or: [{ escrowStatus: { $in: escrowVisible } }, { listingSource: "manual_url" }, { escrowStatus: { $in: [null, "", "none"] } }] }
-    : { escrowStatus: { $in: escrowVisible } };
+    ? {
+        $or: [
+          { escrowStatus: { $in: escrowVisible } },
+          { listingSource: "manual_url" },
+          { listingSource: "manual_admin_verified", status: { $in: manualAdminVisible } },
+          { listingSource: { $ne: "manual_admin_verified" }, escrowStatus: { $in: [null, "", "none"] } },
+        ],
+      }
+    : {
+        $or: [
+          { escrowStatus: { $in: escrowVisible } },
+          { listingSource: "manual_admin_verified", status: { $in: manualAdminVisible } },
+        ],
+      };
   const docs = await Gift.find(visibility).sort({ createdAt: -1 }).lean();
   return docs.map((d) => giftToApiResponse(d));
 }
@@ -258,8 +276,10 @@ export async function createGiftFromBody(body, listingIdSuffix = "") {
     priceTon: priceNum,
     status: "approved",
     listingSource: "manual_url",
+    verificationStatus: "none",
     escrowStatus: "none",
     transferStatus: "pending_manual_transfer",
+    payoutStatus: "not_ready",
     telegramUserId: userDoc?._id ?? null,
     telegramUserSnapshot: telegramUser ?? null,
   });

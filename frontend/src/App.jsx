@@ -129,8 +129,20 @@ function statusBadgeClass(status) {
 
 function nftStatusCardClass(status) {
   if (status === "pending") return "nftCardStatus nftCardStatus--pending";
-  if (status === "approved") return "nftCardStatus nftCardStatus--approved";
+  if (status === "approved" || status === "listed") return "nftCardStatus nftCardStatus--approved";
   return "nftCardStatus";
+}
+
+function giftIsBuyable(gift) {
+  const status = String(gift?.status || "").toLowerCase();
+  const source = String(gift?.listingSource || "manual_url");
+  if (source === "manual_admin_verified") {
+    return status === "listed" && String(gift?.verificationStatus || "") === "admin_verified";
+  }
+  return (
+    status === "approved" &&
+    (source === "manual_url" || String(gift?.escrowStatus || "").toLowerCase() === "listed")
+  );
 }
 
 export default function App() {
@@ -462,6 +474,7 @@ export default function App() {
       const order = await createOrder({
         listingIds: cart.items.map((g) => g.id),
         buyerTelegramId: tgUser?.id ? String(tgUser.id) : "",
+        buyerUsername: tgUser?.username ? String(tgUser.username) : "",
         buyerWalletAddress: paymentMethod.type === "ton" ? walletAddress : "",
         paymentMethod: paymentMethod.type,
         cardProvider: paymentMethod.provider,
@@ -1065,10 +1078,7 @@ function GiftCard({ gift, lang, tk, displayPrice, onOpen, onAddToCart, inCart })
   const showFallback = !renderable || !rawRasterUrl;
 
   const statusLabel = listingStatusLabel(lang, gift.status);
-  const isBuyable =
-    String(gift.status || "").toLowerCase() === "approved" &&
-    (String(gift.listingSource || "manual_url") === "manual_url" ||
-      String(gift.escrowStatus || "").toLowerCase() === "listed");
+  const isBuyable = giftIsBuyable(gift);
 
   return (
     <article className="nftCardCell">
@@ -1209,6 +1219,8 @@ function GiftDetailSheet({ gift, lang, tk, displayPrice, displayCurrency, onClos
 
   const listingNo = giftListingIdDisplay(gift);
   const backdropLabel = giftBackdropLabel(gift) || "—";
+  const isBuyable = giftIsBuyable(gift);
+  const statusLabel = listingStatusLabel(lang, gift.status);
 
   const attrRows = [
     {
@@ -1360,8 +1372,15 @@ function GiftDetailSheet({ gift, lang, tk, displayPrice, displayCurrency, onClos
                     {displayPrice(liveFloorTon)}
                   </span>
                 </div>
-                <button type="button" className={`portalsBtnCart ${inCart ? "portalsBtnCart--inCart" : ""}`} onClick={onAddToCart}>
-                  <span className="portalsBtnCart__label">{inCart ? tk("inCart") : tk("addToCart")}</span>
+                <button
+                  type="button"
+                  className={`portalsBtnCart ${inCart ? "portalsBtnCart--inCart" : ""}`}
+                  onClick={() => {
+                    if (isBuyable) onAddToCart();
+                  }}
+                  disabled={!isBuyable}
+                >
+                  <span className="portalsBtnCart__label">{isBuyable ? (inCart ? tk("inCart") : tk("addToCart")) : statusLabel || tk("statusPending")}</span>
                   <span className="portalsBtnCart__price mono">
                     {displayPrice(gift.priceTon)}
                   </span>

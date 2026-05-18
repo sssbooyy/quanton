@@ -100,6 +100,11 @@ export const translations = {
     statusSold: "Sold",
     statusReserved: "Reserved",
     statusTransferred: "Transferred",
+    statusAwaitingSellerTransfer: "Awaiting transfer",
+    statusCompletedPendingPayout: "Payout pending",
+    statusCompleted: "Completed",
+    statusRejected: "Rejected",
+    statusDisputed: "Disputed",
 
     searchPlaceholder: "Search name, collection, model, #…",
     filterPanelTitle: "Filters & sort",
@@ -265,6 +270,11 @@ export const translations = {
     statusSold: "Продано",
     statusReserved: "Зарезервировано",
     statusTransferred: "Передано",
+    statusAwaitingSellerTransfer: "Ждём передачу",
+    statusCompletedPendingPayout: "Ждёт выплату",
+    statusCompleted: "Завершено",
+    statusRejected: "Отклонено",
+    statusDisputed: "Спор",
 
     searchPlaceholder: "Поиск: имя, коллекция, модель, #…",
     filterPanelTitle: "Фильтры и сортировка",
@@ -400,10 +410,20 @@ export function listingStatusLabel(lang, status) {
     .trim()
     .toLowerCase();
   if (s === "approved") return lang === "ru" ? translations.ru.statusLive : translations.en.statusLive;
+  if (s === "listed") return lang === "ru" ? translations.ru.statusLive : translations.en.statusLive;
   if (s === "pending")
+    return lang === "ru" ? translations.ru.statusPending : translations.en.statusPending;
+  if (s === "pending_admin_review")
     return lang === "ru" ? translations.ru.statusPending : translations.en.statusPending;
   if (s === "reserved") return lang === "ru" ? translations.ru.statusReserved : translations.en.statusReserved;
   if (s === "sold") return lang === "ru" ? translations.ru.statusSold : translations.en.statusSold;
+  if (s === "awaiting_seller_transfer")
+    return lang === "ru" ? translations.ru.statusAwaitingSellerTransfer : translations.en.statusAwaitingSellerTransfer;
+  if (s === "completed_pending_payout")
+    return lang === "ru" ? translations.ru.statusCompletedPendingPayout : translations.en.statusCompletedPendingPayout;
+  if (s === "completed") return lang === "ru" ? translations.ru.statusCompleted : translations.en.statusCompleted;
+  if (s === "rejected") return lang === "ru" ? translations.ru.statusRejected : translations.en.statusRejected;
+  if (s === "disputed") return lang === "ru" ? translations.ru.statusDisputed : translations.en.statusDisputed;
   if (s === "transferred")
     return lang === "ru" ? translations.ru.statusTransferred : translations.en.statusTransferred;
   if (!status) return "";

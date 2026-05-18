@@ -2,7 +2,7 @@ import crypto from "crypto";
 import express from "express";
 import dotenv from "dotenv";
 import axios from "axios";
-import { initTelegramBot, sendAdminAlert, stopTelegramBot } from "./services/telegramBot.js";
+import { initTelegramBot, notifyManualOrderPaid, sendAdminAlert, stopTelegramBot } from "./services/telegramBot.js";
 import {
   PORT,
   isProduction,
@@ -36,7 +36,6 @@ import {
   createEscrowListingFromOwnedGift,
   setEscrowListingPrice,
   syncBusinessGifts,
-  transferEscrowGiftToBuyer,
   verifyGiftHeldByBusinessAccount,
 } from "./services/telegramGiftEscrow.js";
 
@@ -300,6 +299,7 @@ function publicOrder(order) {
   return {
     orderId: plain.orderId,
     buyerTelegramId: plain.buyerTelegramId || "",
+    buyerUsername: plain.buyerUsername || "",
     buyerWalletAddress: plain.buyerWalletAddress || "",
     listingIds: plain.listingIds || [],
     totalTon: plain.totalTon,
@@ -313,6 +313,7 @@ function publicOrder(order) {
     txHash: plain.txHash || "",
     payload: plain.payload,
     transferStatus: plain.transferStatus || "none",
+    payoutStatus: plain.payoutStatus || "not_ready",
     transferResults: plain.transferResults || [],
     createdAt: plain.createdAt instanceof Date ? plain.createdAt.toISOString() : plain.createdAt,
     paidAt: plain.paidAt instanceof Date ? plain.paidAt.toISOString() : plain.paidAt,
@@ -327,6 +328,9 @@ function normalizeListingIds(v) {
 function isCheckoutAvailable(gift) {
   const status = String(gift?.status || "").toLowerCase();
   const source = String(gift?.listingSource || "manual_url");
+  if (source === "manual_admin_verified") {
+    return status === "listed" && gift?.verificationStatus === "admin_verified" && Number(gift?.priceTon) > 0;
+  }
   if (status !== "approved") return false;
   if (source === "manual_url") return true;
   return source === "escrow" && gift?.escrowStatus === "listed";
@@ -335,10 +339,10 @@ function isCheckoutAvailable(gift) {
 function reserveQueryForListings(listingIds) {
   return {
     listingId: { $in: listingIds },
-    status: "approved",
     $or: [
-      { listingSource: "manual_url" },
-      { listingSource: "escrow", escrowStatus: "listed" },
+      { listingSource: "manual_url", status: "approved" },
+      { listingSource: "manual_admin_verified", status: "listed", verificationStatus: "admin_verified" },
+      { listingSource: "escrow", status: "approved", escrowStatus: "listed" },
     ],
   };
 }
@@ -371,48 +375,40 @@ async function completePaidOrder(order, payment = {}) {
   order.status = "paid";
   order.txHash = payment.txHash || order.txHash || "";
   order.paidAt = new Date();
-  order.transferStatus = "pending";
+  order.transferStatus = "pending_manual_transfer";
+  order.payoutStatus = "not_ready";
   if (order.paymentMethod === "card") {
     order.cardPaymentStatus = "paid";
   }
 
   const transferResults = [];
   for (const gift of gifts) {
-    gift.status = "sold";
-    gift.escrowStatus = "sold";
+    gift.status = "awaiting_seller_transfer";
+    gift.escrowStatus = gift.listingSource === "escrow" ? "sold" : "none";
     gift.buyerTelegramId = order.buyerTelegramId || "";
+    gift.buyerUsername = order.buyerUsername || "";
+    gift.orderId = order.orderId;
     gift.txHash = order.txHash;
     gift.paidAt = order.paidAt;
-
-    if (gift.listingSource === "manual_url") {
-      gift.transferStatus = "pending_manual_transfer";
-      await gift.save();
-      transferResults.push({
-        listingId: gift.listingId,
-        ok: false,
-        manual: true,
-        retryable: false,
-        status: "pending_manual_transfer",
-        message: "Manual URL listing paid; seller must transfer gift manually.",
-      });
-      continue;
-    }
-
-    gift.transferStatus = "pending";
+    gift.transferStatus = "pending_manual_transfer";
+    gift.payoutStatus = "not_ready";
     await gift.save();
-    const result = await transferEscrowGiftToBuyer({
-      gift,
-      buyerTelegramId: order.buyerTelegramId,
-      orderId: order.orderId,
+    transferResults.push({
+      listingId: gift.listingId,
+      ok: false,
+      manual: true,
+      retryable: false,
+      status: "pending_manual_transfer",
+      message: "Payment received; seller must transfer gift manually. Payout waits for buyer confirmation.",
     });
-    transferResults.push({ listingId: gift.listingId, ...result });
   }
 
-  const allTransferred = transferResults.length > 0 && transferResults.every((r) => r.ok);
-  const allManual = transferResults.length > 0 && transferResults.every((r) => r.manual);
-  order.transferStatus = allTransferred ? "transferred" : allManual ? "pending_manual_transfer" : "failed";
+  order.transferStatus = "pending_manual_transfer";
   order.transferResults = transferResults;
   await order.save();
+  await notifyManualOrderPaid(order, gifts).catch((e) => {
+    console.warn("[telegram] paid order notification failed:", e?.message || e);
+  });
   return { order, transferResults };
 }
 
@@ -479,6 +475,7 @@ app.post("/orders/create", async (req, res, next) => {
     const order = await Order.create({
       orderId,
       buyerTelegramId: String(req.body?.buyerTelegramId ?? "").trim(),
+      buyerUsername: String(req.body?.buyerUsername ?? "").replace(/^@/, "").trim(),
       buyerWalletAddress: String(req.body?.buyerWalletAddress ?? "").trim(),
       listingIds,
       totalTon,
@@ -489,7 +486,8 @@ app.post("/orders/create", async (req, res, next) => {
       paymentUrl,
       cardPaymentStatus: paymentMethod === "card" ? "pending" : "none",
       status: "pending_payment",
-      transferStatus: "none",
+      transferStatus: "not_started",
+      payoutStatus: "not_ready",
       payload,
     });
 
@@ -626,6 +624,10 @@ app.post("/payments/test/:orderId/fail", async (req, res, next) => {
     await Gift.updateMany(
       { listingId: { $in: order.listingIds }, listingSource: "manual_url", status: "reserved", escrowStatus: "reserved" },
       { $set: { status: "approved", escrowStatus: "none" } }
+    );
+    await Gift.updateMany(
+      { listingId: { $in: order.listingIds }, listingSource: "manual_admin_verified", status: "reserved", escrowStatus: "reserved" },
+      { $set: { status: "listed", escrowStatus: "none" } }
     );
     await Gift.updateMany(
       { listingId: { $in: order.listingIds }, listingSource: "escrow", status: "reserved", escrowStatus: "reserved" },

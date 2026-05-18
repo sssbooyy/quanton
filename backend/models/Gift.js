@@ -73,7 +73,13 @@ const giftSchema = new mongoose.Schema(
     liquidity: { type: String, default: "Unknown" },
     risk: { type: String, default: "Unknown" },
     status: { type: String, default: "pending" },
-    listingSource: { type: String, enum: ["escrow", "manual_url"], default: "manual_url", index: true },
+    listingSource: { type: String, enum: ["escrow", "manual_url", "manual_admin_verified"], default: "manual_url", index: true },
+    verificationStatus: {
+      type: String,
+      enum: ["none", "pending_admin_review", "admin_verified", "rejected"],
+      default: "none",
+      index: true,
+    },
     /** Escrow marketplace state: only `listed` escrow gifts should be publicly buyable. */
     escrowStatus: {
       type: String,
@@ -83,14 +89,14 @@ const giftSchema = new mongoose.Schema(
     },
     transferStatus: {
       type: String,
-      enum: ["none", "not_ready", "pending", "pending_manual_transfer", "transferred", "failed", "retrying"],
-      default: "none",
+      enum: ["none", "not_started", "not_ready", "pending", "pending_manual_transfer", "buyer_confirmed_received", "disputed", "transferred", "failed", "retrying"],
+      default: "not_started",
       index: true,
     },
     payoutStatus: {
       type: String,
-      enum: ["none", "pending", "paid", "failed"],
-      default: "none",
+      enum: ["none", "not_ready", "pending", "pending_admin_payout", "paid", "failed"],
+      default: "not_ready",
       index: true,
     },
     /** Telegram escrow provenance. */
@@ -98,7 +104,11 @@ const giftSchema = new mongoose.Schema(
     ownedGiftId: { type: String, default: "", trim: true, index: true },
     receivedGiftId: { type: String, default: "", trim: true, index: true },
     transferCooldown: { type: mongoose.Schema.Types.Mixed, default: null },
+    sellerTelegramId: { type: String, default: "", trim: true, index: true },
+    sellerUsername: { type: String, default: "", trim: true },
     buyerTelegramId: { type: String, default: "", trim: true, index: true },
+    buyerUsername: { type: String, default: "", trim: true },
+    orderId: { type: String, default: "", trim: true, index: true },
     txHash: { type: String, default: "", trim: true, index: true },
     paidAt: { type: Date, default: null },
     transferredAt: { type: Date, default: null },

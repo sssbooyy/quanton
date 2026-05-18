@@ -56,9 +56,9 @@ export function normalizedListingStatus(status) {
 export function giftMatchesListingStatus(gift, filter) {
   if (filter === "all") return true;
   const s = normalizedListingStatus(gift.status);
-  if (filter === "live") return s === "approved";
-  if (filter === "pending") return s === "pending";
-  if (filter === "sold") return s === "sold";
+  if (filter === "live") return s === "approved" || s === "listed";
+  if (filter === "pending") return s === "pending" || s === "pending_admin_review";
+  if (filter === "sold") return ["sold", "awaiting_seller_transfer", "completed_pending_payout", "completed"].includes(s);
   return true;
 }
 

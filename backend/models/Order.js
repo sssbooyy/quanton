@@ -4,6 +4,7 @@ const orderSchema = new mongoose.Schema(
   {
     orderId: { type: String, required: true, unique: true, trim: true, index: true },
     buyerTelegramId: { type: String, default: "", trim: true, index: true },
+    buyerUsername: { type: String, default: "", trim: true },
     buyerWalletAddress: { type: String, default: "", trim: true, index: true },
     listingIds: { type: [String], required: true, default: [] },
     totalTon: { type: Number, required: true, min: 0 },
@@ -20,7 +21,7 @@ const orderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending_payment", "paid", "failed", "expired"],
+      enum: ["pending_payment", "paid", "awaiting_transfer", "buyer_confirmed", "completed", "disputed", "failed", "expired"],
       default: "pending_payment",
       index: true,
     },
@@ -30,8 +31,14 @@ const orderSchema = new mongoose.Schema(
     paidAt: { type: Date, default: null },
     transferStatus: {
       type: String,
-      enum: ["none", "pending", "pending_manual_transfer", "transferred", "failed", "partial"],
-      default: "none",
+      enum: ["none", "not_started", "pending", "pending_manual_transfer", "buyer_confirmed_received", "disputed", "transferred", "failed", "partial"],
+      default: "not_started",
+      index: true,
+    },
+    payoutStatus: {
+      type: String,
+      enum: ["none", "not_ready", "pending_admin_payout", "paid", "failed"],
+      default: "not_ready",
       index: true,
     },
     transferResults: { type: [mongoose.Schema.Types.Mixed], default: [] },

@@ -262,7 +262,7 @@ export default function App() {
   const displayPrice = useMemo(
     () => (tonAmount) => {
       if (currency === CURRENCIES.UZS && !tonUzsRate) {
-        return tonUzsRateLoading ? "…" : formatTonPrice(tonAmount);
+        return "…";
       }
       return formatMarketplacePrice(tonAmount, currency, tonUzsRate);
     },

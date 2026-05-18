@@ -64,6 +64,12 @@ function extractRequestedPriceTon(text) {
   return m ? parsePositiveTon(m[1]) : 0;
 }
 
+function parseStandaloneTonAmount(text) {
+  const s = String(text || "").trim();
+  const m = s.match(/^([0-9]+(?:\.[0-9]+)?)(?:\s*TON)?$/i);
+  return m ? parsePositiveTon(m[1]) : 0;
+}
+
 function adminReviewKeyboard(listingId) {
   return {
     inline_keyboard: [
@@ -101,6 +107,25 @@ async function notifyChat(chatId, text, options = {}) {
   const id = String(chatId || "").trim();
   if (!bot || !id) return;
   await bot.sendMessage(id, text, options);
+}
+
+async function notifyAdminListingReview(gift, { prefix = "Listing ready for admin review." } = {}) {
+  await notifyAdmin(
+    [
+      prefix,
+      "",
+      `Listing: ${gift.listingId}`,
+      `Seller: ${displayTelegramUser({ id: gift.sellerTelegramId, username: gift.sellerUsername })}`,
+      `Gift: ${gift.name}`,
+      `Collection: ${gift.collection}`,
+      `Model: ${gift.model || "—"}`,
+      `Symbol: ${gift.symbol || "—"}`,
+      `Backdrop: ${gift.backdrop || "—"}`,
+      `Gift link: ${gift.giftLink}`,
+      `Requested price: ${gift.priceTon > 0 ? `${gift.priceTon} TON` : "not set"}`,
+    ].join("\n"),
+    { reply_markup: adminReviewKeyboard(gift.listingId) }
+  );
 }
 
 async function createManualAdminReviewListing({ giftLink, sellerTelegramId, sellerUsername, priceTon }) {
@@ -164,6 +189,29 @@ async function setSellerListingPrice({ listingId, sellerTelegramId, priceTon }) 
   const escrow = await setEscrowListingPrice({ listingId, sellerTelegramId, priceTon });
   if (escrow.error) return { error: escrow.error.body.error };
   return { gift: escrow.gift };
+}
+
+async function setLatestPendingListingPrice({ sellerTelegramId, priceTon }) {
+  const price = parsePositiveTon(priceTon);
+  if (!price) return { error: "Send a price like 5 or 5 TON." };
+
+  const gift = await Gift.findOne({
+    listingSource: "manual_admin_verified",
+    sellerTelegramId: String(sellerTelegramId || "").trim(),
+    status: { $in: ["pending_admin_review", "listed"] },
+    verificationStatus: { $in: ["pending_admin_review", "admin_verified"] },
+  }).sort({ updatedAt: -1 });
+
+  if (!gift) {
+    return { error: "No pending listing found. Send a Telegram gift link first." };
+  }
+
+  gift.priceTon = price;
+  if (gift.verificationStatus === "admin_verified") {
+    gift.status = "listed";
+  }
+  await gift.save();
+  return { gift };
 }
 
 async function markBuyerReceived(order) {
@@ -297,17 +345,16 @@ export function initTelegramBot() {
   });
 
   bot.onText(/\/start/, (msg) => {
-    const miniAppUrl = getMiniAppUrl();
-
     const lines = [
-      "Welcome to Quanton Market",
+      "Welcome to Quanton Market.",
       "",
-      miniAppUrl
-        ? "Tap the button below to open Quanton Market inside Telegram."
-        : "Mini App URL is not configured. Ask your admin to set MINI_APP_URL on the server. You can still receive desk alerts in this chat.",
+      "To sell a Telegram gift, send its link here:",
+      "https://t.me/nft/...",
       "",
-      "Seller flow: send your Telegram gift link to this bot. Quanton admin verifies ownership manually, then approves the marketplace listing.",
-      "Dev price command: /price <listingId> <amountTon>",
+      "I will read the gift details, ask for your price in TON, and send it to admin for manual review.",
+      "After a buyer pays, you transfer the gift manually. Payout is released after buyer confirmation.",
+      "",
+      "Send /help for all commands.",
     ];
 
     bot.sendMessage(msg.chat.id, lines.join("\n")).catch((e) => {
@@ -315,15 +362,45 @@ export function initTelegramBot() {
     });
   });
 
+  bot.onText(/\/help/, (msg) => {
+    bot.sendMessage(
+      msg.chat.id,
+      [
+        "Quanton Market help",
+        "",
+        "Send a Telegram gift link",
+        "Paste a link like https://t.me/nft/... . I will detect the gift and create a pending listing.",
+        "",
+        "Set a price",
+        "After the gift is detected, just reply with a TON amount, for example 5 or 5 TON.",
+        "Fallback command: /price <listingId> <amountTon>",
+        "",
+        "Buyer confirmation",
+        "When a buyer pays, you manually send the gift to them. The buyer confirms receipt before payout.",
+        "",
+        "Disputes",
+        "If the buyer has an issue, they can report it and admin will review manually.",
+        "",
+        "Commands list",
+        "/help - show this help",
+        "/sell - quick seller instructions",
+        "/price - set price by listing id",
+        "/received - buyer confirms receipt by order id",
+        "/dispute - buyer reports an issue by order id",
+      ].join("\n")
+    ).catch((e) => console.error("[telegram] sendMessage failed:", e?.message || e));
+  });
+
   bot.onText(/\/sell/, (msg) => {
     bot.sendMessage(
       msg.chat.id,
       [
-        "To list a gift with manual admin verification:",
-        "1. Send the Telegram gift link here, for example https://t.me/nft/...",
-        "2. Quanton admin verifies manually that you own the gift.",
-        "3. Set your TON price with /price <listingId> <amountTon>.",
-        "4. After buyer payment, you manually transfer the gift to the buyer.",
+        "Sell a Telegram gift",
+        "",
+        "1. Send the gift link here: https://t.me/nft/...",
+        "2. Reply with your price, for example 5 or 5 TON.",
+        "3. Admin verifies ownership and approves the listing.",
+        "4. After buyer payment, transfer the gift manually.",
         "",
         "Payout is released only after the buyer confirms receipt.",
       ].join("\n")
@@ -347,6 +424,9 @@ export function initTelegramBot() {
         msg.chat.id,
         `Listing ${result.gift.listingId} price set to ${result.gift.priceTon} TON. ${result.gift.status === "listed" ? "It is live." : "Waiting for admin review."}`
       );
+      if (result.gift.listingSource === "manual_admin_verified") {
+        await notifyAdminListingReview(result.gift, { prefix: "Listing price set. Review manually." });
+      }
     } catch (e) {
       console.error("[telegram] /price failed:", e);
       await bot.sendMessage(msg.chat.id, "Could not set price. Please try again later.");
@@ -398,7 +478,26 @@ export function initTelegramBot() {
       const text = String(msg.text || "");
       if (!text || text.startsWith("/")) return;
       const giftLink = extractGiftLink(text);
-      if (!giftLink) return;
+      if (!giftLink) {
+        const amount = parseStandaloneTonAmount(text);
+        if (!amount) return;
+
+        const result = await setLatestPendingListingPrice({
+          sellerTelegramId: String(msg.from?.id || ""),
+          priceTon: amount,
+        });
+        if (result.error) {
+          await bot.sendMessage(msg.chat.id, result.error);
+          return;
+        }
+
+        await bot.sendMessage(
+          msg.chat.id,
+          [`Price set to ${result.gift.priceTon} TON.`, "Waiting for admin review."].join("\n")
+        );
+        await notifyAdminListingReview(result.gift, { prefix: "Listing price set. Review manually." });
+        return;
+      }
 
       const sellerTelegramId = String(msg.from?.id || "");
       const sellerUsername = sellerUsernameFromMsg(msg);
@@ -414,32 +513,27 @@ export function initTelegramBot() {
       }
 
       const gift = result.gift;
+      if (gift.priceTon > 0) {
+        await bot.sendMessage(
+          msg.chat.id,
+          [
+            `Gift detected: ${gift.name}`,
+            `Price set to ${gift.priceTon} TON.`,
+            "Waiting for admin review.",
+          ].join("\n")
+        );
+        await notifyAdminListingReview(gift, { prefix: "New listing request pending admin review." });
+        return;
+      }
+
       await bot.sendMessage(
         msg.chat.id,
         [
-          `Listing request created: ${gift.listingId}`,
-          `Gift: ${gift.name}`,
+          `Gift detected: ${gift.name}`,
+          "Send the price in TON for this gift.",
           "",
-          "Admin will verify ownership manually before it appears on the marketplace.",
-          `Set price anytime: /price ${gift.listingId} <amountTon>`,
+          "Example: 5 or 5 TON",
         ].join("\n")
-      );
-
-      await notifyAdmin(
-        [
-          "New listing request pending admin review.",
-          "",
-          `Listing: ${gift.listingId}`,
-          `Seller: ${displayTelegramUser({ id: sellerTelegramId, username: sellerUsername })}`,
-          `Gift: ${gift.name}`,
-          `Collection: ${gift.collection}`,
-          `Model: ${gift.model || "—"}`,
-          `Symbol: ${gift.symbol || "—"}`,
-          `Backdrop: ${gift.backdrop || "—"}`,
-          `Gift link: ${gift.giftLink}`,
-          `Requested price: ${gift.priceTon > 0 ? `${gift.priceTon} TON` : "not set"}`,
-        ].join("\n"),
-        { reply_markup: adminReviewKeyboard(gift.listingId) }
       );
     } catch (e) {
       console.error("[telegram] gift link intake failed:", e);

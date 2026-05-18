@@ -68,6 +68,9 @@ export const ENABLE_MANUAL_LISTING_FALLBACK = (() => {
   if (legacyFallback != null && !parseBoolEnv(legacyFallback)) return false;
   return true;
 })();
+export const CARD_PAYMENT_TEST_MODE = parseBoolEnv(process.env.CARD_PAYMENT_TEST_MODE) || !isProduction;
+export const CARD_PROVIDER_CLICK_ENABLED = parseBoolEnv(process.env.CARD_PROVIDER_CLICK_ENABLED) || !isProduction;
+export const CARD_PROVIDER_PAYME_ENABLED = parseBoolEnv(process.env.CARD_PROVIDER_PAYME_ENABLED) || !isProduction;
 
 const _floorTtl = Number.parseInt(process.env.FLOOR_CACHE_TTL_MS, 10);
 /** In-memory + request coalescing TTL for Gift Asset floor rows (60s–180s). */

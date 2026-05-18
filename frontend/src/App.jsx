@@ -1,7 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { TonConnectButton, useTonAddress, useTonConnectUI } from "@tonconnect/ui-react";
 import { beginCell, toNano } from "@ton/core";
-import { addGift, createOrder, getGifts, getTonUzsRate, sendTestAlert, verifyOrderPayment } from "./api";
+import {
+  addGift,
+  createOrder,
+  getCardPaymentProviders,
+  getCardPaymentStatus,
+  getGifts,
+  getTonUzsRate,
+  sendTestAlert,
+  simulateCardPaymentFail,
+  simulateCardPaymentSuccess,
+  verifyOrderPayment,
+} from "./api";
 import GiftAnimatedHero from "./GiftAnimatedHero.jsx";
 import GiftCollectibleHeroStage from "./GiftCollectibleHeroStage.jsx";
 import {
@@ -35,6 +46,7 @@ import {
   CURRENCY_STORAGE_KEY,
   formatMarketplacePrice,
   formatTonPrice,
+  formatUzsPrice,
 } from "./currency.js";
 import {
   extractBackdropLabelFromGift,
@@ -89,6 +101,10 @@ function checkoutStatusText(status) {
       return "Transaction sent. Verifying payment...";
     case "verifying_payment":
       return "Verifying payment on TON...";
+    case "opening_card_payment":
+      return "Opening card checkout...";
+    case "card_pending":
+      return "Waiting for card payment...";
     case "confirmed":
       return "Payment confirmed. Listings refreshed.";
     case "failed":
@@ -143,6 +159,12 @@ export default function App() {
   const [tonConnectUI] = useTonConnectUI();
   const walletAddress = useTonAddress();
   const [checkoutState, setCheckoutState] = useState({ status: "idle", error: "", orderId: "" });
+  const [paymentMethod, setPaymentMethod] = useState({ type: "ton", provider: "" });
+  const [cardProviders, setCardProviders] = useState({
+    click: { enabled: false, testMode: false, disabledReason: "Provider not configured" },
+    payme: { enabled: false, testMode: false, disabledReason: "Provider not configured" },
+  });
+  const [testPayment, setTestPayment] = useState(null);
   const [currency, setCurrency] = useState(() => {
     try {
       return window.localStorage.getItem(CURRENCY_STORAGE_KEY) === CURRENCIES.UZS ? CURRENCIES.UZS : CURRENCIES.TON;
@@ -179,9 +201,20 @@ export default function App() {
       window.Telegram.WebApp.expand();
     }
     loadGifts({ showSpinner: true });
+    getCardPaymentProviders()
+      .then((data) => {
+        setCardProviders((prev) => {
+          const next = { ...prev };
+          for (const p of data?.providers || []) {
+            if (p?.provider === "click" || p?.provider === "payme") next[p.provider] = p;
+          }
+          return next;
+        });
+      })
+      .catch((err) => console.warn("[payments] card providers unavailable", err?.message || err));
   }, []);
 
-  const anyModalOpen = giftModalOpen || Boolean(detailGift) || cartOpen;
+  const anyModalOpen = giftModalOpen || Boolean(detailGift) || cartOpen || Boolean(testPayment);
 
   useEffect(() => {
     if (!anyModalOpen) return;
@@ -196,6 +229,10 @@ export default function App() {
     if (!anyModalOpen) return;
     function onKey(e) {
       if (e.key !== "Escape") return;
+      if (testPayment) {
+        setTestPayment(null);
+        return;
+      }
       if (cartOpen) {
         setCartOpen(false);
         return;
@@ -210,7 +247,7 @@ export default function App() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [anyModalOpen, giftModalOpen, cartOpen]);
+  }, [anyModalOpen, giftModalOpen, cartOpen, testPayment]);
 
   useEffect(() => {
     if (!successToast) return;
@@ -249,6 +286,32 @@ export default function App() {
   useEffect(() => {
     refreshTonUzsRate();
   }, []);
+
+  useEffect(() => {
+    if (!testPayment?.orderId) return undefined;
+    const id = window.setInterval(async () => {
+      try {
+        const data = await getCardPaymentStatus(testPayment.orderId);
+        const order = data?.order;
+        if (!order) return;
+        setTestPayment((prev) => (prev?.orderId === order.orderId ? { ...prev, order } : prev));
+        if (order.status === "paid") {
+          cart.clear();
+          setCheckoutState({ status: "confirmed", error: "", orderId: order.orderId });
+          setSuccessToast("Card payment confirmed. Gift listing updated.");
+          setTestPayment(null);
+          await loadGifts({ showSpinner: false });
+        } else if (order.status === "failed") {
+          setCheckoutState({ status: "failed", error: "Card payment was cancelled.", orderId: order.orderId });
+          setTestPayment(null);
+          await loadGifts({ showSpinner: false });
+        }
+      } catch (err) {
+        console.warn("[payments] card status unavailable", err?.message || err);
+      }
+    }, 2500);
+    return () => window.clearInterval(id);
+  }, [testPayment?.orderId, cart]);
 
   useEffect(() => {
     console.info("[currency]", {
@@ -382,7 +445,7 @@ export default function App() {
     if (cart.items.length === 0) return;
     setCheckoutState({ status: "idle", error: "", orderId: "" });
 
-    if (!walletAddress) {
+    if (paymentMethod.type === "ton" && !walletAddress) {
       setCheckoutState({ status: "wallet_required", error: "", orderId: "" });
       try {
         await tonConnectUI.openModal();
@@ -399,9 +462,22 @@ export default function App() {
       const order = await createOrder({
         listingIds: cart.items.map((g) => g.id),
         buyerTelegramId: tgUser?.id ? String(tgUser.id) : "",
-        buyerWalletAddress: walletAddress,
+        buyerWalletAddress: paymentMethod.type === "ton" ? walletAddress : "",
+        paymentMethod: paymentMethod.type,
+        cardProvider: paymentMethod.provider,
       });
       currentOrderId = order.orderId;
+
+      if (paymentMethod.type === "card") {
+        setCheckoutState({ status: "card_pending", error: "", orderId: order.orderId });
+        setTestPayment({
+          provider: order.cardProvider || paymentMethod.provider,
+          order,
+          orderId: order.orderId,
+          paymentUrl: order.paymentUrl,
+        });
+        return;
+      }
 
       setCheckoutState({ status: "wallet_confirmation", error: "", orderId: order.orderId });
       await tonConnectUI.sendTransaction({
@@ -800,10 +876,39 @@ export default function App() {
         onCheckout={handleCheckout}
         checkoutState={checkoutState}
         walletAddress={walletAddress}
+        paymentMethod={paymentMethod}
+        onPaymentMethodChange={setPaymentMethod}
+        cardProviders={cardProviders}
         displayPrice={displayPrice}
         displayCurrency={currency}
         tk={tk}
       />
+
+      {testPayment ? (
+        <TestPaymentModal
+          payment={testPayment}
+          onClose={() => setTestPayment(null)}
+          onSuccess={async () => {
+            setCheckoutState({ status: "verifying_payment", error: "", orderId: testPayment.orderId });
+            const data = await simulateCardPaymentSuccess(testPayment.orderId);
+            const order = data?.order;
+            if (order?.status === "paid") {
+              cart.clear();
+              setTestPayment(null);
+              setCheckoutState({ status: "confirmed", error: "", orderId: order.orderId });
+              setSuccessToast("Card payment confirmed. Gift listing updated.");
+              await loadGifts({ showSpinner: false });
+            }
+          }}
+          onCancel={async () => {
+            const data = await simulateCardPaymentFail(testPayment.orderId);
+            const order = data?.order;
+            setTestPayment(null);
+            setCheckoutState({ status: "failed", error: "Card payment was cancelled.", orderId: order?.orderId || testPayment.orderId });
+            await loadGifts({ showSpinner: false });
+          }}
+        />
+      ) : null}
 
       {MANUAL_LISTING_FALLBACK_ENABLED && giftModalOpen && (
         <div className="modalOverlay" role="presentation">
@@ -1327,10 +1432,30 @@ function GiftDetailSheet({ gift, lang, tk, displayPrice, displayCurrency, onClos
   );
 }
 
-function CartDrawer({ open, onClose, items, totalTon, onRemove, onClear, onCheckout, checkoutState, walletAddress, displayPrice, displayCurrency, tk }) {
+function CartDrawer({
+  open,
+  onClose,
+  items,
+  totalTon,
+  onRemove,
+  onClear,
+  onCheckout,
+  checkoutState,
+  walletAddress,
+  paymentMethod,
+  onPaymentMethodChange,
+  cardProviders,
+  displayPrice,
+  displayCurrency,
+  tk,
+}) {
   if (!open) return null;
 
   const totalStr = formatTonPrice(totalTon);
+  const selectedProvider = paymentMethod?.type === "card" ? paymentMethod.provider : "";
+  const selectedCardProvider = selectedProvider ? cardProviders?.[selectedProvider] : null;
+  const providerDisabledReason = selectedCardProvider && !selectedCardProvider.enabled ? selectedCardProvider.disabledReason || "Provider not configured" : "";
+  const checkoutBusy = ["creating_order", "wallet_confirmation", "transaction_sent", "verifying_payment", "card_pending"].includes(checkoutState?.status);
 
   return (
     <div className="cartOverlay" role="presentation">
@@ -1408,12 +1533,44 @@ function CartDrawer({ open, onClose, items, totalTon, onRemove, onClear, onCheck
           <div className="cartCheckoutPanel">
             <div className="cartCheckoutPanel__head">
               <span>Checkout</span>
-              <span className={walletAddress ? "text-bull" : "text-muted"}>
-                {walletAddress ? "Wallet connected" : "Wallet required"}
+              <span className={paymentMethod.type === "ton" ? (walletAddress ? "text-bull" : "text-muted") : "text-bull"}>
+                {paymentMethod.type === "ton" ? (walletAddress ? "Wallet connected" : "Wallet required") : "Card test checkout"}
               </span>
             </div>
+            <div className="paymentMethodList" role="radiogroup" aria-label="Payment method">
+              <button
+                type="button"
+                className={paymentMethod.type === "ton" ? "paymentMethod active" : "paymentMethod"}
+                onClick={() => onPaymentMethodChange({ type: "ton", provider: "" })}
+              >
+                <span>TON Wallet</span>
+                <small>TON Connect</small>
+              </button>
+              {[
+                ["click", "Click / Humo / Uzcard"],
+                ["payme", "Payme / Humo / Uzcard"],
+              ].map(([provider, label]) => {
+                const cfg = cardProviders?.[provider] || {};
+                const disabled = !cfg.enabled;
+                return (
+                  <button
+                    key={provider}
+                    type="button"
+                    className={paymentMethod.type === "card" && paymentMethod.provider === provider ? "paymentMethod active" : "paymentMethod"}
+                    onClick={() => !disabled && onPaymentMethodChange({ type: "card", provider })}
+                    disabled={disabled}
+                  >
+                    <span>{label}</span>
+                    <small>{disabled ? cfg.disabledReason || "Provider not configured" : cfg.testMode ? "TEST MODE" : "Configured"}</small>
+                  </button>
+                );
+              })}
+            </div>
+            {providerDisabledReason ? (
+              <p className="cartCheckoutStatus mono cartCheckoutStatus--failed">{providerDisabledReason}</p>
+            ) : null}
             <div className="tonConnectSlot tonConnectSlot--checkout">
-              <TonConnectButton />
+              {paymentMethod.type === "ton" ? <TonConnectButton /> : null}
             </div>
             {checkoutState?.status && checkoutState.status !== "idle" ? (
               <p className={`cartCheckoutStatus mono cartCheckoutStatus--${checkoutState.status}`}>
@@ -1431,12 +1588,89 @@ function CartDrawer({ open, onClose, items, totalTon, onRemove, onClear, onCheck
               onClick={onCheckout}
               disabled={
                 items.length === 0 ||
-                ["creating_order", "wallet_confirmation", "transaction_sent", "verifying_payment"].includes(checkoutState?.status)
+                checkoutBusy ||
+                (paymentMethod.type === "card" && (!paymentMethod.provider || !selectedCardProvider?.enabled))
               }
             >
               {tk("cartCheckout")}
             </button>
           </div>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+function TestPaymentModal({ payment, onClose, onSuccess, onCancel }) {
+  const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
+  const order = payment?.order || {};
+  const providerName = order.cardProvider === "payme" ? "Payme" : "Click";
+
+  async function run(action, fn) {
+    setBusy(action);
+    setError("");
+    try {
+      await fn();
+    } catch (err) {
+      const msg = err.response?.data?.error || err.message || "Payment action failed.";
+      setError(typeof msg === "string" ? msg : "Payment action failed.");
+      setBusy("");
+    }
+  }
+
+  return (
+    <div className="paymentTestOverlay" role="presentation">
+      <button type="button" className="cartBackdrop" aria-label="Close payment test" onClick={onClose} />
+      <div className="paymentTestSheet" role="dialog" aria-modal="true" aria-labelledby="payment-test-title">
+        <header className="paymentTestHeader">
+          <div>
+            <p className="paymentTestKicker mono">TEST MODE</p>
+            <h2 id="payment-test-title">{providerName} card checkout</h2>
+          </div>
+          <button type="button" className="cartSheet__close" onClick={onClose} aria-label="Close payment test">
+            ×
+          </button>
+        </header>
+        <div className="paymentTestBody mono">
+          <div className="paymentTestRow">
+            <span>Provider</span>
+            <strong>{providerName}</strong>
+          </div>
+          <div className="paymentTestRow">
+            <span>Order ID</span>
+            <strong>{order.orderId}</strong>
+          </div>
+          <div className="paymentTestRow">
+            <span>Amount UZS</span>
+            <strong>{formatUzsPrice(order.totalUzs)}</strong>
+          </div>
+          <div className="paymentTestRow">
+            <span>Amount TON</span>
+            <strong>{formatTonPrice(order.totalTon)}</strong>
+          </div>
+          <p className="paymentTestNote">
+            No card data is collected here. This simulates Click/Payme Humo-Uzcard checkout until merchant credentials are configured.
+          </p>
+          {error ? <p className="cartCheckoutStatus cartCheckoutStatus--failed">{error}</p> : null}
+        </div>
+        <footer className="paymentTestActions">
+          <button
+            type="button"
+            className="cartBtnSecondary"
+            onClick={() => run("cancel", onCancel)}
+            disabled={Boolean(busy)}
+          >
+            {busy === "cancel" ? "Cancelling..." : "Cancel payment"}
+          </button>
+          <button
+            type="button"
+            className="cartBtnPrimary"
+            onClick={() => run("success", onSuccess)}
+            disabled={Boolean(busy)}
+          >
+            {busy === "success" ? "Confirming..." : "Simulate successful payment"}
+          </button>
         </footer>
       </div>
     </div>

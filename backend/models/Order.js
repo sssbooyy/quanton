@@ -7,6 +7,17 @@ const orderSchema = new mongoose.Schema(
     buyerWalletAddress: { type: String, default: "", trim: true, index: true },
     listingIds: { type: [String], required: true, default: [] },
     totalTon: { type: Number, required: true, min: 0 },
+    totalUzs: { type: Number, default: 0, min: 0 },
+    tonUzsRate: { type: Number, default: 0, min: 0 },
+    paymentMethod: { type: String, enum: ["ton", "card"], default: "ton", index: true },
+    cardProvider: { type: String, enum: ["", "click", "payme"], default: "", index: true },
+    paymentUrl: { type: String, default: "", trim: true },
+    cardPaymentStatus: {
+      type: String,
+      enum: ["none", "pending", "paid", "failed", "cancelled"],
+      default: "none",
+      index: true,
+    },
     status: {
       type: String,
       enum: ["pending_payment", "paid", "failed", "expired"],

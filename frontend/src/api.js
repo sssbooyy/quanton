@@ -51,6 +51,26 @@ export async function createOrder(payload) {
   return res.data;
 }
 
+export async function getCardPaymentProviders() {
+  const res = await client.get("/payments/card/providers");
+  return res.data;
+}
+
+export async function getCardPaymentStatus(orderId) {
+  const res = await client.get(`/payments/card/${encodeURIComponent(orderId)}/status`);
+  return res.data;
+}
+
+export async function simulateCardPaymentSuccess(orderId) {
+  const res = await client.post(`/payments/test/${encodeURIComponent(orderId)}/success`);
+  return res.data;
+}
+
+export async function simulateCardPaymentFail(orderId) {
+  const res = await client.post(`/payments/test/${encodeURIComponent(orderId)}/fail`);
+  return res.data;
+}
+
 export async function verifyOrderPayment(payload) {
   const res = await client.post("/orders/verify-payment", payload);
   return res.data;

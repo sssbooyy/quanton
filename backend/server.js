@@ -11,6 +11,9 @@ import {
   MARKETPLACE_WALLET_ADDRESS,
   ESCROW_INTAKE_SECRET,
   ENABLE_MANUAL_LISTING_FALLBACK,
+  CARD_PAYMENT_TEST_MODE,
+  CARD_PROVIDER_CLICK_ENABLED,
+  CARD_PROVIDER_PAYME_ENABLED,
 } from "./config.js";
 import { createCorsMiddleware } from "./middleware/cors.js";
 import { connectMongo, disconnectMongo, isMongoConnected } from "./db/connect.js";
@@ -42,6 +45,7 @@ dotenv.config();
 const app = express();
 const rateCache = { data: null, updatedAtMs: 0 };
 const RATE_TTL_MS = 10 * 60 * 1000;
+const CARD_PROVIDERS = new Set(["click", "payme"]);
 
 app.set("trust proxy", 1);
 app.disable("x-powered-by");
@@ -66,6 +70,41 @@ function assertMetadataJobAllowed(req, res) {
     return false;
   }
   return true;
+}
+
+async function getTonUzsRateData() {
+  if (rateCache.data && Date.now() - rateCache.updatedAtMs < RATE_TTL_MS) {
+    return rateCache.data;
+  }
+
+  try {
+    const [tonRes, uzsRes] = await Promise.all([
+      axios.get("https://api.coingecko.com/api/v3/simple/price", {
+        timeout: 10_000,
+        params: { ids: "the-open-network", vs_currencies: "usd" },
+      }),
+      axios.get("https://open.er-api.com/v6/latest/USD", { timeout: 10_000 }),
+    ]);
+
+    const tonUsd = Number(tonRes.data?.["the-open-network"]?.usd);
+    const usdUzs = Number(uzsRes.data?.rates?.UZS);
+    if (!Number.isFinite(tonUsd) || tonUsd <= 0 || !Number.isFinite(usdUzs) || usdUzs <= 0) {
+      throw new Error("Invalid rate provider response.");
+    }
+
+    const data = {
+      tonUsd,
+      usdUzs,
+      tonUzs: Math.round(tonUsd * usdUzs),
+      updatedAt: new Date().toISOString(),
+    };
+    rateCache.data = data;
+    rateCache.updatedAtMs = Date.now();
+    return data;
+  } catch (e) {
+    if (rateCache.data) return { ...rateCache.data, stale: true };
+    throw e;
+  }
 }
 
 app.get("/health", (_req, res) => {
@@ -115,39 +154,10 @@ app.get("/gifts/undervalued", async (_req, res, next) => {
 
 app.get("/rates/ton-uzs", async (_req, res, next) => {
   try {
-    if (rateCache.data && Date.now() - rateCache.updatedAtMs < RATE_TTL_MS) {
-      res.set("Cache-Control", "public, max-age=300");
-      return res.json(rateCache.data);
-    }
-
-    const [tonRes, uzsRes] = await Promise.all([
-      axios.get("https://api.coingecko.com/api/v3/simple/price", {
-        timeout: 10_000,
-        params: { ids: "the-open-network", vs_currencies: "usd" },
-      }),
-      axios.get("https://open.er-api.com/v6/latest/USD", { timeout: 10_000 }),
-    ]);
-
-    const tonUsd = Number(tonRes.data?.["the-open-network"]?.usd);
-    const usdUzs = Number(uzsRes.data?.rates?.UZS);
-    if (!Number.isFinite(tonUsd) || tonUsd <= 0 || !Number.isFinite(usdUzs) || usdUzs <= 0) {
-      throw new Error("Invalid rate provider response.");
-    }
-
-    const data = {
-      tonUsd,
-      usdUzs,
-      tonUzs: Math.round(tonUsd * usdUzs),
-      updatedAt: new Date().toISOString(),
-    };
-    rateCache.data = data;
-    rateCache.updatedAtMs = Date.now();
+    const data = await getTonUzsRateData();
     res.set("Cache-Control", "public, max-age=300");
     res.json(data);
   } catch (e) {
-    if (rateCache.data) {
-      return res.json({ ...rateCache.data, stale: true });
-    }
     next(e);
   }
 });
@@ -293,6 +303,12 @@ function publicOrder(order) {
     buyerWalletAddress: plain.buyerWalletAddress || "",
     listingIds: plain.listingIds || [],
     totalTon: plain.totalTon,
+    totalUzs: plain.totalUzs || 0,
+    tonUzsRate: plain.tonUzsRate || 0,
+    paymentMethod: plain.paymentMethod || "ton",
+    cardProvider: plain.cardProvider || "",
+    paymentUrl: plain.paymentUrl || "",
+    cardPaymentStatus: plain.cardPaymentStatus || "none",
     status: plain.status,
     txHash: plain.txHash || "",
     payload: plain.payload,
@@ -327,10 +343,98 @@ function reserveQueryForListings(listingIds) {
   };
 }
 
+function cardProviderEnabled(provider) {
+  if (provider === "click") return CARD_PROVIDER_CLICK_ENABLED;
+  if (provider === "payme") return CARD_PROVIDER_PAYME_ENABLED;
+  return false;
+}
+
+function assertCardTestAllowed(req, res) {
+  // SECURITY: fake card payment completion is allowed only in explicit test mode
+  // or outside production. Never enable these endpoints for real production money flow.
+  if (CARD_PAYMENT_TEST_MODE || !isProduction) return true;
+  res.status(403).json({ error: "Card payment test mode is disabled." });
+  return false;
+}
+
+async function completePaidOrder(order, payment = {}) {
+  const gifts = await Gift.find({ listingId: { $in: order.listingIds } });
+  const badState = gifts.find(
+    (g) => g.escrowStatus !== "reserved" || ["sold", "transferred"].includes(String(g.status || "").toLowerCase())
+  );
+  if (badState) {
+    order.status = "failed";
+    await order.save();
+    return { error: `${badState.name} is no longer reserved for this order.` };
+  }
+
+  order.status = "paid";
+  order.txHash = payment.txHash || order.txHash || "";
+  order.paidAt = new Date();
+  order.transferStatus = "pending";
+  if (order.paymentMethod === "card") {
+    order.cardPaymentStatus = "paid";
+  }
+
+  const transferResults = [];
+  for (const gift of gifts) {
+    gift.status = "sold";
+    gift.escrowStatus = "sold";
+    gift.buyerTelegramId = order.buyerTelegramId || "";
+    gift.txHash = order.txHash;
+    gift.paidAt = order.paidAt;
+
+    if (gift.listingSource === "manual_url") {
+      gift.transferStatus = "pending_manual_transfer";
+      await gift.save();
+      transferResults.push({
+        listingId: gift.listingId,
+        ok: false,
+        manual: true,
+        retryable: false,
+        status: "pending_manual_transfer",
+        message: "Manual URL listing paid; seller must transfer gift manually.",
+      });
+      continue;
+    }
+
+    gift.transferStatus = "pending";
+    await gift.save();
+    const result = await transferEscrowGiftToBuyer({
+      gift,
+      buyerTelegramId: order.buyerTelegramId,
+      orderId: order.orderId,
+    });
+    transferResults.push({ listingId: gift.listingId, ...result });
+  }
+
+  const allTransferred = transferResults.length > 0 && transferResults.every((r) => r.ok);
+  const allManual = transferResults.length > 0 && transferResults.every((r) => r.manual);
+  order.transferStatus = allTransferred ? "transferred" : allManual ? "pending_manual_transfer" : "failed";
+  order.transferResults = transferResults;
+  await order.save();
+  return { order, transferResults };
+}
+
 app.post("/orders/create", async (req, res, next) => {
   try {
-    if (!MARKETPLACE_WALLET_ADDRESS) {
+    const paymentMethod = String(req.body?.paymentMethod || "ton").trim().toLowerCase();
+    const cardProvider = String(req.body?.cardProvider || "").trim().toLowerCase();
+    if (paymentMethod === "ton" && !MARKETPLACE_WALLET_ADDRESS) {
       return res.status(503).json({ error: "MARKETPLACE_WALLET_ADDRESS is not configured." });
+    }
+    if (paymentMethod === "card") {
+      if (!CARD_PROVIDERS.has(cardProvider)) {
+        return res.status(400).json({ error: "Unsupported card provider." });
+      }
+      if (!cardProviderEnabled(cardProvider)) {
+        return res.status(503).json({ error: "Provider not configured." });
+      }
+      if (isProduction && !CARD_PAYMENT_TEST_MODE) {
+        return res.status(503).json({ error: "Provider not configured." });
+      }
+    } else if (paymentMethod !== "ton") {
+      return res.status(400).json({ error: "Unsupported payment method." });
     }
 
     const listingIds = normalizeListingIds(req.body?.listingIds);
@@ -355,6 +459,15 @@ app.post("/orders/create", async (req, res, next) => {
 
     const orderId = `qton_${Date.now().toString(36)}_${crypto.randomBytes(4).toString("hex")}`;
     const payload = `Quanton order ${orderId}`;
+    let totalUzs = 0;
+    let tonUzsRate = 0;
+    let paymentUrl = "";
+    if (paymentMethod === "card") {
+      const rate = await getTonUzsRateData();
+      tonUzsRate = Number(rate.tonUzs) || 0;
+      totalUzs = Math.round(totalTon * tonUzsRate);
+      paymentUrl = `/payment-test/${encodeURIComponent(orderId)}?provider=${encodeURIComponent(cardProvider)}`;
+    }
     const reserve = await Gift.updateMany(
       reserveQueryForListings(listingIds),
       { $set: { escrowStatus: "reserved", status: "reserved" } }
@@ -369,16 +482,25 @@ app.post("/orders/create", async (req, res, next) => {
       buyerWalletAddress: String(req.body?.buyerWalletAddress ?? "").trim(),
       listingIds,
       totalTon,
+      totalUzs,
+      tonUzsRate,
+      paymentMethod,
+      cardProvider: paymentMethod === "card" ? cardProvider : "",
+      paymentUrl,
+      cardPaymentStatus: paymentMethod === "card" ? "pending" : "none",
       status: "pending_payment",
       transferStatus: "none",
       payload,
     });
 
-    res.status(201).json({
+    const body = {
       ...publicOrder(order),
-      marketplaceWalletAddress: MARKETPLACE_WALLET_ADDRESS,
       comment: payload,
-    });
+    };
+    if (paymentMethod === "ton") {
+      body.marketplaceWalletAddress = MARKETPLACE_WALLET_ADDRESS;
+    }
+    res.status(201).json(body);
   } catch (e) {
     next(e);
   }
@@ -419,59 +541,97 @@ app.post("/orders/verify-payment", async (req, res, next) => {
       return res.status(409).json({ error: "Transaction was already used for another order.", order: publicOrder(order) });
     }
 
-    const gifts = await Gift.find({ listingId: { $in: order.listingIds } });
-    const badState = gifts.find(
-      (g) => g.escrowStatus !== "reserved" || ["sold", "transferred"].includes(String(g.status || "").toLowerCase())
-    );
-    if (badState) {
-      order.status = "failed";
-      await order.save();
-      return res.status(409).json({ error: `${badState.name} is no longer reserved for this order.`, order: publicOrder(order) });
+    const completed = await completePaidOrder(order, payment);
+    if (completed.error) {
+      return res.status(409).json({ error: completed.error, order: publicOrder(order) });
     }
 
-    order.status = "paid";
-    order.txHash = payment.txHash;
-    order.paidAt = new Date();
-    order.transferStatus = "pending";
-    const transferResults = [];
-    const paidGifts = await Gift.find({ listingId: { $in: order.listingIds } });
-    for (const gift of paidGifts) {
-      gift.status = "sold";
-      gift.escrowStatus = "sold";
-      gift.buyerTelegramId = order.buyerTelegramId || "";
-      gift.txHash = payment.txHash;
-      gift.paidAt = order.paidAt;
+    res.json({ ok: true, order: publicOrder(completed.order), payment, transferResults: completed.transferResults });
+  } catch (e) {
+    next(e);
+  }
+});
 
-      if (gift.listingSource === "manual_url") {
-        gift.transferStatus = "pending_manual_transfer";
-        await gift.save();
-        transferResults.push({
-          listingId: gift.listingId,
-          ok: false,
-          manual: true,
-          retryable: false,
-          status: "pending_manual_transfer",
-          message: "Manual URL listing paid; seller must transfer gift manually.",
-        });
-        continue;
-      }
+app.get("/payments/card/providers", (_req, res) => {
+  const providerPayload = (provider) => ({
+    provider,
+    enabled: cardProviderEnabled(provider) && (CARD_PAYMENT_TEST_MODE || !isProduction),
+    testMode: CARD_PAYMENT_TEST_MODE || !isProduction,
+    disabledReason: cardProviderEnabled(provider) && (CARD_PAYMENT_TEST_MODE || !isProduction) ? "" : "Provider not configured",
+  });
+  res.json({
+    ok: true,
+    providers: [providerPayload("click"), providerPayload("payme")],
+  });
+});
 
-      gift.transferStatus = "pending";
-      await gift.save();
-      const result = await transferEscrowGiftToBuyer({
-        gift,
-        buyerTelegramId: order.buyerTelegramId,
-        orderId: order.orderId,
-      });
-      transferResults.push({ listingId: gift.listingId, ...result });
+app.get("/payments/card/:orderId/status", async (req, res, next) => {
+  try {
+    const order = await Order.findOne({ orderId: String(req.params.orderId ?? "").trim() });
+    if (!order) {
+      return res.status(404).json({ error: "Order not found." });
     }
-    const allTransferred = transferResults.length > 0 && transferResults.every((r) => r.ok);
-    const allManual = transferResults.length > 0 && transferResults.every((r) => r.manual);
-    order.transferStatus = allTransferred ? "transferred" : allManual ? "pending_manual_transfer" : "failed";
-    order.transferResults = transferResults;
+    if (order.paymentMethod !== "card") {
+      return res.status(400).json({ error: "Order is not a card payment.", order: publicOrder(order) });
+    }
+    res.json({ ok: true, order: publicOrder(order) });
+  } catch (e) {
+    next(e);
+  }
+});
+
+app.post("/payments/test/:orderId/success", async (req, res, next) => {
+  try {
+    if (!assertCardTestAllowed(req, res)) return;
+    const order = await Order.findOne({ orderId: String(req.params.orderId ?? "").trim() });
+    if (!order) {
+      return res.status(404).json({ error: "Order not found." });
+    }
+    if (order.paymentMethod !== "card") {
+      return res.status(400).json({ error: "Order is not a card payment.", order: publicOrder(order) });
+    }
+    if (order.status === "paid") {
+      return res.json({ ok: true, order: publicOrder(order) });
+    }
+    if (order.status !== "pending_payment") {
+      return res.status(409).json({ error: `Order is ${order.status}.`, order: publicOrder(order) });
+    }
+    const txHash = `test_${order.cardProvider}_${order.orderId}`;
+    const completed = await completePaidOrder(order, { txHash, provider: order.cardProvider, test: true });
+    if (completed.error) {
+      return res.status(409).json({ error: completed.error, order: publicOrder(order) });
+    }
+    res.json({ ok: true, order: publicOrder(completed.order), transferResults: completed.transferResults });
+  } catch (e) {
+    next(e);
+  }
+});
+
+app.post("/payments/test/:orderId/fail", async (req, res, next) => {
+  try {
+    if (!assertCardTestAllowed(req, res)) return;
+    const order = await Order.findOne({ orderId: String(req.params.orderId ?? "").trim() });
+    if (!order) {
+      return res.status(404).json({ error: "Order not found." });
+    }
+    if (order.paymentMethod !== "card") {
+      return res.status(400).json({ error: "Order is not a card payment.", order: publicOrder(order) });
+    }
+    if (order.status === "paid") {
+      return res.status(409).json({ error: "Paid orders cannot be failed.", order: publicOrder(order) });
+    }
+    order.status = "failed";
+    order.cardPaymentStatus = "failed";
     await order.save();
-
-    res.json({ ok: true, order: publicOrder(order), payment, transferResults });
+    await Gift.updateMany(
+      { listingId: { $in: order.listingIds }, listingSource: "manual_url", status: "reserved", escrowStatus: "reserved" },
+      { $set: { status: "approved", escrowStatus: "none" } }
+    );
+    await Gift.updateMany(
+      { listingId: { $in: order.listingIds }, listingSource: "escrow", status: "reserved", escrowStatus: "reserved" },
+      { $set: { status: "approved", escrowStatus: "listed" } }
+    );
+    res.json({ ok: true, order: publicOrder(order) });
   } catch (e) {
     next(e);
   }

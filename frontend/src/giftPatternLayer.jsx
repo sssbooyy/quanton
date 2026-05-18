@@ -25,14 +25,14 @@ const SCATTER_BOX_PX = 512;
 /**
  * Portals / Telegram-style scattered raster symbols: staggered orbit-grid, center exclusion, one shared angle.
  * Non-overlapping: min center distance >= (sizeA + sizeB) * spacingK (deterministic K in [0.55, 0.67]).
- * @param {string} seedStr
  * @param {ScatterSurface} surface
  * @param {boolean} reducedMotion
  * @returns {{ globalAngleDeg: number; instances: { xPct: number; yPct: number; sizePx: number; opacityMul: number }[] }}
  */
-function buildRasterScatterLayout(seedStr, surface, reducedMotion) {
-  const seedN = hashPresentationSeed(seedStr);
+function buildRasterScatterLayout(surface, reducedMotion) {
   const isCard = surface === "card";
+  const layoutSeedStr = `quanton-symbol-layout:${surface}:${reducedMotion ? "reduced" : "standard"}`;
+  const seedN = hashPresentationSeed(layoutSeedStr);
   /** Normalized Euclidean distance from center; skip below this (clean collectible zone). */
   const exclusion = isCard ? 0.17 : 0.2;
   const maxR = isCard ? 0.58 : 0.6;
@@ -41,8 +41,8 @@ function buildRasterScatterLayout(seedStr, surface, reducedMotion) {
   /** Min-distance multiplier keeps large symbols from visually stacking. */
   const spacingK = 0.55 + seeded01(seedN, 0, 88) * 0.12;
 
-  /** One deterministic angle per collectible (all instances share). */
-  const globalAngleDeg = -21 - (hashPresentationSeed(seedStr + "symAngle") % 5);
+  /** One global angle: every gift uses the same orientation; only symbol artwork changes. */
+  const globalAngleDeg = -23;
 
   /** @type {{ x: number; y: number; xPct: number; yPct: number; sizePx: number; opacityMul: number }[]} */
   const instances = [];
@@ -101,7 +101,7 @@ function buildRasterScatterLayout(seedStr, surface, reducedMotion) {
 
   for (let i = 0; i < count; i++) {
     const scale = 0.78 + seeded01(seedN, i, 20) * 0.28;
-    const basePx = 22 + (hashPresentationSeed(seedStr + `bz${i}`) % 21);
+    const basePx = 22 + (hashPresentationSeed(`${layoutSeedStr}:bz${i}`) % 21);
     const sizePx = basePx * scale;
     const opacityMul = 0.36 + seeded01(seedN, i, 21) * 0.5;
 
@@ -335,13 +335,12 @@ function SymbolGlyph({ symbolId }) {
 /**
  * Organic scattered raster symbols (Gift `/symbols/*.png`) — not a CSS repeat grid.
  */
-function GiftRasterPatternScatter({ url, seed, scatterSurface, reducedMotion }) {
+function GiftRasterPatternScatter({ url, scatterSurface, reducedMotion }) {
   const safe = typeof url === "string" ? url.trim() : "";
-  const seedStr = String(seed ?? "0");
   const layout = useMemo(() => {
     if (!safe) return { globalAngleDeg: -22, instances: [] };
-    return buildRasterScatterLayout(seedStr, scatterSurface, reducedMotion);
-  }, [safe, seedStr, scatterSurface, reducedMotion]);
+    return buildRasterScatterLayout(scatterSurface, reducedMotion);
+  }, [safe, scatterSurface, reducedMotion]);
 
   if (!safe) return null;
 

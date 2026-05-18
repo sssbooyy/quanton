@@ -49,7 +49,11 @@ const emptyGiftForm = {
   sellerNote: "",
 };
 
-const MANUAL_LISTING_FALLBACK_ENABLED = import.meta.env.VITE_ENABLE_MANUAL_LISTING_FALLBACK !== "false";
+const MANUAL_LISTING_FALLBACK_ENABLED =
+  import.meta.env.VITE_ENABLE_MANUAL_LISTING_FALLBACK === "true" ||
+  import.meta.env.VITE_ENABLE_MANUAL_LISTING === "true" ||
+  (import.meta.env.VITE_ENABLE_MANUAL_LISTING_FALLBACK !== "false" &&
+    import.meta.env.VITE_ENABLE_MANUAL_LISTING !== "false");
 const QUANTON_BOT_URL = String(import.meta.env.VITE_QUANTON_BOT_URL || "https://t.me/QuantonMarketBot");
 
 function getTelegramUser() {

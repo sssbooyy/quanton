@@ -60,10 +60,14 @@ export const MARKETPLACE_WALLET_ADDRESS = process.env.MARKETPLACE_WALLET_ADDRESS
 export const TON_API_KEY = process.env.TON_API_KEY?.trim() || "";
 export const TELEGRAM_BUSINESS_CONNECTION_ID = process.env.TELEGRAM_BUSINESS_CONNECTION_ID?.trim() || "";
 export const ESCROW_INTAKE_SECRET = process.env.ESCROW_INTAKE_SECRET?.trim() || "";
-export const ENABLE_MANUAL_LISTING_FALLBACK =
-  process.env.ENABLE_MANUAL_LISTING_FALLBACK == null
-    ? true
-    : parseBoolEnv(process.env.ENABLE_MANUAL_LISTING_FALLBACK);
+export const ENABLE_MANUAL_LISTING_FALLBACK = (() => {
+  if (parseBoolEnv(process.env.DISABLE_MANUAL_LISTING)) return false;
+  const explicitEnable = process.env.ENABLE_MANUAL_LISTING;
+  if (explicitEnable != null && !parseBoolEnv(explicitEnable)) return false;
+  const legacyFallback = process.env.ENABLE_MANUAL_LISTING_FALLBACK;
+  if (legacyFallback != null && !parseBoolEnv(legacyFallback)) return false;
+  return true;
+})();
 
 const _floorTtl = Number.parseInt(process.env.FLOOR_CACHE_TTL_MS, 10);
 /** In-memory + request coalescing TTL for Gift Asset floor rows (60s–180s). */

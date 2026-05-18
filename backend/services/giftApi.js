@@ -259,7 +259,7 @@ export async function createGiftFromBody(body, listingIdSuffix = "") {
     status: "approved",
     listingSource: "manual_url",
     escrowStatus: "none",
-    transferStatus: "none",
+    transferStatus: "pending_manual_transfer",
     telegramUserId: userDoc?._id ?? null,
     telegramUserSnapshot: telegramUser ?? null,
   });

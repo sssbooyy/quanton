@@ -10,6 +10,9 @@ export default defineConfig(() => ({
   plugins: [react()],
   base: "/",
   appType: "spa",
+  define: {
+    global: "globalThis",
+  },
 
   resolve: {
     alias: {

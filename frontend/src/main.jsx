@@ -1,3 +1,4 @@
+import { Buffer } from "buffer";
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { TonConnectUIProvider } from "@tonconnect/ui-react";
@@ -9,6 +10,8 @@ import {
 import App from "./App.jsx";
 import "./styles.css";
 import "./nft-market.css";
+
+window.Buffer = window.Buffer || Buffer;
 
 if (import.meta.env.PROD && !hasExplicitApiUrlFromEnv()) {
   console.info(

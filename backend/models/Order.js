@@ -19,7 +19,7 @@ const orderSchema = new mongoose.Schema(
     paidAt: { type: Date, default: null },
     transferStatus: {
       type: String,
-      enum: ["none", "pending", "transferred", "failed", "partial"],
+      enum: ["none", "pending", "pending_manual_transfer", "transferred", "failed", "partial"],
       default: "none",
       index: true,
     },

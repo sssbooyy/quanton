@@ -73,6 +73,7 @@ const giftSchema = new mongoose.Schema(
     liquidity: { type: String, default: "Unknown" },
     risk: { type: String, default: "Unknown" },
     status: { type: String, default: "pending" },
+    listingSource: { type: String, enum: ["escrow", "manual_url"], default: "manual_url", index: true },
     /** Escrow marketplace state: only `listed` escrow gifts should be publicly buyable. */
     escrowStatus: {
       type: String,
@@ -82,7 +83,7 @@ const giftSchema = new mongoose.Schema(
     },
     transferStatus: {
       type: String,
-      enum: ["none", "not_ready", "pending", "transferred", "failed", "retrying"],
+      enum: ["none", "not_ready", "pending", "pending_manual_transfer", "transferred", "failed", "retrying"],
       default: "none",
       index: true,
     },

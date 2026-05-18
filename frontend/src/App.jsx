@@ -49,7 +49,7 @@ const emptyGiftForm = {
   sellerNote: "",
 };
 
-const MANUAL_LISTING_FALLBACK_ENABLED = import.meta.env.VITE_ENABLE_MANUAL_LISTING_FALLBACK === "true";
+const MANUAL_LISTING_FALLBACK_ENABLED = import.meta.env.VITE_ENABLE_MANUAL_LISTING_FALLBACK !== "false";
 const QUANTON_BOT_URL = String(import.meta.env.VITE_QUANTON_BOT_URL || "https://t.me/QuantonMarketBot");
 
 function getTelegramUser() {
@@ -624,7 +624,7 @@ export default function App() {
           <div className="toolbarActions">
             {MANUAL_LISTING_FALLBACK_ENABLED ? (
               <button type="button" className="addGiftTrigger" onClick={openGiftModal}>
-                {tk("manualListingFallback")}
+                {tk("temporaryManualListing")}
               </button>
             ) : null}
             <button type="button" className="alertButton" onClick={handleTestAlert}>
@@ -861,7 +861,10 @@ function GiftCard({ gift, lang, tk, onOpen, onAddToCart, inCart }) {
   const showFallback = !renderable || !rawRasterUrl;
 
   const statusLabel = listingStatusLabel(lang, gift.status);
-  const isBuyable = String(gift.status || "").toLowerCase() === "approved" && String(gift.escrowStatus || "").toLowerCase() === "listed";
+  const isBuyable =
+    String(gift.status || "").toLowerCase() === "approved" &&
+    (String(gift.listingSource || "manual_url") === "manual_url" ||
+      String(gift.escrowStatus || "").toLowerCase() === "listed");
 
   return (
     <article className="nftCardCell">

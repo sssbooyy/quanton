@@ -266,6 +266,25 @@ function normalizeListingIds(v) {
   return [...new Set(arr.map((x) => String(x ?? "").trim()).filter(Boolean))];
 }
 
+function isCheckoutAvailable(gift) {
+  const status = String(gift?.status || "").toLowerCase();
+  const source = String(gift?.listingSource || "manual_url");
+  if (status !== "approved") return false;
+  if (source === "manual_url") return true;
+  return source === "escrow" && gift?.escrowStatus === "listed";
+}
+
+function reserveQueryForListings(listingIds) {
+  return {
+    listingId: { $in: listingIds },
+    status: "approved",
+    $or: [
+      { listingSource: "manual_url" },
+      { listingSource: "escrow", escrowStatus: "listed" },
+    ],
+  };
+}
+
 app.post("/orders/create", async (req, res, next) => {
   try {
     if (!MARKETPLACE_WALLET_ADDRESS) {
@@ -282,7 +301,7 @@ app.post("/orders/create", async (req, res, next) => {
       return res.status(400).json({ error: "One or more listings were not found." });
     }
 
-    const unavailable = gifts.find((g) => g.escrowStatus !== "listed" || String(g.status || "").toLowerCase() !== "approved");
+    const unavailable = gifts.find((g) => !isCheckoutAvailable(g));
     if (unavailable) {
       return res.status(409).json({ error: `${unavailable.name} is not available for escrow checkout.` });
     }
@@ -295,7 +314,7 @@ app.post("/orders/create", async (req, res, next) => {
     const orderId = `qton_${Date.now().toString(36)}_${crypto.randomBytes(4).toString("hex")}`;
     const payload = `Quanton order ${orderId}`;
     const reserve = await Gift.updateMany(
-      { listingId: { $in: listingIds }, escrowStatus: "listed", status: "approved" },
+      reserveQueryForListings(listingIds),
       { $set: { escrowStatus: "reserved", status: "reserved" } }
     );
     if (reserve.modifiedCount !== listingIds.length) {
@@ -360,7 +379,7 @@ app.post("/orders/verify-payment", async (req, res, next) => {
 
     const gifts = await Gift.find({ listingId: { $in: order.listingIds } });
     const badState = gifts.find(
-      (g) => !["reserved", "listed"].includes(g.escrowStatus) || ["sold", "transferred"].includes(String(g.status || "").toLowerCase())
+      (g) => g.escrowStatus !== "reserved" || ["sold", "transferred"].includes(String(g.status || "").toLowerCase())
     );
     if (badState) {
       order.status = "failed";
@@ -372,23 +391,31 @@ app.post("/orders/verify-payment", async (req, res, next) => {
     order.txHash = payment.txHash;
     order.paidAt = new Date();
     order.transferStatus = "pending";
-    await Gift.updateMany(
-      { listingId: { $in: order.listingIds } },
-      {
-        $set: {
-          status: "sold",
-          escrowStatus: "sold",
-          transferStatus: "pending",
-          buyerTelegramId: order.buyerTelegramId || "",
-          txHash: payment.txHash,
-          paidAt: order.paidAt,
-        },
-      }
-    );
-
     const transferResults = [];
     const paidGifts = await Gift.find({ listingId: { $in: order.listingIds } });
     for (const gift of paidGifts) {
+      gift.status = "sold";
+      gift.escrowStatus = "sold";
+      gift.buyerTelegramId = order.buyerTelegramId || "";
+      gift.txHash = payment.txHash;
+      gift.paidAt = order.paidAt;
+
+      if (gift.listingSource === "manual_url") {
+        gift.transferStatus = "pending_manual_transfer";
+        await gift.save();
+        transferResults.push({
+          listingId: gift.listingId,
+          ok: false,
+          manual: true,
+          retryable: false,
+          status: "pending_manual_transfer",
+          message: "Manual URL listing paid; seller must transfer gift manually.",
+        });
+        continue;
+      }
+
+      gift.transferStatus = "pending";
+      await gift.save();
       const result = await transferEscrowGiftToBuyer({
         gift,
         buyerTelegramId: order.buyerTelegramId,
@@ -397,7 +424,8 @@ app.post("/orders/verify-payment", async (req, res, next) => {
       transferResults.push({ listingId: gift.listingId, ...result });
     }
     const allTransferred = transferResults.length > 0 && transferResults.every((r) => r.ok);
-    order.transferStatus = allTransferred ? "transferred" : "failed";
+    const allManual = transferResults.length > 0 && transferResults.every((r) => r.manual);
+    order.transferStatus = allTransferred ? "transferred" : allManual ? "pending_manual_transfer" : "failed";
     order.transferResults = transferResults;
     await order.save();
 

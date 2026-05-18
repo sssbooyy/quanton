@@ -51,6 +51,7 @@ export function giftToApiResponse(doc) {
     liquidity: plain.liquidity,
     risk: plain.risk,
     status: plain.status,
+    listingSource: plain.listingSource || "manual_url",
     escrowStatus: plain.escrowStatus || "none",
     transferStatus: plain.transferStatus || "none",
     payoutStatus: plain.payoutStatus || "none",
@@ -158,7 +159,7 @@ export function giftToApiResponse(doc) {
 export async function listGiftsForApi() {
   const escrowVisible = ["listed", "reserved", "sold", "transferred"];
   const visibility = ENABLE_MANUAL_LISTING_FALLBACK
-    ? { $or: [{ escrowStatus: { $in: escrowVisible } }, { escrowStatus: { $in: [null, "", "none"] } }] }
+    ? { $or: [{ escrowStatus: { $in: escrowVisible } }, { listingSource: "manual_url" }, { escrowStatus: { $in: [null, "", "none"] } }] }
     : { escrowStatus: { $in: escrowVisible } };
   const docs = await Gift.find(visibility).sort({ createdAt: -1 }).lean();
   return docs.map((d) => giftToApiResponse(d));
@@ -255,7 +256,10 @@ export async function createGiftFromBody(body, listingIdSuffix = "") {
     giftLink: giftLinkTrim,
     sellerNote: sellerNoteTrim,
     priceTon: priceNum,
-    status: "pending",
+    status: "approved",
+    listingSource: "manual_url",
+    escrowStatus: "none",
+    transferStatus: "none",
     telegramUserId: userDoc?._id ?? null,
     telegramUserSnapshot: telegramUser ?? null,
   });

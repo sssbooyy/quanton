@@ -29,6 +29,7 @@ export const translations = {
     escrowOnboardingBody: "Send the actual gift to Quanton bot. After escrow verification, set your TON price in Telegram.",
     escrowSendGift: "Send gift to Quanton bot",
     manualListingFallback: "Manual listing",
+    temporaryManualListing: "Temporary manual listing",
     testDeskAlert: "Test alert",
 
     loadingText: "Loading…",
@@ -193,6 +194,7 @@ export const translations = {
     escrowOnboardingBody: "Отправьте настоящий подарок боту Quanton. После проверки escrow задайте цену в TON в Telegram.",
     escrowSendGift: "Отправить подарок боту",
     manualListingFallback: "Ручной лот",
+    temporaryManualListing: "Временный ручной лот",
     testDeskAlert: "Тест",
 
     loadingText: "Загрузка…",

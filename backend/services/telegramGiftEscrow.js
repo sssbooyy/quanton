@@ -103,6 +103,7 @@ export async function createEscrowListingFromOwnedGift(body = {}) {
     mediaSource: resolved?.mediaSource || "telegram-escrow",
     mediaMatchLevel: resolved?.mediaMatchLevel || "",
     priceTon,
+    listingSource: "escrow",
     floorTon: Number(resolved?.floorTon ?? body.floorTon) || priceTon || 0,
     rarity: Number(resolved?.rarity ?? body.rarity) || 1,
     status: priceTon > 0 ? "approved" : "pending",

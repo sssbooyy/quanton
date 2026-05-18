@@ -992,65 +992,20 @@ function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
                   onRasterError={(failed) => mainRaster.markFailed(failed)}
                 />
               </div>
+              <div className="portalsTitleBlock">
+                <h2 id="nft-detail-title" className="portalsTitle">
+                  {gift.name}
+                </h2>
+                {listingNo ? <p className="portalsListingId mono">{listingNo}</p> : null}
+              </div>
             </div>
 
             {gift.imageUpscaleStatus === "pending" ? (
               <p className="portalsUpscalingNote mono">{tk("badgeUpscalingDetail")}</p>
             ) : null}
 
-            <div className="portalsTitleBlock">
-              <h2 id="nft-detail-title" className="portalsTitle">
-                {gift.name}
-              </h2>
-              {listingNo ? <p className="portalsListingId mono">{listingNo}</p> : null}
-              {floorDeltaBadge ? (
-                <span
-                  className={`portalsFloorDeltaBadge portalsFloorDeltaBadge--${floorDeltaBadge.variant}`}
-                  aria-label={floorDeltaBadgeLabel}
-                >
-                  {floorDeltaBadgeLabel}
-                </span>
-              ) : null}
-            </div>
-
-            <div className="portalsPriceStack">
-              <div className="portalsFloorCard portalsFloorCard--sellerPrimary">
-                <div className="portalsFloorCard__top">
-                  <span className="portalsFloorCard__label">{tk("portalsSellerPrice")}</span>
-                </div>
-                <p className="portalsFloorCard__value mono">
-                  {formatTonAmount(gift.priceTon) ? `${formatTonAmount(gift.priceTon)} TON` : "—"}
-                </p>
-              </div>
-              <div className="portalsFloorCard portalsFloorCard--floorSecondary">
-                <div className="portalsFloorCard__top">
-                  <span className="portalsFloorCard__label">{tk("portalsReferenceFloor")}</span>
-                  {gift.floorIsLive ? (
-                    <span className="portalsLivePill">
-                      <span className="nftDetailLiveFloorDot" aria-hidden="true" />
-                      {tk("livePill")}
-                    </span>
-                  ) : null}
-                </div>
-                <p className="portalsFloorCard__value portalsFloorCard__value--secondary mono">
-                  {formatTonAmount(liveFloorTon) ? `${formatTonAmount(liveFloorTon)} TON` : "—"}
-                </p>
-              </div>
-            </div>
-
-            <div className="portalsActionsRow">
-              <button type="button" className="portalsBtnOffer" disabled>
-                <span className="portalsBtnOffer__label">{tk("portalsMakeOffer")}</span>
-                <span className="portalsBtnOffer__hint mono">{tk("portalsOfferHint")}</span>
-              </button>
-              <button type="button" className={`portalsBtnCart ${inCart ? "portalsBtnCart--inCart" : ""}`} onClick={onAddToCart}>
-                {inCart ? tk("inCart") : tk("addToCart")}
-              </button>
-            </div>
-
             <div className="portalsSheetFlow">
-              <section className="portalsGlassSection">
-                <h3 className="portalsSectionTitle">{tk("portalsAttributes")}</h3>
+              <section className="portalsGlassSection portalsGlassSection--traitTable">
                 <div className="portalsAttrList" role="list">
                   {attrRows.map((row) => (
                     <div key={row.key} className="portalsAttrRow" role="listitem">
@@ -1064,8 +1019,45 @@ function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
                       </span>
                     </div>
                   ))}
+                  <div className="portalsAttrRow portalsAttrRow--floor" role="listitem">
+                    <span className="portalsAttrRow__label">{tk("portalsReferenceFloor")}</span>
+                    <div className="portalsAttrRow__center">
+                      <span className="portalsAttrRow__value portalsAttrRow__value--floor mono">
+                        {formatTonAmount(liveFloorTon) ? `${formatTonAmount(liveFloorTon)} TON` : "—"}
+                      </span>
+                    </div>
+                    <span className="portalsAttrRow__floor mono" />
+                  </div>
                 </div>
               </section>
+
+              <div className="portalsActionsRow">
+                <button type="button" className="portalsBtnOffer" disabled>
+                  <span className="portalsBtnOffer__label">{tk("portalsMakeOffer")}</span>
+                  <span className="portalsBtnOffer__hint mono">{tk("portalsOfferHint")}</span>
+                </button>
+                <div className="portalsBtnFloor" aria-label={tk("portalsReferenceFloor")}>
+                  <span className="portalsBtnFloor__label">{tk("portalsReferenceFloor")}</span>
+                  <span className="portalsBtnFloor__value mono">
+                    {formatTonAmount(liveFloorTon) ? `${formatTonAmount(liveFloorTon)} TON` : "—"}
+                  </span>
+                </div>
+                <button type="button" className={`portalsBtnCart ${inCart ? "portalsBtnCart--inCart" : ""}`} onClick={onAddToCart}>
+                  <span className="portalsBtnCart__label">{inCart ? tk("inCart") : tk("addToCart")}</span>
+                  <span className="portalsBtnCart__price mono">
+                    {formatTonAmount(gift.priceTon) ? `${formatTonAmount(gift.priceTon)} TON` : "—"}
+                  </span>
+                </button>
+              </div>
+
+              {floorDeltaBadge ? (
+                <span
+                  className={`portalsFloorDeltaBadge portalsFloorDeltaBadge--${floorDeltaBadge.variant}`}
+                  aria-label={floorDeltaBadgeLabel}
+                >
+                  {floorDeltaBadgeLabel}
+                </span>
+              ) : null}
 
               <p className="portalsTrustFooter">{tk("portalsTrustFooter")}</p>
 

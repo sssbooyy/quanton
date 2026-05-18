@@ -393,8 +393,11 @@ export default function App() {
 
       <main className="app app--terminal">
         <div className="feedHead">
-          <div className="feedHead__row">
-            <p className="feedHead__tagline">{tk("feedTagline")}</p>
+          <div className="feedHead__row feedHead__row--collection">
+            <div className="feedHead__identity">
+              <p className="feedHead__tagline">{tk("feedTagline")}</p>
+              <h1 className="feedHead__title">Quanton Marketplace</h1>
+            </div>
             <span className="feedHead__live">
               <span className="liveDot liveDot--subtle" aria-hidden="true" />
               {tk("livePill")}

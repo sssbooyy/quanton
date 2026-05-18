@@ -1670,6 +1670,385 @@
   touch-action: manipulation;
 }
 
+/* --- Getgems-inspired collection marketplace shell (visual only) --- */
+.topbar--terminal {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  padding-inline: clamp(14px, 3vw, 28px);
+  background: rgba(5, 7, 12, 0.78);
+  border-bottom-color: rgba(255, 255, 255, 0.055);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(18px) saturate(1.08);
+  -webkit-backdrop-filter: blur(18px) saturate(1.08);
+}
+
+.brandLogo {
+  border-radius: 11px;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 10px 26px rgba(56, 189, 248, 0.12);
+}
+
+.brandQuanton {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.shell--miniapp .app--terminal {
+  max-width: 1360px;
+  padding: clamp(14px, 2.2vw, 28px) clamp(12px, 3vw, 30px) max(28px, env(safe-area-inset-bottom, 0px));
+}
+
+.feedHead {
+  position: relative;
+  overflow: hidden;
+  margin: 0 0 18px;
+  padding: clamp(18px, 3vw, 30px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(56, 189, 248, 0.18), transparent 34%),
+    radial-gradient(circle at 86% 10%, rgba(99, 102, 241, 0.16), transparent 34%),
+    linear-gradient(180deg, rgba(18, 23, 34, 0.92), rgba(8, 10, 16, 0.92));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 24px 70px rgba(0, 0, 0, 0.26);
+}
+
+.feedHead::after {
+  content: "";
+  position: absolute;
+  inset: auto -12% -45% 35%;
+  height: 170px;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(56, 189, 248, 0.09), transparent 68%);
+}
+
+.feedHead__row--collection {
+  position: relative;
+  z-index: 1;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.feedHead__identity {
+  min-width: 0;
+}
+
+.feedHead__tagline {
+  margin-bottom: 7px;
+  color: rgba(226, 232, 240, 0.62);
+  font-size: clamp(12px, 2.4vw, 13px);
+  font-weight: 600;
+}
+
+.feedHead__title {
+  margin: 0;
+  color: #f8fafc;
+  font-size: clamp(30px, 7vw, 54px);
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+  font-weight: 780;
+}
+
+.feedHead__live {
+  margin-top: 2px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  color: rgba(226, 232, 240, 0.78);
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.feedHead__stats {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 16px;
+}
+
+.feedHead__stats > span:not(.feedHead__sep) {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  color: rgba(241, 245, 249, 0.9);
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.feedHead__sep {
+  display: none;
+}
+
+.tickerStrip {
+  position: relative;
+  z-index: 1;
+  margin-inline: -4px;
+}
+
+.tickerStrip__scroll {
+  gap: 8px;
+  padding: 2px 4px 4px;
+}
+
+.tickerStrip__chip {
+  padding: 7px 11px;
+  background: rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.marketBrowseBar {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  margin: 0 0 18px;
+  padding: 10px;
+  border-radius: 22px;
+  background: rgba(12, 15, 23, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.marketSearchInput {
+  min-height: 48px;
+  border-radius: 16px;
+  border-color: rgba(255, 255, 255, 0.095);
+  background: rgba(255, 255, 255, 0.045);
+  font-family: var(--font-sans);
+  font-size: 14px;
+}
+
+.marketPresets {
+  gap: 6px;
+  padding: 4px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.055);
+}
+
+.marketPresets button {
+  flex: 1 1 auto;
+  min-height: 40px;
+  padding-inline: 12px;
+  border-radius: 12px;
+  border-color: transparent;
+  background: transparent;
+}
+
+.marketPresets button.active {
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.marketFiltersDetails {
+  border-radius: 16px;
+  border-color: rgba(255, 255, 255, 0.075);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.marketFiltersSummary {
+  padding: 13px 14px;
+  color: rgba(226, 232, 240, 0.74);
+}
+
+.marketFiltersGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.marketInput,
+.marketSelect {
+  min-height: 42px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.toolbar {
+  justify-content: flex-end;
+  margin-bottom: 18px;
+}
+
+.toolbarActions {
+  gap: 10px;
+}
+
+.addGiftTrigger,
+.alertButton {
+  border-radius: 14px;
+}
+
+.nftFeedGrid {
+  gap: clamp(12px, 2.6vw, 20px);
+}
+
+.nftCardCell {
+  border-radius: 22px;
+  background: rgba(15, 18, 25, 0.92);
+  border-color: rgba(255, 255, 255, 0.07);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 14px 34px rgba(0, 0, 0, 0.18);
+  transition:
+    transform 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    background 0.16s ease;
+}
+
+.nftCardCell .nftCardOpen.nftCard {
+  background: transparent;
+}
+
+.nftCardMediaWrap {
+  width: calc(100% - 12px);
+  margin: 6px 6px 0;
+  border-radius: 18px;
+}
+
+.nftCardScore {
+  top: 10px;
+  right: 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.38);
+}
+
+.nftCardMeta--simple {
+  gap: 7px;
+  padding: 10px 12px 9px;
+}
+
+.nftCardTitle {
+  font-size: clamp(13px, 2.5vw, 15px);
+  font-weight: 700;
+  color: #f2f6fb;
+}
+
+.nftCardSubline {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: rgba(148, 163, 184, 0.82);
+}
+
+.nftCardPriceRow {
+  width: 100%;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.nftCardPricePill {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  gap: 4px;
+}
+
+.nftCardPricePillValue {
+  color: #f8fafc;
+  font-size: 14px;
+}
+
+.nftCardPricePillUnit {
+  color: rgba(226, 232, 240, 0.62);
+  font-size: 10px;
+}
+
+.nftCardStatus {
+  padding: 4px 7px;
+  font-size: 7px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.nftCardCartRow {
+  padding: 0 12px 12px;
+}
+
+.nftCardAddCart {
+  min-height: 38px;
+  border-radius: 13px;
+  background: rgba(56, 189, 248, 0.1);
+}
+
+@media (hover: hover) {
+  .nftCardCell:hover {
+    transform: translateY(-3px);
+    background: rgba(18, 22, 31, 0.98);
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 22px 52px rgba(0, 0, 0, 0.28);
+  }
+}
+
+@media (min-width: 640px) {
+  .feedHead__stats {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 900px) {
+  .marketBrowseBar {
+    grid-template-columns: minmax(260px, 1.1fr) minmax(340px, 1.2fr);
+    align-items: start;
+  }
+
+  .marketFiltersDetails {
+    grid-column: 1 / -1;
+  }
+
+  .marketFiltersGrid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .marketField--full {
+    grid-column: span 2;
+  }
+
+  .marketField--status {
+    grid-column: span 2;
+  }
+
+  .marketField--actions {
+    grid-column: span 1;
+    align-self: end;
+  }
+
+  .nftFeedGrid {
+    grid-template-columns: repeat(auto-fill, minmax(188px, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .nftFeedGrid {
+    grid-template-columns: repeat(auto-fill, minmax(205px, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .feedHead {
+    border-radius: 22px;
+  }
+
+  .feedHead__row--collection {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .feedHead__live {
+    align-self: flex-start;
+  }
+}
+
 .tgCollectibleDetailActions {
   display: flex;
   justify-content: center;

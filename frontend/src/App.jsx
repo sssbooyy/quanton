@@ -19,7 +19,6 @@ import {
   listingStatusLabel,
   t,
   translateServerMessage,
-  translateSignal,
 } from "./translations";
 import {
   giftMatchesAdvancedFilters,
@@ -61,11 +60,6 @@ function signalClass(signal) {
   if (signal === "Watch") return "signal-watch";
   if (signal === "Risky") return "signal-risk";
   return "signal-neutral";
-}
-
-function formatSignedPct(n) {
-  if (n > 0) return `+${n}%`;
-  return `${n}%`;
 }
 
 function statusBadgeClass(status) {
@@ -300,32 +294,6 @@ export default function App() {
     });
   }
 
-  const aggregates = useMemo(() => {
-    const strong = gifts.filter((g) => g.aiScore >= 80).length;
-    const cheap = gifts.filter((g) => g.undervaluedPercent >= 15).length;
-    const avgScore =
-      gifts.length === 0
-        ? 0
-        : Math.round(gifts.reduce((a, g) => a + g.aiScore, 0) / gifts.length);
-    const totalVol = gifts.reduce((a, g) => a + (g.sales24h || 0), 0);
-    return { strong, cheap, avgScore, totalVol };
-  }, [gifts]);
-
-  const ticker = useMemo(() => {
-    if (!gifts.length) return [];
-    return [...gifts]
-      .sort((a, b) => b.aiScore - a.aiScore)
-      .slice(0, 5)
-      .map((g, i) => ({
-        id: g.id,
-        rank: i + 1,
-        label: g.name,
-        score: g.aiScore,
-        gap: g.undervaluedPercent,
-        signal: g.signal,
-      }));
-  }, [gifts]);
-
   return (
     <div className="shell shell--miniapp">
       {successToast && (
@@ -403,49 +371,6 @@ export default function App() {
               {tk("livePill")}
             </span>
           </div>
-          <p className="feedHead__stats mono" aria-label={tk("metricsOverviewAria")}>
-            <span>
-              {gifts.length} {tk("statListings")}
-            </span>
-            <span className="feedHead__sep" aria-hidden="true">
-              ·
-            </span>
-            <span>
-              {tk("statAvg")} {aggregates.avgScore}
-            </span>
-            <span className="feedHead__sep" aria-hidden="true">
-              ·
-            </span>
-            <span className="text-bull">
-              {aggregates.strong} {tk("statStrong")}
-            </span>
-            <span className="feedHead__sep" aria-hidden="true">
-              ·
-            </span>
-            <span>
-              {aggregates.cheap} {tk("statGap")}
-            </span>
-            <span className="feedHead__sep" aria-hidden="true">
-              ·
-            </span>
-            <span>
-              {aggregates.totalVol} {tk("statPrints")}
-            </span>
-          </p>
-          {ticker.length > 0 ? (
-            <div className="tickerStrip" role="list" aria-label={tk("tickerAria")}>
-              <div className="tickerStrip__scroll">
-                {ticker.map((row) => (
-                  <span key={row.id} className="tickerStrip__chip mono" role="listitem" title={translateSignal(lang, row.signal)}>
-                    <span className="tickerStrip__rank">#{row.rank}</span>
-                    {row.label}
-                    <span className="tickerStrip__score">{row.score}</span>
-                    <span className={row.gap >= 15 ? "text-bull" : "text-muted"}>{formatSignedPct(row.gap)}</span>
-                  </span>
-                ))}
-              </div>
-            </div>
-          ) : null}
         </div>
 
         <div className="marketBrowseBar">
@@ -479,14 +404,6 @@ export default function App() {
             >
               {tk("presetDiscount")}
             </button>
-            <button
-              type="button"
-              className={preset === "strong" ? "active" : ""}
-              aria-pressed={preset === "strong"}
-              onClick={() => setPreset("strong")}
-            >
-              {tk("presetHighScore")}
-            </button>
           </div>
 
           <details className="marketFiltersDetails">
@@ -502,7 +419,6 @@ export default function App() {
                   <option value="newest">{tk("sortNewest")}</option>
                   <option value="price_asc">{tk("sortPriceLow")}</option>
                   <option value="price_desc">{tk("sortPriceHigh")}</option>
-                  <option value="score">{tk("sortScore")}</option>
                   <option value="floor_diff">{tk("sortFloorDiff")}</option>
                 </select>
               </label>
@@ -584,19 +500,6 @@ export default function App() {
                   step="1"
                 />
               </label>
-              <label className="marketField">
-                <span className="marketField__label">{tk("filterMinScore")}</span>
-                <input
-                  type="number"
-                  className="marketInput mono"
-                  value={advFilters.minScore}
-                  onChange={(e) => setAdvFilters((p) => ({ ...p, minScore: e.target.value }))}
-                  min="0"
-                  max="100"
-                  step="1"
-                />
-              </label>
-
               <div className="marketField marketField--full marketField--actions">
                 <button type="button" className="marketResetBtn" onClick={resetBrowseFilters}>
                   {tk("filtersReset")}
@@ -896,9 +799,6 @@ function GiftCard({ gift, lang, tk, onOpen, onAddToCart, inCart }) {
               </pre>
             ) : null}
           </div>
-          <span className="nftCardScore" title={tk("badgeScoreTitle")}>
-            {gift.aiScore}
-          </span>
         </div>
 
         <div className="nftCardMeta nftCardMeta--simple">

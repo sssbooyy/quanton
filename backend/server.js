@@ -2,7 +2,7 @@ import crypto from "crypto";
 import express from "express";
 import dotenv from "dotenv";
 import axios from "axios";
-import { initTelegramBot, notifyManualOrderPaid, sendAdminAlert, stopTelegramBot } from "./services/telegramBot.js";
+import { handleTelegramWebhookUpdate, initTelegramBot, notifyManualOrderPaid, sendAdminAlert, stopTelegramBot } from "./services/telegramBot.js";
 import {
   PORT,
   isProduction,
@@ -130,6 +130,28 @@ app.get("/debug/providers", async (req, res, next) => {
     res.json(await getProvidersDebugResponse({ runProbe }));
   } catch (e) {
     next(e);
+  }
+});
+
+app.post("/telegram/webhook", (req, res) => {
+  try {
+    const update = req.body;
+    const keys = update && typeof update === "object" ? Object.keys(update).filter((k) => k !== "update_id") : [];
+    console.log("[telegram] webhook update received", {
+      updateId: update?.update_id,
+      keys,
+    });
+    const ok = handleTelegramWebhookUpdate(update);
+    if (!ok) {
+      console.error("[telegram] webhook update processing failed", {
+        updateId: update?.update_id,
+        keys,
+      });
+    }
+    res.sendStatus(200);
+  } catch (e) {
+    console.error("[telegram] webhook endpoint error:", e?.message || e);
+    res.sendStatus(200);
   }
 });
 

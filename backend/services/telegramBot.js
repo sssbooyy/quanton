@@ -1,6 +1,6 @@
 import TelegramBot from "node-telegram-bot-api";
 import crypto from "crypto";
-import { isProduction } from "../config.js";
+import { isProduction, TELEGRAM_WEBHOOK_URL } from "../config.js";
 import { setEscrowListingPrice } from "./telegramGiftEscrow.js";
 import { Gift } from "../models/Gift.js";
 import { Order } from "../models/Order.js";
@@ -833,20 +833,11 @@ export function initTelegramBot() {
     );
   }
 
-  bot = new TelegramBot(process.env.BOT_TOKEN, {
-    polling: {
-      interval: 300,
-      autoStart: true,
-      params: {
-        timeout: 10,
-        allowed_updates: TELEGRAM_ALLOWED_UPDATES,
-      },
-    },
-  });
+  bot = new TelegramBot(process.env.BOT_TOKEN);
   installBusinessUpdateLogger(bot);
 
-  bot.on("polling_error", (err) => {
-    console.error("[telegram] polling_error:", err?.message || err);
+  bot.on("webhook_error", (err) => {
+    console.error("[telegram] webhook_error:", err?.message || err);
   });
 
   bot.on("business_connection", (connection) => {
@@ -890,6 +881,27 @@ export function initTelegramBot() {
   console.log("[telegram] Telegram Business support enabled", {
     allowedUpdates: TELEGRAM_ALLOWED_UPDATES,
   });
+
+  if (TELEGRAM_WEBHOOK_URL) {
+    const setWebhook = typeof bot.setWebHook === "function" ? bot.setWebHook.bind(bot) : bot.setWebhook?.bind(bot);
+    if (typeof setWebhook !== "function") {
+      console.error("[telegram] Webhook registration failed: node-telegram-bot-api setWebHook method not available.");
+    } else {
+      setWebhook(TELEGRAM_WEBHOOK_URL, { allowed_updates: TELEGRAM_ALLOWED_UPDATES })
+        .then(() => {
+          console.log("[telegram] Webhook registered", {
+            url: TELEGRAM_WEBHOOK_URL,
+            allowedUpdates: TELEGRAM_ALLOWED_UPDATES,
+          });
+          console.log("[telegram] Telegram Business support enabled");
+        })
+        .catch((e) => {
+          console.error("[telegram] Webhook registration failed:", e?.message || e);
+        });
+    }
+  } else {
+    console.warn("[telegram] TELEGRAM_WEBHOOK_URL is missing; webhook was not registered.");
+  }
 
   bot.onText(/\/start/, async (msg) => {
     const selected = await getUserLanguage(String(msg.from?.id || msg.chat.id || ""));
@@ -1164,18 +1176,27 @@ export function initTelegramBot() {
     }
   });
 
-  console.log("[telegram] Bot polling started");
+  console.log("[telegram] Bot webhook mode initialized");
   return bot;
 }
 
 export async function stopTelegramBot() {
   if (!bot) return;
-  try {
-    await bot.stopPolling({ cancel: true });
-  } catch (e) {
-    console.warn("[telegram] stopPolling:", e?.message || e);
-  }
   bot = null;
+}
+
+export function handleTelegramWebhookUpdate(update) {
+  if (!bot) {
+    console.error("[telegram] webhook update received before bot initialization");
+    return false;
+  }
+  try {
+    bot.processUpdate(update);
+    return true;
+  } catch (e) {
+    console.error("[telegram] webhook processUpdate failed:", e?.message || e);
+    return false;
+  }
 }
 
 export async function sendAdminAlert(text) {

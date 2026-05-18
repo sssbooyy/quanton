@@ -59,6 +59,7 @@ export const CLEAR_LISTINGS_SECRET = process.env.CLEAR_LISTINGS_SECRET?.trim() |
 export const MARKETPLACE_WALLET_ADDRESS = process.env.MARKETPLACE_WALLET_ADDRESS?.trim() || "";
 export const TON_API_KEY = process.env.TON_API_KEY?.trim() || "";
 export const TELEGRAM_BUSINESS_CONNECTION_ID = process.env.TELEGRAM_BUSINESS_CONNECTION_ID?.trim() || "";
+export const TELEGRAM_WEBHOOK_URL = process.env.TELEGRAM_WEBHOOK_URL?.trim() || "";
 export const ESCROW_INTAKE_SECRET = process.env.ESCROW_INTAKE_SECRET?.trim() || "";
 export const ENABLE_MANUAL_LISTING_FALLBACK = (() => {
   if (parseBoolEnv(process.env.DISABLE_MANUAL_LISTING)) return false;

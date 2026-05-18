@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { addGift, getGifts, sendTestAlert } from "./api";
+import { TonConnectButton, useTonAddress, useTonConnectUI } from "@tonconnect/ui-react";
+import { beginCell, toNano } from "@ton/core";
+import { addGift, createOrder, getGifts, sendTestAlert, verifyOrderPayment } from "./api";
 import GiftAnimatedHero from "./GiftAnimatedHero.jsx";
 import GiftCollectibleHeroStage from "./GiftCollectibleHeroStage.jsx";
 import {
@@ -55,6 +57,34 @@ function getTelegramUser() {
   }
 }
 
+function tonCommentPayload(comment) {
+  const boc = beginCell().storeUint(0, 32).storeStringTail(String(comment || "")).endCell().toBoc();
+  let binary = "";
+  for (const byte of boc) binary += String.fromCharCode(byte);
+  return window.btoa(binary);
+}
+
+function checkoutStatusText(status) {
+  switch (status) {
+    case "wallet_required":
+      return "Connect wallet to checkout.";
+    case "creating_order":
+      return "Creating order...";
+    case "wallet_confirmation":
+      return "Confirm transaction in your wallet.";
+    case "transaction_sent":
+      return "Transaction sent. Verifying payment...";
+    case "verifying_payment":
+      return "Verifying payment on TON...";
+    case "confirmed":
+      return "Payment confirmed. Listings refreshed.";
+    case "failed":
+      return "Payment failed. Please try again.";
+    default:
+      return "";
+  }
+}
+
 function signalClass(signal) {
   if (signal === "Strong Buy") return "signal-bull";
   if (signal === "Watch") return "signal-watch";
@@ -97,6 +127,9 @@ export default function App() {
   const [giftFormError, setGiftFormError] = useState(null);
   const [successToast, setSuccessToast] = useState(null);
   const [detailGift, setDetailGift] = useState(null);
+  const [tonConnectUI] = useTonConnectUI();
+  const walletAddress = useTonAddress();
+  const [checkoutState, setCheckoutState] = useState({ status: "idle", error: "", orderId: "" });
 
   const tk = useMemo(() => (key) => t(lang, key), [lang]);
 
@@ -265,6 +298,68 @@ export default function App() {
     }
   }
 
+  async function handleCheckout() {
+    if (cart.items.length === 0) return;
+    setCheckoutState({ status: "idle", error: "", orderId: "" });
+
+    if (!walletAddress) {
+      setCheckoutState({ status: "wallet_required", error: "", orderId: "" });
+      try {
+        await tonConnectUI.openModal();
+      } catch {
+        /* wallet modal may be closed by the user */
+      }
+      return;
+    }
+
+    const tgUser = getTelegramUser();
+    let currentOrderId = "";
+    try {
+      setCheckoutState({ status: "creating_order", error: "", orderId: "" });
+      const order = await createOrder({
+        listingIds: cart.items.map((g) => g.id),
+        buyerTelegramId: tgUser?.id ? String(tgUser.id) : "",
+        buyerWalletAddress: walletAddress,
+      });
+      currentOrderId = order.orderId;
+
+      setCheckoutState({ status: "wallet_confirmation", error: "", orderId: order.orderId });
+      await tonConnectUI.sendTransaction({
+        validUntil: Math.floor(Date.now() / 1000) + 10 * 60,
+        messages: [
+          {
+            address: order.marketplaceWalletAddress,
+            amount: toNano(String(order.totalTon)).toString(),
+            payload: tonCommentPayload(order.payload || order.comment || order.orderId),
+          },
+        ],
+      });
+
+      setCheckoutState({ status: "transaction_sent", error: "", orderId: order.orderId });
+      setCheckoutState({ status: "verifying_payment", error: "", orderId: order.orderId });
+      await verifyOrderPayment({
+        orderId: order.orderId,
+        buyerWalletAddress: walletAddress,
+      });
+
+      cart.clear();
+      setCheckoutState({ status: "confirmed", error: "", orderId: order.orderId });
+      setSuccessToast("Payment confirmed. Gift listing updated.");
+      await loadGifts({ showSpinner: false });
+    } catch (error) {
+      console.error(error);
+      const msg =
+        error.response?.data?.error ||
+        error.message ||
+        "Payment failed. Please try again.";
+      setCheckoutState({
+        status: "failed",
+        error: typeof msg === "string" ? translateServerMessage(lang, msg) : "Payment failed. Please try again.",
+        orderId: currentOrderId,
+      });
+    }
+  }
+
   const collections = useMemo(() => uniqueCollections(gifts), [gifts]);
 
   const filteredGifts = useMemo(() => {
@@ -318,6 +413,9 @@ export default function App() {
           </div>
         </div>
         <div className="topbarRight">
+          <div className="tonConnectSlot tonConnectSlot--header">
+            <TonConnectButton />
+          </div>
           <button
             type="button"
             className="cartHeaderBtn"
@@ -587,6 +685,9 @@ export default function App() {
         totalTon={cart.totalTon}
         onRemove={cart.remove}
         onClear={cart.clear}
+        onCheckout={handleCheckout}
+        checkoutState={checkoutState}
+        walletAddress={walletAddress}
         tk={tk}
       />
 
@@ -1110,7 +1211,7 @@ function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
   );
 }
 
-function CartDrawer({ open, onClose, items, totalTon, onRemove, onClear, tk }) {
+function CartDrawer({ open, onClose, items, totalTon, onRemove, onClear, onCheckout, checkoutState, walletAddress, tk }) {
   if (!open) return null;
 
   const rounded = Math.round(Number(totalTon) * 100) / 100;
@@ -1134,6 +1235,17 @@ function CartDrawer({ open, onClose, items, totalTon, onRemove, onClear, tk }) {
           </button>
         </header>
         <div className="cartSheet__body">
+          <div className="cartWalletPanel">
+            <div>
+              <p className="cartWalletPanel__label">TON wallet</p>
+              <p className="cartWalletPanel__value mono">
+                {walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-6)}` : "Not connected"}
+              </p>
+            </div>
+            <div className="tonConnectSlot tonConnectSlot--cart">
+              <TonConnectButton />
+            </div>
+          </div>
           {items.length === 0 ? (
             <p className="cartSheet__empty mono">{tk("cartEmpty")}</p>
           ) : (
@@ -1172,11 +1284,35 @@ function CartDrawer({ open, onClose, items, totalTon, onRemove, onClear, tk }) {
               {totalStr} TON
             </strong>
           </div>
+          <div className="cartCheckoutPanel">
+            <div className="cartCheckoutPanel__head">
+              <span>Checkout</span>
+              <span className={walletAddress ? "text-bull" : "text-muted"}>
+                {walletAddress ? "Wallet connected" : "Wallet required"}
+              </span>
+            </div>
+            <div className="tonConnectSlot tonConnectSlot--checkout">
+              <TonConnectButton />
+            </div>
+            {checkoutState?.status && checkoutState.status !== "idle" ? (
+              <p className={`cartCheckoutStatus mono cartCheckoutStatus--${checkoutState.status}`}>
+                {checkoutState.error || checkoutStatusText(checkoutState.status)}
+              </p>
+            ) : null}
+          </div>
           <div className="cartFooterActions">
             <button type="button" className="cartBtnSecondary" onClick={onClear} disabled={items.length === 0}>
               {tk("cartClear")}
             </button>
-            <button type="button" className="cartBtnPrimary" disabled>
+            <button
+              type="button"
+              className="cartBtnPrimary"
+              onClick={onCheckout}
+              disabled={
+                items.length === 0 ||
+                ["creating_order", "wallet_confirmation", "transaction_sent", "verifying_payment"].includes(checkoutState?.status)
+              }
+            >
               {tk("cartCheckout")}
             </button>
           </div>

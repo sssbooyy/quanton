@@ -1,5 +1,8 @@
 import path from "path";
 import { fileURLToPath } from "url";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -51,6 +54,10 @@ export const METADATA_SYNC_SECRET = process.env.METADATA_SYNC_SECRET?.trim() || 
 
 /** Optional shared secret for POST /admin/clear-listings (dangerous). */
 export const CLEAR_LISTINGS_SECRET = process.env.CLEAR_LISTINGS_SECRET?.trim() || "";
+
+/** TON checkout */
+export const MARKETPLACE_WALLET_ADDRESS = process.env.MARKETPLACE_WALLET_ADDRESS?.trim() || "";
+export const TON_API_KEY = process.env.TON_API_KEY?.trim() || "";
 
 const _floorTtl = Number.parseInt(process.env.FLOOR_CACHE_TTL_MS, 10);
 /** In-memory + request coalescing TTL for Gift Asset floor rows (60s–180s). */

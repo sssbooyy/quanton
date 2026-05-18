@@ -45,3 +45,18 @@ export async function addGift(gift) {
   const res = await client.post("/gifts", gift);
   return res.data;
 }
+
+export async function createOrder(payload) {
+  const res = await client.post("/orders/create", payload);
+  return res.data;
+}
+
+export async function verifyOrderPayment(payload) {
+  const res = await client.post("/orders/verify-payment", payload);
+  return res.data;
+}
+
+export async function getOrder(orderId) {
+  const res = await client.get(`/orders/${encodeURIComponent(orderId)}`);
+  return res.data;
+}

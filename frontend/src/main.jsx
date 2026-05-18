@@ -1,5 +1,6 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
+import { TonConnectUIProvider } from "@tonconnect/ui-react";
 import {
   DEFAULT_PRODUCTION_API_BASE_URL,
   getApiBaseUrl,
@@ -19,4 +20,10 @@ if (import.meta.env.DEV) {
   console.info(`[Quanton Market] API base: ${getApiBaseUrl()}`);
 }
 
-createRoot(document.getElementById("root")).render(<App />);
+const manifestUrl = `${window.location.origin}/tonconnect-manifest.json`;
+
+createRoot(document.getElementById("root")).render(
+  <TonConnectUIProvider manifestUrl={manifestUrl}>
+    <App />
+  </TonConnectUIProvider>
+);

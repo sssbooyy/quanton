@@ -155,6 +155,7 @@ export default function GiftCollectibleHeroStage({
             opacity: patternOpacity,
             transform: patternTransform,
             mixBlendMode: patternBlendMode,
+            "--giftRasterSymbolFilter": useRasterSymbol ? rasterPatternStyle.filter : undefined,
           }}
         >
           <GiftPatternLayer

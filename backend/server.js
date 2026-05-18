@@ -2,10 +2,12 @@ import crypto from "crypto";
 import express from "express";
 import dotenv from "dotenv";
 import { initTelegramBot, sendAdminAlert, stopTelegramBot } from "./services/telegramBot.js";
-import { PORT, isProduction, METADATA_SYNC_SECRET, CLEAR_LISTINGS_SECRET } from "./config.js";
+import { PORT, isProduction, METADATA_SYNC_SECRET, CLEAR_LISTINGS_SECRET, MARKETPLACE_WALLET_ADDRESS } from "./config.js";
 import { createCorsMiddleware } from "./middleware/cors.js";
 import { connectMongo, disconnectMongo, isMongoConnected } from "./db/connect.js";
 import { Gift } from "./models/Gift.js";
+import { Order } from "./models/Order.js";
+import { findMatchingIncomingPayment } from "./services/tonPayments.js";
 import {
   assertDebugProvidersAllowed,
   getProvidersDebugResponse,
@@ -140,6 +142,142 @@ app.post("/gifts/:listingId/metadata/refresh", async (req, res, next) => {
       return res.status(result.error.status).json(result.error.body);
     }
     res.json(giftToApiResponse(result.gift));
+  } catch (e) {
+    next(e);
+  }
+});
+
+function publicOrder(order) {
+  const plain = order && typeof order.toObject === "function" ? order.toObject() : order;
+  return {
+    orderId: plain.orderId,
+    buyerTelegramId: plain.buyerTelegramId || "",
+    buyerWalletAddress: plain.buyerWalletAddress || "",
+    listingIds: plain.listingIds || [],
+    totalTon: plain.totalTon,
+    status: plain.status,
+    txHash: plain.txHash || "",
+    payload: plain.payload,
+    createdAt: plain.createdAt instanceof Date ? plain.createdAt.toISOString() : plain.createdAt,
+    paidAt: plain.paidAt instanceof Date ? plain.paidAt.toISOString() : plain.paidAt,
+  };
+}
+
+function normalizeListingIds(v) {
+  const arr = Array.isArray(v) ? v : [];
+  return [...new Set(arr.map((x) => String(x ?? "").trim()).filter(Boolean))];
+}
+
+app.post("/orders/create", async (req, res, next) => {
+  try {
+    if (!MARKETPLACE_WALLET_ADDRESS) {
+      return res.status(503).json({ error: "MARKETPLACE_WALLET_ADDRESS is not configured." });
+    }
+
+    const listingIds = normalizeListingIds(req.body?.listingIds);
+    if (!listingIds.length) {
+      return res.status(400).json({ error: "At least one listing id is required." });
+    }
+
+    const gifts = await Gift.find({ listingId: { $in: listingIds } });
+    if (gifts.length !== listingIds.length) {
+      return res.status(400).json({ error: "One or more listings were not found." });
+    }
+
+    const sold = gifts.find((g) => String(g.status || "").toLowerCase() === "sold");
+    if (sold) {
+      return res.status(409).json({ error: `${sold.name} is already sold.` });
+    }
+
+    const totalTon = Math.round(gifts.reduce((sum, g) => sum + (Number(g.priceTon) || 0), 0) * 1e9) / 1e9;
+    if (!Number.isFinite(totalTon) || totalTon <= 0) {
+      return res.status(400).json({ error: "Order total must be greater than 0 TON." });
+    }
+
+    const orderId = `qton_${Date.now().toString(36)}_${crypto.randomBytes(4).toString("hex")}`;
+    const payload = `Quanton order ${orderId}`;
+    const order = await Order.create({
+      orderId,
+      buyerTelegramId: String(req.body?.buyerTelegramId ?? "").trim(),
+      buyerWalletAddress: String(req.body?.buyerWalletAddress ?? "").trim(),
+      listingIds,
+      totalTon,
+      status: "pending_payment",
+      payload,
+    });
+
+    res.status(201).json({
+      ...publicOrder(order),
+      marketplaceWalletAddress: MARKETPLACE_WALLET_ADDRESS,
+      comment: payload,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+app.post("/orders/verify-payment", async (req, res, next) => {
+  try {
+    const orderId = String(req.body?.orderId ?? "").trim();
+    if (!orderId) {
+      return res.status(400).json({ error: "orderId is required." });
+    }
+
+    const order = await Order.findOne({ orderId });
+    if (!order) {
+      return res.status(404).json({ error: "Order not found." });
+    }
+    if (order.status === "paid") {
+      return res.json({ ok: true, order: publicOrder(order) });
+    }
+    if (order.status !== "pending_payment") {
+      return res.status(409).json({ error: `Order is ${order.status}.`, order: publicOrder(order) });
+    }
+
+    if (req.body?.buyerWalletAddress && !order.buyerWalletAddress) {
+      order.buyerWalletAddress = String(req.body.buyerWalletAddress).trim();
+      await order.save();
+    }
+
+    const payment = await findMatchingIncomingPayment(order);
+    if (payment.error) {
+      return res.status(402).json({ error: payment.error, order: publicOrder(order) });
+    }
+
+    const used = await Order.findOne({ txHash: payment.txHash, orderId: { $ne: order.orderId } });
+    if (used) {
+      order.status = "failed";
+      await order.save();
+      return res.status(409).json({ error: "Transaction was already used for another order.", order: publicOrder(order) });
+    }
+
+    const gifts = await Gift.find({ listingId: { $in: order.listingIds } });
+    const sold = gifts.find((g) => String(g.status || "").toLowerCase() === "sold");
+    if (sold) {
+      order.status = "failed";
+      await order.save();
+      return res.status(409).json({ error: `${sold.name} is already sold.`, order: publicOrder(order) });
+    }
+
+    order.status = "paid";
+    order.txHash = payment.txHash;
+    order.paidAt = new Date();
+    await order.save();
+    await Gift.updateMany({ listingId: { $in: order.listingIds } }, { $set: { status: "sold" } });
+
+    res.json({ ok: true, order: publicOrder(order), payment });
+  } catch (e) {
+    next(e);
+  }
+});
+
+app.get("/orders/:orderId", async (req, res, next) => {
+  try {
+    const order = await Order.findOne({ orderId: String(req.params.orderId ?? "").trim() });
+    if (!order) {
+      return res.status(404).json({ error: "Order not found." });
+    }
+    res.json(publicOrder(order));
   } catch (e) {
     next(e);
   }

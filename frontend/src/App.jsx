@@ -8,9 +8,6 @@ import {
   getCardPaymentStatus,
   getGifts,
   getTonUzsRate,
-  sendTestAlert,
-  simulateCardPaymentFail,
-  simulateCardPaymentSuccess,
   verifyOrderPayment,
 } from "./api";
 import GiftAnimatedHero from "./GiftAnimatedHero.jsx";
@@ -437,22 +434,6 @@ export default function App() {
     }
   }
 
-  async function handleTestAlert() {
-    try {
-      await sendTestAlert();
-      alert(t(lang, "alertTestOk"));
-    } catch (error) {
-      console.error(error);
-      const msg =
-        error.response?.data?.error ||
-        error.message ||
-        t(lang, "alertTestFail");
-      alert(
-        typeof msg === "string" ? translateServerMessage(lang, msg) : t(lang, "alertTestFail")
-      );
-    }
-  }
-
   async function handleCheckout() {
     if (cart.items.length === 0) return;
     setCheckoutState({ status: "idle", error: "", orderId: "" });
@@ -803,19 +784,6 @@ export default function App() {
           </a>
         </section>
 
-        <div className="toolbar">
-          <div className="toolbarActions">
-            {MANUAL_LISTING_FALLBACK_ENABLED ? (
-              <button type="button" className="addGiftTrigger" onClick={openGiftModal}>
-                {tk("temporaryManualListing")}
-              </button>
-            ) : null}
-            <button type="button" className="alertButton" onClick={handleTestAlert}>
-              {tk("testDeskAlert")}
-            </button>
-          </div>
-        </div>
-
         {loading ? (
           <div className="loadingPanel">
             <div className="skeletonGrid" aria-hidden="true">
@@ -898,28 +866,9 @@ export default function App() {
       />
 
       {testPayment ? (
-        <TestPaymentModal
+        <CardPaymentModal
           payment={testPayment}
           onClose={() => setTestPayment(null)}
-          onSuccess={async () => {
-            setCheckoutState({ status: "verifying_payment", error: "", orderId: testPayment.orderId });
-            const data = await simulateCardPaymentSuccess(testPayment.orderId);
-            const order = data?.order;
-            if (order?.status === "paid") {
-              cart.clear();
-              setTestPayment(null);
-              setCheckoutState({ status: "confirmed", error: "", orderId: order.orderId });
-              setSuccessToast("Card payment confirmed. Gift listing updated.");
-              await loadGifts({ showSpinner: false });
-            }
-          }}
-          onCancel={async () => {
-            const data = await simulateCardPaymentFail(testPayment.orderId);
-            const order = data?.order;
-            setTestPayment(null);
-            setCheckoutState({ status: "failed", error: "Card payment was cancelled.", orderId: order?.orderId || testPayment.orderId });
-            await loadGifts({ showSpinner: false });
-          }}
         />
       ) : null}
 
@@ -1553,7 +1502,7 @@ function CartDrawer({
             <div className="cartCheckoutPanel__head">
               <span>Checkout</span>
               <span className={paymentMethod.type === "ton" ? (walletAddress ? "text-bull" : "text-muted") : "text-bull"}>
-                {paymentMethod.type === "ton" ? (walletAddress ? "Wallet connected" : "Wallet required") : "Card test checkout"}
+                {paymentMethod.type === "ton" ? (walletAddress ? "Wallet connected" : "Wallet required") : "Card checkout"}
               </span>
             </div>
             <div className="paymentMethodList" role="radiogroup" aria-label="Payment method">
@@ -1580,7 +1529,7 @@ function CartDrawer({
                     disabled={disabled}
                   >
                     <span>{label}</span>
-                    <small>{disabled ? cfg.disabledReason || "Provider not configured" : cfg.testMode ? "TEST MODE" : "Configured"}</small>
+                    <small>{disabled ? cfg.disabledReason || "Provider not configured" : "Available"}</small>
                   </button>
                 );
               })}
@@ -1620,34 +1569,20 @@ function CartDrawer({
   );
 }
 
-function TestPaymentModal({ payment, onClose, onSuccess, onCancel }) {
-  const [busy, setBusy] = useState("");
-  const [error, setError] = useState("");
+function CardPaymentModal({ payment, onClose }) {
   const order = payment?.order || {};
   const providerName = order.cardProvider === "payme" ? "Payme" : "Click";
 
-  async function run(action, fn) {
-    setBusy(action);
-    setError("");
-    try {
-      await fn();
-    } catch (err) {
-      const msg = err.response?.data?.error || err.message || "Payment action failed.";
-      setError(typeof msg === "string" ? msg : "Payment action failed.");
-      setBusy("");
-    }
-  }
-
   return (
     <div className="paymentTestOverlay" role="presentation">
-      <button type="button" className="cartBackdrop" aria-label="Close payment test" onClick={onClose} />
-      <div className="paymentTestSheet" role="dialog" aria-modal="true" aria-labelledby="payment-test-title">
+      <button type="button" className="cartBackdrop" aria-label="Close payment" onClick={onClose} />
+      <div className="paymentTestSheet" role="dialog" aria-modal="true" aria-labelledby="card-payment-title">
         <header className="paymentTestHeader">
           <div>
-            <p className="paymentTestKicker mono">TEST MODE</p>
-            <h2 id="payment-test-title">{providerName} card checkout</h2>
+            <p className="paymentTestKicker mono">CARD CHECKOUT</p>
+            <h2 id="card-payment-title">{providerName}</h2>
           </div>
-          <button type="button" className="cartSheet__close" onClick={onClose} aria-label="Close payment test">
+          <button type="button" className="cartSheet__close" onClick={onClose} aria-label="Close payment">
             ×
           </button>
         </header>
@@ -1669,28 +1604,12 @@ function TestPaymentModal({ payment, onClose, onSuccess, onCancel }) {
             <strong>{formatTonPrice(order.totalTon)}</strong>
           </div>
           <p className="paymentTestNote">
-            No card data is collected here. This simulates Click/Payme Humo-Uzcard checkout until merchant credentials are configured.
+            Continue in {providerName}. Quanton never asks for or stores card numbers.
           </p>
-          {error ? <p className="cartCheckoutStatus cartCheckoutStatus--failed">{error}</p> : null}
+          <p className="cartCheckoutStatus mono cartCheckoutStatus--card_pending">
+            Waiting for payment confirmation...
+          </p>
         </div>
-        <footer className="paymentTestActions">
-          <button
-            type="button"
-            className="cartBtnSecondary"
-            onClick={() => run("cancel", onCancel)}
-            disabled={Boolean(busy)}
-          >
-            {busy === "cancel" ? "Cancelling..." : "Cancel payment"}
-          </button>
-          <button
-            type="button"
-            className="cartBtnPrimary"
-            onClick={() => run("success", onSuccess)}
-            disabled={Boolean(busy)}
-          >
-            {busy === "success" ? "Confirming..." : "Simulate successful payment"}
-          </button>
-        </footer>
       </div>
     </div>
   );

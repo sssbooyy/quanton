@@ -401,15 +401,36 @@ function adminPayoutKeyboard(orderId, lang = "en") {
   };
 }
 
-async function notifyAdmin(text, options = {}) {
-  if (!bot || !adminChatId()) return;
-  await bot.sendMessage(adminChatId(), text, options);
+async function safeSendMessage(chatId, text, options = {}, label = "telegram") {
+  const id = String(chatId || "").trim();
+  if (!bot) {
+    console.error(`[telegram] TELEGRAM SEND FAIL ${label}: bot is not initialized`);
+    return { ok: false, error: "bot_not_initialized" };
+  }
+  if (!id) {
+    console.error(`[telegram] TELEGRAM SEND FAIL ${label}: missing chat id`);
+    return { ok: false, error: "missing_chat_id" };
+  }
+  try {
+    await bot.sendMessage(id, text, options);
+    console.log(`[telegram] TELEGRAM SEND SUCCESS ${label}: chat=${id}`);
+    return { ok: true };
+  } catch (e) {
+    console.error(`[telegram] TELEGRAM SEND FAIL ${label}: chat=${id}`, e?.message || e);
+    return { ok: false, error: e?.message || String(e) };
+  }
 }
 
-async function notifyChat(chatId, text, options = {}) {
-  const id = String(chatId || "").trim();
-  if (!bot || !id) return;
-  await bot.sendMessage(id, text, options);
+async function notifyAdmin(text, options = {}, label = "admin") {
+  const result = await safeSendMessage(adminChatId(), text, options, label);
+  if (!result.ok) {
+    console.error("[telegram] FALLBACK ADMIN LOG:", text);
+  }
+  return result;
+}
+
+async function notifyChat(chatId, text, options = {}, label = "chat") {
+  return safeSendMessage(chatId, text, options, label);
 }
 
 async function notifyAdminListingReview(gift, { prefix = "" } = {}) {
@@ -430,7 +451,8 @@ async function notifyAdminListingReview(gift, { prefix = "" } = {}) {
         price: gift.priceTon > 0 ? `${gift.priceTon} TON` : "not set",
       }),
     ].join("\n"),
-    { reply_markup: adminReviewKeyboard(gift.listingId, lang) }
+    { reply_markup: adminReviewKeyboard(gift.listingId, lang) },
+    "admin_listing_review"
   );
 }
 
@@ -1008,7 +1030,16 @@ export async function sendAdminAlert(text) {
 }
 
 export async function notifyManualOrderPaid(order, gifts) {
-  if (!bot) return;
+  console.log("[telegram] POST-PAYMENT NOTIFICATION FLOW START", {
+    orderId: order?.orderId,
+    paymentMethod: order?.paymentMethod,
+    buyerTelegramId: order?.buyerTelegramId || "",
+    sellerTelegramId: order?.sellerTelegramId || "",
+    listingIds: order?.listingIds || [],
+  });
+  if (!bot) {
+    console.error("[telegram] POST-PAYMENT NOTIFICATION FLOW BLOCKED: bot is not initialized");
+  }
   const buyer = displayTelegramUser({ id: order.buyerTelegramId, username: order.buyerUsername });
   const giftList = Array.isArray(gifts) ? gifts : [];
   const giftLines = giftList.map((g) => `${g.name} / ${g.listingId}`).join("\n");
@@ -1017,18 +1048,36 @@ export async function notifyManualOrderPaid(order, gifts) {
   const seller = firstGift
     ? displayTelegramUser({ id: firstGift.sellerTelegramId || firstGift.escrowOwnerTelegramId || order.sellerTelegramId, username: firstGift.sellerUsername || order.sellerUsername })
     : displayTelegramUser({ id: order.sellerTelegramId, username: order.sellerUsername });
+  if (!adminChatId()) console.error("[telegram] ADMIN NOTIFICATION MISSING: ADMIN_CHAT_ID is not configured");
+  if (!order.buyerTelegramId) console.error("[telegram] BUYER NOTIFICATION MISSING: order.buyerTelegramId is empty", { orderId: order.orderId });
   for (const gift of gifts || []) {
-    const sellerLang = await getUserLanguageOrDefault(gift.sellerTelegramId || gift.escrowOwnerTelegramId);
+    const sellerChatId = gift.sellerTelegramId || gift.escrowOwnerTelegramId;
+    if (!sellerChatId) {
+      console.error("[telegram] SELLER NOTIFICATION MISSING: gift has no seller telegram id", {
+        orderId: order.orderId,
+        listingId: gift.listingId,
+      });
+      continue;
+    }
+    console.log("[telegram] SENDING SELLER NOTIFICATION", {
+      orderId: order.orderId,
+      listingId: gift.listingId,
+      sellerTelegramId: sellerChatId,
+    });
+    const sellerLang = await getUserLanguageOrDefault(sellerChatId);
     await notifyChat(
-      gift.sellerTelegramId || gift.escrowOwnerTelegramId,
+      sellerChatId,
       tr(sellerLang, "paidSeller", {
         name: gift.name,
         orderId: order.orderId,
         buyer,
-      })
+      }),
+      {},
+      "seller_payment_received"
     );
   }
   const adminLang = await getUserLanguageOrDefault(adminChatId());
+  console.log("[telegram] SENDING ADMIN NOTIFICATION", { orderId: order.orderId, adminChatId: adminChatId() });
   await notifyAdmin(tr(adminLang, "paidAdmin", {
     orderId: order.orderId,
     buyer,
@@ -1036,11 +1085,17 @@ export async function notifyManualOrderPaid(order, gifts) {
     giftLines,
     amount: amountPaidLabel(order),
     paymentMethod: paymentMethodLabel(order),
-  }));
+  }), {}, "admin_payment_received");
   const buyerLang = await getUserLanguageOrDefault(order.buyerTelegramId);
+  console.log("[telegram] SENDING BUYER NOTIFICATION", {
+    orderId: order.orderId,
+    buyerTelegramId: order.buyerTelegramId || "",
+  });
   await notifyChat(
     order.buyerTelegramId,
     tr(buyerLang, "paidBuyer", { orderId: order.orderId, giftNames }),
-    { reply_markup: buyerReceiptKeyboard(order.orderId, buyerLang) }
+    { reply_markup: buyerReceiptKeyboard(order.orderId, buyerLang) },
+    "buyer_payment_received"
   );
+  console.log("[telegram] POST-PAYMENT NOTIFICATION FLOW END", { orderId: order.orderId });
 }

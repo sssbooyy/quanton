@@ -367,6 +367,13 @@ function assertCardTestAllowed(req, res) {
 }
 
 async function completePaidOrder(order, payment = {}) {
+  console.log("[payments] PAYMENT VERIFIED", {
+    orderId: order?.orderId,
+    paymentMethod: order?.paymentMethod,
+    cardProvider: order?.cardProvider || "",
+    txHash: payment?.txHash || "",
+    test: Boolean(payment?.test),
+  });
   const gifts = await Gift.find({ listingId: { $in: order.listingIds } });
   const badState = gifts.find(
     (g) => g.escrowStatus !== "reserved" || ["sold", "transferred"].includes(String(g.status || "").toLowerCase())
@@ -387,6 +394,14 @@ async function completePaidOrder(order, payment = {}) {
     order.sellerTelegramId = primaryGift.sellerTelegramId || primaryGift.escrowOwnerTelegramId || "";
     order.sellerUsername = primaryGift.sellerUsername || "";
   }
+  console.log("[payments] PAYMENT VERIFIED PARTICIPANTS", {
+    orderId: order.orderId,
+    sellerTelegramId: order.sellerTelegramId || "",
+    sellerUsername: order.sellerUsername || "",
+    buyerTelegramId: order.buyerTelegramId || "",
+    buyerUsername: order.buyerUsername || "",
+    listingIds: order.listingIds,
+  });
   if (order.paymentMethod === "card") {
     order.cardPaymentStatus = "paid";
   }
@@ -416,9 +431,19 @@ async function completePaidOrder(order, payment = {}) {
   order.transferStatus = "pending_manual_transfer";
   order.transferResults = transferResults;
   await order.save();
-  await notifyManualOrderPaid(order, gifts).catch((e) => {
-    console.warn("[telegram] paid order notification failed:", e?.message || e);
+  console.log("[payments] TRIGGERING POST-PAYMENT TELEGRAM NOTIFICATIONS", {
+    orderId: order.orderId,
+    transferStatus: order.transferStatus,
+    payoutStatus: order.payoutStatus,
   });
+  try {
+    await notifyManualOrderPaid(order, gifts);
+  } catch (e) {
+    console.error("[telegram] POST-PAYMENT NOTIFICATION FLOW CRASHED", {
+      orderId: order.orderId,
+      error: e?.message || String(e),
+    });
+  }
   return { order, transferResults };
 }
 

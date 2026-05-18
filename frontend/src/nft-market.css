@@ -2528,10 +2528,10 @@
 
 .portalsTitle {
   margin: 0;
-  font-size: clamp(1.72rem, 6.8vw, 2.1rem);
-  font-weight: 750;
-  letter-spacing: -0.045em;
-  line-height: 1.05;
+  font-size: clamp(1.28rem, 5.2vw, 1.62rem);
+  font-weight: 720;
+  letter-spacing: -0.04em;
+  line-height: 1.08;
   color: #fff;
 }
 

@@ -996,7 +996,6 @@ function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
                 <h2 id="nft-detail-title" className="portalsTitle">
                   {gift.name}
                 </h2>
-                {listingNo ? <p className="portalsListingId mono">{listingNo}</p> : null}
               </div>
             </div>
 

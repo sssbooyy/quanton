@@ -23,8 +23,8 @@ export function hashPresentationSeed(seedStr) {
 const SCATTER_BOX_PX = 512;
 
 /**
- * Portals / Telegram-style scattered raster symbols: edge-heavy, center exclusion, one shared angle.
- * Non-overlapping: min center distance ≥ (sizeA + sizeB) * spacingK (deterministic K ∈ [0.48, 0.6]).
+ * Portals / Telegram-style scattered raster symbols: balanced orbit scatter, center exclusion, one shared angle.
+ * Non-overlapping: min center distance >= (sizeA + sizeB) * spacingK (deterministic K in [0.55, 0.67]).
  * @param {string} seedStr
  * @param {ScatterSurface} surface
  * @param {boolean} reducedMotion
@@ -34,12 +34,12 @@ function buildRasterScatterLayout(seedStr, surface, reducedMotion) {
   const seedN = hashPresentationSeed(seedStr);
   const isCard = surface === "card";
   /** Normalized Euclidean distance from center; skip below this (clean collectible zone). */
-  const exclusion = isCard ? 0.26 : 0.34;
-  const maxR = 0.72;
-  /** ~40% fewer instances vs prior density; collision + exclusion unchanged. */
-  const count = reducedMotion ? (isCard ? 15 : 24) : isCard ? 32 : 52;
-  /** Min-distance multiplier: (sizeA+sizeB)*k; k ∈ [0.48, 0.6] stays inside your 0.42–0.6 band while avoiding stacked glyphs. */
-  const spacingK = 0.48 + seeded01(seedN, 0, 88) * 0.12;
+  const exclusion = isCard ? 0.29 : 0.36;
+  const maxR = isCard ? 0.68 : 0.66;
+  /** Fewer, better-spaced symbols than the raw scatter; the visual style stays unchanged. */
+  const count = reducedMotion ? (isCard ? 13 : 18) : isCard ? 24 : 34;
+  /** Min-distance multiplier keeps large symbols from visually stacking. */
+  const spacingK = 0.55 + seeded01(seedN, 0, 88) * 0.12;
 
   /** One deterministic angle per collectible (all instances share). */
   const globalAngleDeg = -21 - (hashPresentationSeed(seedStr + "symAngle") % 5);
@@ -61,74 +61,96 @@ function buildRasterScatterLayout(seedStr, surface, reducedMotion) {
     return false;
   }
 
+  /**
+   * Reject candidates that create noisy local pockets while still allowing organic scatter.
+   * @param {number} x
+   * @param {number} y
+   * @param {number} sizePx
+   */
+  function crowdScore(x, y, sizePx) {
+    let score = 0;
+    let largeNear = 0;
+    for (const inst of instances) {
+      const distPx = Math.hypot((x - inst.x) * SCATTER_BOX_PX, (y - inst.y) * SCATTER_BOX_PX);
+      const nearPx = (sizePx + inst.sizePx) * 1.95;
+      if (distPx < nearPx) {
+        score += (nearPx - distPx) / nearPx;
+      }
+      if (sizePx > 34 && inst.sizePx > 34 && distPx < (sizePx + inst.sizePx) * 2.7) {
+        largeNear++;
+      }
+    }
+    return score + largeNear * 1.6;
+  }
+
+  /**
+   * Keep each angular slice populated without making the pattern feel grid-like.
+   * @param {number} x
+   * @param {number} y
+   */
+  function sectorPenalty(x, y) {
+    const sectors = isCard ? 8 : 10;
+    const theta = Math.atan2(y - 0.5, x - 0.5);
+    const sector = Math.floor((((theta + Math.PI) / (Math.PI * 2)) * sectors)) % sectors;
+    let same = 0;
+    let adjacent = 0;
+    for (const inst of instances) {
+      const instTheta = Math.atan2(inst.y - 0.5, inst.x - 0.5);
+      const instSector = Math.floor((((instTheta + Math.PI) / (Math.PI * 2)) * sectors)) % sectors;
+      const delta = Math.min(Math.abs(instSector - sector), sectors - Math.abs(instSector - sector));
+      if (delta === 0) same++;
+      if (delta === 1) adjacent++;
+    }
+    return same * 0.42 + adjacent * 0.12;
+  }
+
   for (let i = 0; i < count; i++) {
     const scale = 0.78 + seeded01(seedN, i, 20) * 0.28;
     const basePx = 22 + (hashPresentationSeed(seedStr + `bz${i}`) % 21);
     const sizePx = basePx * scale;
     const opacityMul = 0.36 + seeded01(seedN, i, 21) * 0.5;
 
-    let x = 0.5;
-    let y = 0.5;
-    let placed = false;
-    const preferPolar = seeded01(seedN, i, 2) < 0.82;
+    let best = null;
+    const ringPhase = (i % 4) / 3;
+    const preferredR = exclusion + (maxR - exclusion) * (0.28 + ringPhase * 0.58);
+    const golden = Math.PI * (3 - Math.sqrt(5));
 
-    for (let attempt = 0; attempt < 88; attempt++) {
-      if (preferPolar) {
-        const theta = seeded01(seedN, i, attempt * 13 + 1) * Math.PI * 2;
-        const uR = seeded01(seedN, i, attempt * 17 + 3);
-        const r = exclusion + (maxR - exclusion) * uR ** 1.38;
-        x = 0.5 + r * Math.cos(theta);
-        y = 0.5 + r * Math.sin(theta);
-      } else {
-        x = 0.02 + seeded01(seedN, i, attempt * 19 + 5) * 0.96;
-        y = 0.02 + seeded01(seedN, i, attempt * 23 + 7) * 0.96;
-      }
+    for (let attempt = 0; attempt < 96; attempt++) {
+      const orbitJitter = (seeded01(seedN, i, attempt * 17 + 4) - 0.5) * (Math.PI / (isCard ? 4.8 : 5.8));
+      const theta = (i * golden + attempt * 0.41 + seeded01(seedN, i, 3) * Math.PI * 2 + orbitJitter) % (Math.PI * 2);
+      const radiusJitter = (seeded01(seedN, i, attempt * 19 + 6) - 0.5) * (maxR - exclusion) * 0.42;
+      const r = Math.min(maxR, Math.max(exclusion, preferredR + radiusJitter));
+      const x = 0.5 + r * Math.cos(theta);
+      const y = 0.5 + r * Math.sin(theta);
 
-      if (x < 0.02 || x > 0.98 || y < 0.02 || y > 0.98) continue;
+      if (x < 0.045 || x > 0.955 || y < 0.045 || y > 0.955) continue;
       const d = Math.hypot(x - 0.5, y - 0.5);
-      if (d < exclusion) continue;
-
-      const edge = d / maxR;
-      if (preferPolar && edge < 0.55 && seeded01(seedN, i, attempt + 99) < 0.18) continue;
-
+      if (d < exclusion || d > maxR) continue;
       if (collides(x, y, sizePx)) continue;
 
-      placed = true;
-      break;
-    }
+      const edgePenalty = Math.max(0, d - maxR * 0.88) * 2.4;
+      const centerPenalty = Math.max(0, exclusion + 0.035 - d) * 4.2;
+      const radiusPenalty = Math.abs(d - preferredR) * 0.9;
+      const score =
+        crowdScore(x, y, sizePx) +
+        sectorPenalty(x, y) +
+        edgePenalty +
+        centerPenalty +
+        radiusPenalty -
+        seeded01(seedN, i, attempt * 29 + 9) * 0.08;
 
-    if (!placed) {
-      const corner = hashPresentationSeed(seedStr + `c${i}`) % 4;
-      const pad = 0.04;
-      /** @type {[number, number][]} */
-      const cornerCandidates = [
-        [pad + seeded01(seedN, i, 400) * 0.12, pad + seeded01(seedN, i, 401) * 0.12],
-        [1 - pad - seeded01(seedN, i, 402) * 0.12, pad + seeded01(seedN, i, 403) * 0.12],
-        [pad + seeded01(seedN, i, 404) * 0.12, 1 - pad - seeded01(seedN, i, 405) * 0.12],
-        [1 - pad - seeded01(seedN, i, 406) * 0.12, 1 - pad - seeded01(seedN, i, 407) * 0.12],
-      ];
-      let [cx, cy] = cornerCandidates[corner];
-      for (let j = 0; j < 12; j++) {
-        const jitter = 0.015 * j;
-        const tx = Math.min(0.98, Math.max(0.02, cx + (seeded01(seedN, i, 500 + j) - 0.5) * jitter));
-        const ty = Math.min(0.98, Math.max(0.02, cy + (seeded01(seedN, i, 520 + j) - 0.5) * jitter));
-        if (Math.hypot(tx - 0.5, ty - 0.5) < exclusion) continue;
-        if (!collides(tx, ty, sizePx)) {
-          x = tx;
-          y = ty;
-          placed = true;
-          break;
-        }
+      if (!best || score < best.score) {
+        best = { x, y, score };
       }
     }
 
-    if (!placed) continue;
+    if (!best) continue;
 
     instances.push({
-      x,
-      y,
-      xPct: Math.min(100, Math.max(0, x * 100)),
-      yPct: Math.min(100, Math.max(0, y * 100)),
+      x: best.x,
+      y: best.y,
+      xPct: Math.min(100, Math.max(0, best.x * 100)),
+      yPct: Math.min(100, Math.max(0, best.y * 100)),
       sizePx,
       opacityMul,
     });

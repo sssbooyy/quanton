@@ -114,13 +114,22 @@ const BOT_I18N = {
     cbDispute: "Issue reported to admin.",
     cbPayout: "Payout marked sent.",
     buyerConfirmedAdmin: "Buyer confirmed receipt. Release payout to seller.\n\nOrder: {orderId}\nBuyer: {buyer}\nListings: {listings}",
+    buyerConfirmedAdminWithPayout: "Buyer confirmed receipt. You can now send payout.\n\nOrder: {orderId}\nBuyer: {buyer}\nListings: {listings}\nSeller payout address: {payoutAddress}",
+    buyerConfirmedAdminNoPayout: "Buyer confirmed receipt. Waiting for seller payout address.\n\nOrder: {orderId}\nBuyer: {buyer}\nListings: {listings}",
     buyerConfirmedSeller: "Buyer confirmed receipt for {name}. Waiting for admin payout release.",
     disputedAdmin: "Buyer reported an issue. Manual review required.\n\nOrder: {orderId}\nBuyer: {buyer}\nListings: {listings}",
     payoutSentSeller: "Payout sent for {name}.",
     orderCompletedBuyer: "Order {orderId} completed.",
-    paidSeller: "Your gift was purchased.\n\nGift: {name}\nOrder: {orderId}\nBuyer: {buyer}\n\nPlease send this gift manually to the buyer. Payout is released only after buyer confirmation.",
-    paidAdmin: "Order paid. Waiting for seller transfer.\n\nOrder: {orderId}\nBuyer: {buyer}\nListings: {listings}",
-    paidBuyer: "Payment received. Waiting for seller to transfer gift.\n\nOrder: {orderId}\n\nAfter receiving the gift, tap the button below or send /received {orderId}. If there is an issue, send /dispute {orderId}.",
+    paidSeller: "Your gift has a buyer.\n\nGift: {name}\nOrder: {orderId}\nBuyer: {buyer}\n\nPlease send the Telegram gift to this buyer.\nAfter sending, send your payout wallet address here.",
+    paidAdmin: "✅ Payment received\n\nOrder: {orderId}\nGift: {giftLines}\nSeller: {seller}\nBuyer: {buyer}\nAmount paid: {amount}\nPayment method: {paymentMethod}\ntransferStatus = pending_manual_transfer\npayoutStatus = waiting_seller_wallet",
+    paidBuyer: "Payment received. Seller has been notified to send your gift.\n\nGift: {giftNames}\nOrder: {orderId}",
+    payoutAddressReceivedSeller: "Payout address received. Waiting for buyer confirmation.",
+    payoutAddressReceivedSellerReady: "Payout address received. Buyer already confirmed receipt, so payout is pending admin review.",
+    payoutAddressReceivedAdmin: "Seller payout address received\n\nOrder: {orderId}\nSeller: {seller}\nPayout address: {payoutAddress}\nAmount to payout: {amount}\nBuyer confirmation: {buyerConfirmation}",
+    buyerConfirmedYes: "confirmed",
+    buyerConfirmedNo: "not confirmed yet",
+    payoutRequiresBuyer: "Buyer confirmation is required before payout.",
+    payoutRequiresAddress: "Seller payout address is required before payout.",
   },
   ru: {
     languagePrompt: "Добро пожаловать в Quanton Marketplace.\nВыберите язык.",
@@ -208,13 +217,22 @@ const BOT_I18N = {
     cbDispute: "Проблема отправлена админу.",
     cbPayout: "Выплата отмечена.",
     buyerConfirmedAdmin: "Покупатель подтвердил получение. Отправьте выплату продавцу.\n\nЗаказ: {orderId}\nПокупатель: {buyer}\nЛоты: {listings}",
+    buyerConfirmedAdminWithPayout: "Покупатель подтвердил получение. Теперь можно отправить выплату.\n\nЗаказ: {orderId}\nПокупатель: {buyer}\nЛоты: {listings}\nАдрес выплаты продавцу: {payoutAddress}",
+    buyerConfirmedAdminNoPayout: "Покупатель подтвердил получение. Ожидаем адрес выплаты продавца.\n\nЗаказ: {orderId}\nПокупатель: {buyer}\nЛоты: {listings}",
     buyerConfirmedSeller: "Покупатель подтвердил получение {name}. Ожидаем выплату админа.",
     disputedAdmin: "Покупатель сообщил о проблеме. Нужна ручная проверка.\n\nЗаказ: {orderId}\nПокупатель: {buyer}\nЛоты: {listings}",
     payoutSentSeller: "Выплата отправлена за {name}.",
     orderCompletedBuyer: "Заказ {orderId} завершён.",
-    paidSeller: "Ваш подарок купили.\n\nПодарок: {name}\nЗаказ: {orderId}\nПокупатель: {buyer}\n\nПожалуйста, вручную отправьте подарок покупателю. Выплата будет только после подтверждения покупателя.",
-    paidAdmin: "Заказ оплачен. Ожидаем передачу подарка продавцом.\n\nЗаказ: {orderId}\nПокупатель: {buyer}\nЛоты: {listings}",
-    paidBuyer: "Оплата получена. Ожидаем, пока продавец передаст подарок.\n\nЗаказ: {orderId}\n\nПосле получения нажмите кнопку ниже или отправьте /received {orderId}. Если есть проблема, отправьте /dispute {orderId}.",
+    paidSeller: "У вашего подарка появился покупатель.\n\nПодарок: {name}\nЗаказ: {orderId}\nПокупатель: {buyer}\n\nПожалуйста, отправьте Telegram-подарок этому покупателю.\nПосле отправки пришлите сюда адрес кошелька для выплаты.",
+    paidAdmin: "✅ Оплата получена\n\nЗаказ: {orderId}\nПодарок: {giftLines}\nПродавец: {seller}\nПокупатель: {buyer}\nСумма оплаты: {amount}\nМетод оплаты: {paymentMethod}\ntransferStatus = pending_manual_transfer\npayoutStatus = waiting_seller_wallet",
+    paidBuyer: "Оплата получена. Продавец получил уведомление отправить подарок.\n\nПодарок: {giftNames}\nЗаказ: {orderId}",
+    payoutAddressReceivedSeller: "Адрес выплаты получен. Ожидаем подтверждение покупателя.",
+    payoutAddressReceivedSellerReady: "Адрес выплаты получен. Покупатель уже подтвердил получение, выплата ожидает админа.",
+    payoutAddressReceivedAdmin: "Адрес выплаты продавца получен\n\nЗаказ: {orderId}\nПродавец: {seller}\nАдрес выплаты: {payoutAddress}\nСумма к выплате: {amount}\nПодтверждение покупателя: {buyerConfirmation}",
+    buyerConfirmedYes: "подтверждено",
+    buyerConfirmedNo: "пока не подтверждено",
+    payoutRequiresBuyer: "Для выплаты сначала нужно подтверждение покупателя.",
+    payoutRequiresAddress: "Для выплаты нужен адрес выплаты продавца.",
   },
 };
 
@@ -327,6 +345,32 @@ function parseStandaloneTonAmount(text) {
   const s = String(text || "").trim();
   const m = s.match(/^([0-9]+(?:\.[0-9]+)?)(?:\s*TON)?$/i);
   return m ? parsePositiveTon(m[1]) : 0;
+}
+
+function parsePayoutAddress(text) {
+  const s = String(text || "").trim();
+  if (!s || s.length < 12 || s.length > 300) return "";
+  if (/^https?:\/\//i.test(s) || extractGiftLink(s) || s.startsWith("/")) return "";
+  if (/^[UE]Q[A-Za-z0-9_-]{46,}$/.test(s)) return s;
+  if (/^[A-Za-z0-9_-]{32,}$/.test(s)) return s;
+  if (/\b(card|humo|uzcard|payme|click|visa|mastercard|карта|кошел|wallet)\b/i.test(s)) return s;
+  return "";
+}
+
+function paymentMethodLabel(order) {
+  if (order.paymentMethod === "card") {
+    return order.cardProvider === "payme" ? "Payme / Humo / Uzcard" : "Click / Humo / Uzcard";
+  }
+  return "TON Wallet";
+}
+
+function amountPaidLabel(order) {
+  const ton = Number(order.totalTon);
+  const uzs = Number(order.totalUzs);
+  if (order.paymentMethod === "card" && Number.isFinite(uzs) && uzs > 0) {
+    return `${Math.round(uzs).toLocaleString("en-US").replace(/,/g, " ")} UZS (${ton} TON)`;
+  }
+  return `${ton} TON`;
 }
 
 function adminReviewKeyboard(listingId, lang = "en") {
@@ -481,9 +525,10 @@ async function markBuyerReceived(order) {
   if (order.status !== "paid") {
     throw new Error(`Order is ${order.status}; receipt can be confirmed only after payment.`);
   }
+  const hasPayoutAddress = Boolean(String(order.sellerPayoutAddress || "").trim());
   order.status = "buyer_confirmed";
   order.transferStatus = "buyer_confirmed_received";
-  order.payoutStatus = "pending_admin_payout";
+  order.payoutStatus = hasPayoutAddress ? "pending_admin_payout" : "waiting_seller_wallet";
   await order.save();
 
   await Gift.updateMany(
@@ -492,21 +537,22 @@ async function markBuyerReceived(order) {
       $set: {
         status: "completed_pending_payout",
         transferStatus: "buyer_confirmed_received",
-        payoutStatus: "pending_admin_payout",
+        payoutStatus: hasPayoutAddress ? "pending_admin_payout" : "waiting_seller_wallet",
       },
     }
   );
 
   const gifts = await Gift.find({ listingId: { $in: order.listingIds } });
   const adminLang = await getUserLanguageOrDefault(adminChatId());
-  const buyerLang = await getUserLanguageOrDefault(order.buyerTelegramId);
+  const adminMessageKey = hasPayoutAddress ? "buyerConfirmedAdminWithPayout" : "buyerConfirmedAdminNoPayout";
   await notifyAdmin(
-    tr(adminLang, "buyerConfirmedAdmin", {
+    tr(adminLang, adminMessageKey, {
       orderId: order.orderId,
       buyer: displayTelegramUser({ id: order.buyerTelegramId, username: order.buyerUsername }),
       listings: order.listingIds.join(", "),
+      payoutAddress: order.sellerPayoutAddress || "—",
     }),
-    { reply_markup: adminPayoutKeyboard(order.orderId, adminLang) }
+    hasPayoutAddress ? { reply_markup: adminPayoutKeyboard(order.orderId, adminLang) } : {}
   );
   for (const gift of gifts) {
     const sellerLang = await getUserLanguageOrDefault(gift.sellerTelegramId);
@@ -522,11 +568,15 @@ async function markOrderDisputed(order) {
     { listingId: { $in: order.listingIds } },
     { $set: { status: "disputed", transferStatus: "disputed" } }
   );
+  const gifts = await Gift.find({ listingId: { $in: order.listingIds } });
+  const seller = gifts[0]
+    ? displayTelegramUser({ id: gifts[0].sellerTelegramId || gifts[0].escrowOwnerTelegramId, username: gifts[0].sellerUsername })
+    : displayTelegramUser({ id: order.sellerTelegramId, username: order.sellerUsername });
   const adminLang = await getUserLanguageOrDefault(adminChatId());
   await notifyAdmin(tr(adminLang, "disputedAdmin", {
     orderId: order.orderId,
     buyer: displayTelegramUser({ id: order.buyerTelegramId, username: order.buyerUsername }),
-    listings: order.listingIds.join(", "),
+    listings: `${order.listingIds.join(", ")}\nSeller: ${seller}`,
   }));
 }
 
@@ -534,22 +584,80 @@ async function markPayoutSent(orderId) {
   const order = await Order.findOne({ orderId: String(orderId || "").trim() });
   if (!order) throw new Error("Order not found.");
   if (order.status !== "buyer_confirmed") {
-    throw new Error(`Order is ${order.status}; buyer confirmation is required before payout.`);
+    const lang = await getUserLanguageOrDefault(adminChatId());
+    throw new Error(tr(lang, "payoutRequiresBuyer"));
+  }
+  if (!String(order.sellerPayoutAddress || "").trim()) {
+    const lang = await getUserLanguageOrDefault(adminChatId());
+    throw new Error(tr(lang, "payoutRequiresAddress"));
   }
 
   order.status = "completed";
   order.payoutStatus = "paid";
+  order.completedAt = new Date();
   await order.save();
   const gifts = await Gift.find({ listingId: { $in: order.listingIds } });
   for (const gift of gifts) {
     gift.status = "completed";
     gift.payoutStatus = "paid";
+    gift.completedAt = order.completedAt;
     await gift.save();
     const sellerLang = await getUserLanguageOrDefault(gift.sellerTelegramId);
     await notifyChat(gift.sellerTelegramId, tr(sellerLang, "payoutSentSeller", { name: gift.name }));
   }
   const buyerLang = await getUserLanguageOrDefault(order.buyerTelegramId);
   await notifyChat(order.buyerTelegramId, tr(buyerLang, "orderCompletedBuyer", { orderId: order.orderId }));
+}
+
+async function collectSellerPayoutAddress({ sellerTelegramId, payoutAddress }) {
+  const gift = await Gift.findOne({
+    sellerTelegramId: String(sellerTelegramId || "").trim(),
+    status: { $in: ["awaiting_seller_transfer", "completed_pending_payout"] },
+    transferStatus: { $in: ["pending_manual_transfer", "buyer_confirmed_received"] },
+    payoutStatus: { $in: ["waiting_seller_wallet", "waiting_buyer_confirmation", "pending_admin_payout"] },
+    orderId: { $ne: "" },
+  }).sort({ paidAt: -1, updatedAt: -1 });
+
+  if (!gift) return { ok: false };
+
+  const order = await Order.findOne({ orderId: gift.orderId });
+  if (!order) return { ok: false };
+
+  const buyerConfirmed = order.status === "buyer_confirmed" || order.transferStatus === "buyer_confirmed_received";
+  const payoutStatus = buyerConfirmed ? "pending_admin_payout" : "waiting_buyer_confirmation";
+  const receivedAt = new Date();
+
+  order.sellerTelegramId = gift.sellerTelegramId || order.sellerTelegramId || "";
+  order.sellerUsername = gift.sellerUsername || order.sellerUsername || "";
+  order.sellerPayoutAddress = payoutAddress;
+  order.sellerPayoutAddressReceivedAt = receivedAt;
+  order.payoutStatus = payoutStatus;
+  await order.save();
+
+  await Gift.updateMany(
+    { listingId: { $in: order.listingIds }, sellerTelegramId: gift.sellerTelegramId },
+    { $set: { sellerPayoutAddress: payoutAddress, payoutStatus } }
+  );
+
+  const sellerLang = await getUserLanguageOrDefault(sellerTelegramId);
+  await notifyChat(
+    sellerTelegramId,
+    tr(sellerLang, buyerConfirmed ? "payoutAddressReceivedSellerReady" : "payoutAddressReceivedSeller")
+  );
+
+  const adminLang = await getUserLanguageOrDefault(adminChatId());
+  await notifyAdmin(
+    tr(adminLang, "payoutAddressReceivedAdmin", {
+      orderId: order.orderId,
+      seller: displayTelegramUser({ id: order.sellerTelegramId, username: order.sellerUsername }),
+      payoutAddress,
+      amount: amountPaidLabel(order),
+      buyerConfirmation: tr(adminLang, buyerConfirmed ? "buyerConfirmedYes" : "buyerConfirmedNo"),
+    }),
+    buyerConfirmed ? { reply_markup: adminPayoutKeyboard(order.orderId, adminLang) } : {}
+  );
+
+  return { ok: true, order };
 }
 
 /** @returns {string | null} Normalized base URL or null if unset / invalid */
@@ -726,7 +834,16 @@ export function initTelegramBot() {
       const giftLink = extractGiftLink(text);
       if (!giftLink) {
         const amount = parseStandaloneTonAmount(text);
-        if (!amount) return;
+        if (!amount) {
+          const payoutAddress = parsePayoutAddress(text);
+          if (!payoutAddress) return;
+          const collected = await collectSellerPayoutAddress({
+            sellerTelegramId: String(msg.from?.id || ""),
+            payoutAddress,
+          });
+          if (collected.ok) return;
+          return;
+        }
 
         const result = await setLatestPendingListingPrice({
           sellerTelegramId: String(msg.from?.id || ""),
@@ -893,6 +1010,13 @@ export async function sendAdminAlert(text) {
 export async function notifyManualOrderPaid(order, gifts) {
   if (!bot) return;
   const buyer = displayTelegramUser({ id: order.buyerTelegramId, username: order.buyerUsername });
+  const giftList = Array.isArray(gifts) ? gifts : [];
+  const giftLines = giftList.map((g) => `${g.name} / ${g.listingId}`).join("\n");
+  const giftNames = giftList.map((g) => g.name).join(", ");
+  const firstGift = giftList[0];
+  const seller = firstGift
+    ? displayTelegramUser({ id: firstGift.sellerTelegramId || firstGift.escrowOwnerTelegramId || order.sellerTelegramId, username: firstGift.sellerUsername || order.sellerUsername })
+    : displayTelegramUser({ id: order.sellerTelegramId, username: order.sellerUsername });
   for (const gift of gifts || []) {
     const sellerLang = await getUserLanguageOrDefault(gift.sellerTelegramId || gift.escrowOwnerTelegramId);
     await notifyChat(
@@ -908,12 +1032,15 @@ export async function notifyManualOrderPaid(order, gifts) {
   await notifyAdmin(tr(adminLang, "paidAdmin", {
     orderId: order.orderId,
     buyer,
-    listings: order.listingIds.join(", "),
+    seller,
+    giftLines,
+    amount: amountPaidLabel(order),
+    paymentMethod: paymentMethodLabel(order),
   }));
   const buyerLang = await getUserLanguageOrDefault(order.buyerTelegramId);
   await notifyChat(
     order.buyerTelegramId,
-    tr(buyerLang, "paidBuyer", { orderId: order.orderId }),
+    tr(buyerLang, "paidBuyer", { orderId: order.orderId, giftNames }),
     { reply_markup: buyerReceiptKeyboard(order.orderId, buyerLang) }
   );
 }

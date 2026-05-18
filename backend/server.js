@@ -300,6 +300,10 @@ function publicOrder(order) {
     orderId: plain.orderId,
     buyerTelegramId: plain.buyerTelegramId || "",
     buyerUsername: plain.buyerUsername || "",
+    sellerTelegramId: plain.sellerTelegramId || "",
+    sellerUsername: plain.sellerUsername || "",
+    sellerPayoutAddress: plain.sellerPayoutAddress || "",
+    sellerPayoutAddressReceivedAt: plain.sellerPayoutAddressReceivedAt instanceof Date ? plain.sellerPayoutAddressReceivedAt.toISOString() : plain.sellerPayoutAddressReceivedAt,
     buyerWalletAddress: plain.buyerWalletAddress || "",
     listingIds: plain.listingIds || [],
     totalTon: plain.totalTon,
@@ -317,6 +321,7 @@ function publicOrder(order) {
     transferResults: plain.transferResults || [],
     createdAt: plain.createdAt instanceof Date ? plain.createdAt.toISOString() : plain.createdAt,
     paidAt: plain.paidAt instanceof Date ? plain.paidAt.toISOString() : plain.paidAt,
+    completedAt: plain.completedAt instanceof Date ? plain.completedAt.toISOString() : plain.completedAt,
   };
 }
 
@@ -376,7 +381,12 @@ async function completePaidOrder(order, payment = {}) {
   order.txHash = payment.txHash || order.txHash || "";
   order.paidAt = new Date();
   order.transferStatus = "pending_manual_transfer";
-  order.payoutStatus = "not_ready";
+  order.payoutStatus = "waiting_seller_wallet";
+  const primaryGift = gifts[0];
+  if (primaryGift) {
+    order.sellerTelegramId = primaryGift.sellerTelegramId || primaryGift.escrowOwnerTelegramId || "";
+    order.sellerUsername = primaryGift.sellerUsername || "";
+  }
   if (order.paymentMethod === "card") {
     order.cardPaymentStatus = "paid";
   }
@@ -391,7 +401,7 @@ async function completePaidOrder(order, payment = {}) {
     gift.txHash = order.txHash;
     gift.paidAt = order.paidAt;
     gift.transferStatus = "pending_manual_transfer";
-    gift.payoutStatus = "not_ready";
+    gift.payoutStatus = "waiting_seller_wallet";
     await gift.save();
     transferResults.push({
       listingId: gift.listingId,
@@ -476,6 +486,8 @@ app.post("/orders/create", async (req, res, next) => {
       orderId,
       buyerTelegramId: String(req.body?.buyerTelegramId ?? "").trim(),
       buyerUsername: String(req.body?.buyerUsername ?? "").replace(/^@/, "").trim(),
+      sellerTelegramId: gifts[0]?.sellerTelegramId || gifts[0]?.escrowOwnerTelegramId || "",
+      sellerUsername: gifts[0]?.sellerUsername || "",
       buyerWalletAddress: String(req.body?.buyerWalletAddress ?? "").trim(),
       listingIds,
       totalTon,
@@ -488,6 +500,8 @@ app.post("/orders/create", async (req, res, next) => {
       status: "pending_payment",
       transferStatus: "not_started",
       payoutStatus: "not_ready",
+      sellerPayoutAddress: "",
+      sellerPayoutAddressReceivedAt: null,
       payload,
     });
 

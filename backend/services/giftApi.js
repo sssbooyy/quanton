@@ -63,9 +63,11 @@ export function giftToApiResponse(doc) {
     buyerUsername: plain.buyerUsername || "",
     sellerTelegramId: plain.sellerTelegramId || plain.escrowOwnerTelegramId || "",
     sellerUsername: plain.sellerUsername || "",
+    sellerPayoutAddress: plain.sellerPayoutAddress || "",
     orderId: plain.orderId || "",
     txHash: plain.txHash || "",
     paidAt: plain.paidAt instanceof Date ? plain.paidAt.toISOString() : plain.paidAt || null,
+    completedAt: plain.completedAt instanceof Date ? plain.completedAt.toISOString() : plain.completedAt || null,
     transferredAt: plain.transferredAt instanceof Date ? plain.transferredAt.toISOString() : plain.transferredAt || null,
     telegramUser: plain.telegramUserSnapshot ?? null,
     createdAt:

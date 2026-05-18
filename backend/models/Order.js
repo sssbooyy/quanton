@@ -5,6 +5,10 @@ const orderSchema = new mongoose.Schema(
     orderId: { type: String, required: true, unique: true, trim: true, index: true },
     buyerTelegramId: { type: String, default: "", trim: true, index: true },
     buyerUsername: { type: String, default: "", trim: true },
+    sellerTelegramId: { type: String, default: "", trim: true, index: true },
+    sellerUsername: { type: String, default: "", trim: true },
+    sellerPayoutAddress: { type: String, default: "", trim: true },
+    sellerPayoutAddressReceivedAt: { type: Date, default: null },
     buyerWalletAddress: { type: String, default: "", trim: true, index: true },
     listingIds: { type: [String], required: true, default: [] },
     totalTon: { type: Number, required: true, min: 0 },
@@ -37,11 +41,12 @@ const orderSchema = new mongoose.Schema(
     },
     payoutStatus: {
       type: String,
-      enum: ["none", "not_ready", "pending_admin_payout", "paid", "failed"],
+      enum: ["none", "not_ready", "waiting_seller_wallet", "waiting_buyer_confirmation", "pending_admin_payout", "paid", "failed"],
       default: "not_ready",
       index: true,
     },
     transferResults: { type: [mongoose.Schema.Types.Mixed], default: [] },
+    completedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

@@ -36,6 +36,10 @@ const TELEGRAM_ALLOWED_UPDATES = [
   "deleted_business_messages",
 ];
 
+function telegramBotToken() {
+  return process.env.TELEGRAM_BOT_TOKEN?.trim() || process.env.BOT_TOKEN?.trim() || "";
+}
+
 const BOT_I18N = {
   en: {
     languagePrompt: "Welcome to Quanton Marketplace.\nPlease choose your language.",
@@ -822,8 +826,9 @@ function getMiniAppUrl() {
 }
 
 export function initTelegramBot() {
-  if (!process.env.BOT_TOKEN) {
-    console.log("[telegram] BOT_TOKEN is missing — bot disabled (API still runs).");
+  const token = telegramBotToken();
+  if (!token) {
+    console.log("[telegram] TELEGRAM_BOT_TOKEN/BOT_TOKEN is missing — bot disabled (API still runs).");
     return null;
   }
 
@@ -833,7 +838,7 @@ export function initTelegramBot() {
     );
   }
 
-  bot = new TelegramBot(process.env.BOT_TOKEN);
+  bot = new TelegramBot(token);
   installBusinessUpdateLogger(bot);
 
   bot.on("webhook_error", (err) => {
@@ -884,23 +889,50 @@ export function initTelegramBot() {
 
   if (TELEGRAM_WEBHOOK_URL) {
     const setWebhook = typeof bot.setWebHook === "function" ? bot.setWebHook.bind(bot) : bot.setWebhook?.bind(bot);
+    const deleteWebhook = typeof bot.deleteWebHook === "function" ? bot.deleteWebHook.bind(bot) : bot.deleteWebhook?.bind(bot);
+    const getWebhookInfo = typeof bot.getWebHookInfo === "function" ? bot.getWebHookInfo.bind(bot) : bot.getWebhookInfo?.bind(bot);
     if (typeof setWebhook !== "function") {
       console.error("[telegram] Webhook registration failed: node-telegram-bot-api setWebHook method not available.");
     } else {
-      setWebhook(TELEGRAM_WEBHOOK_URL, { allowed_updates: TELEGRAM_ALLOWED_UPDATES })
+      Promise.resolve()
+        .then(async () => {
+          if (typeof deleteWebhook === "function") {
+            console.log("[telegram] Deleting previous webhook before registration");
+            await deleteWebhook();
+          }
+        })
+        .then(() => setWebhook(TELEGRAM_WEBHOOK_URL, { allowed_updates: TELEGRAM_ALLOWED_UPDATES }))
         .then(() => {
           console.log("[telegram] Webhook registered", {
             url: TELEGRAM_WEBHOOK_URL,
             allowedUpdates: TELEGRAM_ALLOWED_UPDATES,
           });
           console.log("[telegram] Telegram Business support enabled");
+          if (typeof getWebhookInfo === "function") {
+            return getWebhookInfo()
+              .then((info) => console.log("[telegram] Webhook info after registration", info))
+              .catch((e) => console.error("[telegram] getWebHookInfo after registration failed:", e?.message || e));
+          }
+          return undefined;
         })
         .catch((e) => {
           console.error("[telegram] Webhook registration failed:", e?.message || e);
+          if (!isProduction && typeof bot.startPolling === "function") {
+            console.warn("[telegram] Falling back to polling in local/dev only.");
+            bot.startPolling({ polling: { params: { allowed_updates: TELEGRAM_ALLOWED_UPDATES } } }).catch((pollErr) => {
+              console.error("[telegram] local/dev polling fallback failed:", pollErr?.message || pollErr);
+            });
+          }
         });
     }
   } else {
     console.warn("[telegram] TELEGRAM_WEBHOOK_URL is missing; webhook was not registered.");
+    if (!isProduction && typeof bot.startPolling === "function") {
+      console.warn("[telegram] Falling back to polling in local/dev because TELEGRAM_WEBHOOK_URL is missing.");
+      bot.startPolling({ polling: { params: { allowed_updates: TELEGRAM_ALLOWED_UPDATES } } }).catch((pollErr) => {
+        console.error("[telegram] local/dev polling fallback failed:", pollErr?.message || pollErr);
+      });
+    }
   }
 
   bot.onText(/\/start/, async (msg) => {
@@ -1197,6 +1229,18 @@ export function handleTelegramWebhookUpdate(update) {
     console.error("[telegram] webhook processUpdate failed:", e?.message || e);
     return false;
   }
+}
+
+export async function getTelegramWebhookInfo() {
+  if (!bot) {
+    return { ok: false, error: "Telegram bot is not initialized." };
+  }
+  const getWebhookInfo = typeof bot.getWebHookInfo === "function" ? bot.getWebHookInfo.bind(bot) : bot.getWebhookInfo?.bind(bot);
+  if (typeof getWebhookInfo !== "function") {
+    return { ok: false, error: "node-telegram-bot-api getWebHookInfo method is not available." };
+  }
+  const info = await getWebhookInfo();
+  return { ok: true, info };
 }
 
 export async function sendAdminAlert(text) {

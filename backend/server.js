@@ -2,7 +2,7 @@ import crypto from "crypto";
 import express from "express";
 import dotenv from "dotenv";
 import axios from "axios";
-import { handleTelegramWebhookUpdate, initTelegramBot, notifyManualOrderPaid, sendAdminAlert, stopTelegramBot } from "./services/telegramBot.js";
+import { getTelegramWebhookInfo, handleTelegramWebhookUpdate, initTelegramBot, notifyManualOrderPaid, sendAdminAlert, stopTelegramBot } from "./services/telegramBot.js";
 import {
   PORT,
   isProduction,
@@ -133,25 +133,46 @@ app.get("/debug/providers", async (req, res, next) => {
   }
 });
 
-app.post("/telegram/webhook", (req, res) => {
+function telegramUpdateType(update) {
+  if (!update || typeof update !== "object") return "invalid";
+  return Object.keys(update).find((k) => k !== "update_id") || "unknown";
+}
+
+app.get("/telegram/webhook-info", async (_req, res, next) => {
   try {
-    const update = req.body;
-    const keys = update && typeof update === "object" ? Object.keys(update).filter((k) => k !== "update_id") : [];
-    console.log("[telegram] webhook update received", {
-      updateId: update?.update_id,
-      keys,
-    });
-    const ok = handleTelegramWebhookUpdate(update);
-    if (!ok) {
-      console.error("[telegram] webhook update processing failed", {
-        updateId: update?.update_id,
-        keys,
-      });
-    }
-    res.sendStatus(200);
+    res.set("Cache-Control", "no-store");
+    res.json(await getTelegramWebhookInfo());
   } catch (e) {
-    console.error("[telegram] webhook endpoint error:", e?.message || e);
-    res.sendStatus(200);
+    next(e);
+  }
+});
+
+app.post("/telegram/webhook", (req, res) => {
+  const update = req.body;
+  const updateType = telegramUpdateType(update);
+  const message = update?.message || update?.business_message || update?.edited_message || update?.edited_business_message;
+  const callbackData = update?.callback_query?.data;
+  console.log("[telegram] webhook update received", {
+    updateId: update?.update_id,
+    updateType,
+    messageText: typeof message?.text === "string" ? message.text.slice(0, 300) : "",
+    callbackData: typeof callbackData === "string" ? callbackData.slice(0, 300) : "",
+  });
+  res.sendStatus(200);
+
+  try {
+    const ok = setImmediate(() => {
+      const processed = handleTelegramWebhookUpdate(update);
+      if (!processed) {
+        console.error("[telegram] webhook update processing failed", {
+          updateId: update?.update_id,
+          updateType,
+        });
+      }
+    });
+    void ok;
+  } catch (e) {
+    console.error("[telegram] webhook endpoint scheduling error:", e?.message || e);
   }
 });
 

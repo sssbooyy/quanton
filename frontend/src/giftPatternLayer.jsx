@@ -34,8 +34,8 @@ function buildRasterScatterLayout(seedStr, surface, reducedMotion) {
   const seedN = hashPresentationSeed(seedStr);
   const isCard = surface === "card";
   /** Normalized Euclidean distance from center; skip below this (clean collectible zone). */
-  const exclusion = isCard ? 0.29 : 0.36;
-  const maxR = isCard ? 0.68 : 0.66;
+  const exclusion = isCard ? 0.19 : 0.23;
+  const maxR = isCard ? 0.58 : 0.56;
   /** Fewer, better-spaced symbols than the raw scatter; the visual style stays unchanged. */
   const count = reducedMotion ? (isCard ? 13 : 18) : isCard ? 24 : 34;
   /** Min-distance multiplier keeps large symbols from visually stacking. */

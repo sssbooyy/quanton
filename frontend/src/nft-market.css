@@ -251,7 +251,7 @@
 .nftCardMediaWrap--collectibleHero .nftCardImg {
   object-fit: contain;
   object-position: center;
-  padding: 9%;
+  padding: 17%;
   box-sizing: border-box;
 }
 
@@ -2036,7 +2036,7 @@
 
 /* Smaller floating gift + softer lift; inset shrinks absolute layers (padding does not). */
 .nftDetailSheet--portals .tgCollectibleHeroImg:not(.tgCollectibleHeroImg--ogFallback) .giftAnimHeroRoot {
-  inset: 11%;
+  inset: 18%;
   filter: drop-shadow(0 8px 15px rgba(0, 0, 0, 0.27));
 }
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { TonConnectButton, useTonAddress, useTonConnectUI } from "@tonconnect/ui-react";
 import { beginCell, toNano } from "@ton/core";
-import { addGift, createOrder, getGifts, sendTestAlert, verifyOrderPayment } from "./api";
+import { addGift, createOrder, getGifts, getTonUzsRate, sendTestAlert, verifyOrderPayment } from "./api";
 import GiftAnimatedHero from "./GiftAnimatedHero.jsx";
 import GiftCollectibleHeroStage from "./GiftCollectibleHeroStage.jsx";
 import {
@@ -30,6 +30,12 @@ import {
   uniqueCollections,
 } from "./marketplaceBrowse.js";
 import { useMarketplaceCart } from "./useMarketplaceCart.js";
+import {
+  CURRENCIES,
+  CURRENCY_STORAGE_KEY,
+  formatMarketplacePrice,
+  formatTonPrice,
+} from "./currency.js";
 import {
   extractBackdropLabelFromGift,
   resolveBackdropTraitSolid,
@@ -137,6 +143,21 @@ export default function App() {
   const [tonConnectUI] = useTonConnectUI();
   const walletAddress = useTonAddress();
   const [checkoutState, setCheckoutState] = useState({ status: "idle", error: "", orderId: "" });
+  const [currency, setCurrency] = useState(() => {
+    try {
+      return window.localStorage.getItem(CURRENCY_STORAGE_KEY) === CURRENCIES.UZS ? CURRENCIES.UZS : CURRENCIES.TON;
+    } catch {
+      return CURRENCIES.TON;
+    }
+  });
+  const [tonUzsRate, setTonUzsRate] = useState(() => {
+    try {
+      const cached = JSON.parse(window.localStorage.getItem("quanton_ton_uzs_rate_v1") || "null");
+      return Number(cached?.tonUzs) > 0 ? Number(cached.tonUzs) : 0;
+    } catch {
+      return 0;
+    }
+  });
 
   const tk = useMemo(() => (key) => t(lang, key), [lang]);
 
@@ -195,6 +216,35 @@ export default function App() {
     const timer = setTimeout(() => setSuccessToast(null), 4500);
     return () => clearTimeout(timer);
   }, [successToast]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(CURRENCY_STORAGE_KEY, currency);
+    } catch {
+      /* ignore */
+    }
+  }, [currency]);
+
+  useEffect(() => {
+    getTonUzsRate()
+      .then((data) => {
+        const rate = Number(data?.tonUzs);
+        if (Number.isFinite(rate) && rate > 0) {
+          setTonUzsRate(rate);
+          try {
+            window.localStorage.setItem("quanton_ton_uzs_rate_v1", JSON.stringify(data));
+          } catch {
+            /* ignore */
+          }
+        }
+      })
+      .catch((err) => console.warn("[rates] ton-uzs unavailable", err?.message || err));
+  }, []);
+
+  const displayPrice = useMemo(
+    () => (tonAmount) => formatMarketplacePrice(tonAmount, currency, tonUzsRate),
+    [currency, tonUzsRate],
+  );
 
   function openGiftModal() {
     setGiftFormError(null);
@@ -422,6 +472,13 @@ export default function App() {
         <div className="topbarRight">
           <div className="tonConnectSlot tonConnectSlot--header">
             <TonConnectButton />
+          </div>
+          <div className="currencyToggle" role="group" aria-label="Currency">
+            {[CURRENCIES.TON, CURRENCIES.UZS].map((c) => (
+              <button key={c} type="button" className={currency === c ? "active" : ""} onClick={() => setCurrency(c)}>
+                {c}
+              </button>
+            ))}
           </div>
           <button
             type="button"
@@ -656,6 +713,7 @@ export default function App() {
                 gift={gift}
                 lang={lang}
                 tk={tk}
+                displayPrice={displayPrice}
                 inCart={cart.has(gift.id)}
                 onAddToCart={() => {
                   cart.add(gift);
@@ -684,6 +742,8 @@ export default function App() {
           gift={detailGift}
           lang={lang}
           tk={tk}
+          displayPrice={displayPrice}
+          displayCurrency={currency}
           inCart={cart.has(detailGift.id)}
           onAddToCart={() => {
             cart.add(detailGift);
@@ -707,6 +767,8 @@ export default function App() {
         onCheckout={handleCheckout}
         checkoutState={checkoutState}
         walletAddress={walletAddress}
+        displayPrice={displayPrice}
+        displayCurrency={currency}
         tk={tk}
       />
 
@@ -830,7 +892,7 @@ function giftCardTitleLines(gift) {
   return { primary: coll || "—", secondary: model || "" };
 }
 
-function GiftCard({ gift, lang, tk, onOpen, onAddToCart, inCart }) {
+function GiftCard({ gift, lang, tk, displayPrice, onOpen, onAddToCart, inCart }) {
   const [imgLoaded, setImgLoaded] = useState(false);
   const mainRaster = useGiftMainRasterImage(gift);
   const { primary: cardTitle, secondary: modelLine } = giftCardTitleLines(gift);
@@ -876,7 +938,7 @@ function GiftCard({ gift, lang, tk, onOpen, onAddToCart, inCart }) {
         type="button"
         className="nftCard nftCard--neutral nftCardOpen"
         onClick={onOpen}
-        aria-label={`${gift.name}, ${gift.priceTon} TON`}
+        aria-label={`${gift.name}, ${displayPrice(gift.priceTon)}`}
       >
         <div
           className={`nftCardMediaWrap nftCardMediaWrap--collectibleHero${ogFallback ? " nftCardMediaWrap--ogFallback" : ""}`}
@@ -930,8 +992,7 @@ function GiftCard({ gift, lang, tk, onOpen, onAddToCart, inCart }) {
           {modelLine ? <p className="nftCardSubline mono">{modelLine}</p> : null}
           <div className="nftCardPriceRow">
             <span className="nftCardPricePill" aria-hidden="true">
-              <span className="nftCardPricePillValue">{gift.priceTon}</span>
-              <span className="nftCardPricePillUnit">TON</span>
+              <span className="nftCardPricePillValue">{displayPrice(gift.priceTon)}</span>
             </span>
             {statusLabel ? (
               <span className={nftStatusCardClass(gift.status)}>{statusLabel}</span>
@@ -958,7 +1019,7 @@ function GiftCard({ gift, lang, tk, onOpen, onAddToCart, inCart }) {
   );
 }
 
-function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
+function GiftDetailSheet({ gift, lang, tk, displayPrice, displayCurrency, onClose, onAddToCart, inCart }) {
   const mainRaster = useGiftMainRasterImage(gift);
   const portalLayers = useMemo(() => resolveGiftCollectibleVisualLayers(gift), [gift]);
 
@@ -1010,12 +1071,6 @@ function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
 
   const listingNo = giftListingIdDisplay(gift);
   const backdropLabel = giftBackdropLabel(gift) || "—";
-
-  const formatTonAmount = (n) => {
-    if (n == null || !Number.isFinite(Number(n)) || Number(n) <= 0) return null;
-    const x = Math.round(Number(n) * 100) / 100;
-    return Number.isInteger(x) ? String(x) : x.toFixed(2);
-  };
 
   const attrRows = [
     {
@@ -1140,7 +1195,7 @@ function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
                         {row.badge ? <span className="portalsRarityPill mono">{row.badge}</span> : null}
                       </div>
                       <span className="portalsAttrRow__floor mono">
-                        {formatTonAmount(row.floor) ? `${formatTonAmount(row.floor)} TON` : "—"}
+                        {displayPrice(row.floor)}
                       </span>
                     </div>
                   ))}
@@ -1148,7 +1203,7 @@ function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
                     <span className="portalsAttrRow__label">{tk("portalsReferenceFloor")}</span>
                     <div className="portalsAttrRow__center">
                       <span className="portalsAttrRow__value portalsAttrRow__value--floor mono">
-                        {formatTonAmount(liveFloorTon) ? `${formatTonAmount(liveFloorTon)} TON` : "—"}
+                        {displayPrice(liveFloorTon)}
                       </span>
                     </div>
                     <span className="portalsAttrRow__floor mono" />
@@ -1164,14 +1219,17 @@ function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
                 <div className="portalsBtnFloor" aria-label={tk("portalsReferenceFloor")}>
                   <span className="portalsBtnFloor__label">{tk("portalsReferenceFloor")}</span>
                   <span className="portalsBtnFloor__value mono">
-                    {formatTonAmount(liveFloorTon) ? `${formatTonAmount(liveFloorTon)} TON` : "—"}
+                    {displayPrice(liveFloorTon)}
                   </span>
                 </div>
                 <button type="button" className={`portalsBtnCart ${inCart ? "portalsBtnCart--inCart" : ""}`} onClick={onAddToCart}>
                   <span className="portalsBtnCart__label">{inCart ? tk("inCart") : tk("addToCart")}</span>
                   <span className="portalsBtnCart__price mono">
-                    {formatTonAmount(gift.priceTon) ? `${formatTonAmount(gift.priceTon)} TON` : "—"}
+                    {displayPrice(gift.priceTon)}
                   </span>
+                  {displayCurrency === CURRENCIES.UZS ? (
+                    <span className="portalsBtnCart__price mono">{formatTonPrice(gift.priceTon)} payment</span>
+                  ) : null}
                 </button>
               </div>
 
@@ -1236,11 +1294,10 @@ function GiftDetailSheet({ gift, lang, tk, onClose, onAddToCart, inCart }) {
   );
 }
 
-function CartDrawer({ open, onClose, items, totalTon, onRemove, onClear, onCheckout, checkoutState, walletAddress, tk }) {
+function CartDrawer({ open, onClose, items, totalTon, onRemove, onClear, onCheckout, checkoutState, walletAddress, displayPrice, displayCurrency, tk }) {
   if (!open) return null;
 
-  const rounded = Math.round(Number(totalTon) * 100) / 100;
-  const totalStr = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2);
+  const totalStr = formatTonPrice(totalTon);
 
   return (
     <div className="cartOverlay" role="presentation">
@@ -1287,7 +1344,7 @@ function CartDrawer({ open, onClose, items, totalTon, onRemove, onClear, onCheck
                   <div className="cartRow__meta">
                     <span className="cartRow__name">{g.name}</span>
                     <span className="cartRow__price mono">
-                      {g.priceTon} TON
+                      {displayPrice(g.priceTon)}
                     </span>
                   </div>
                   <button
@@ -1306,9 +1363,15 @@ function CartDrawer({ open, onClose, items, totalTon, onRemove, onClear, onCheck
           <div className="cartTotal mono">
             <span>{tk("cartTotal")}</span>
             <strong>
-              {totalStr} TON
+              {displayPrice(totalTon)}
             </strong>
           </div>
+          {displayCurrency === CURRENCIES.UZS ? (
+            <div className="cartTotal cartTotal--payment mono">
+              <span>Payment</span>
+              <strong>{totalStr}</strong>
+            </div>
+          ) : null}
           <div className="cartCheckoutPanel">
             <div className="cartCheckoutPanel__head">
               <span>Checkout</span>

@@ -2168,6 +2168,31 @@
   text-align: center;
 }
 
+.currencyToggle {
+  display: inline-flex;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+}
+
+.currencyToggle button {
+  min-height: 36px;
+  padding: 7px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.currencyToggle button.active {
+  color: #e0f2fe;
+  background: rgba(56, 189, 248, 0.18);
+}
+
 .tonConnectSlot {
   min-width: 0;
 }
@@ -2369,6 +2394,17 @@
   justify-content: space-between;
   align-items: baseline;
   margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.cartTotal--payment {
+  margin-top: -6px;
+  margin-bottom: 12px;
+  font-size: 11px;
+}
+
+.cartTotal--payment strong {
   font-size: 13px;
   color: var(--text-dim);
 }

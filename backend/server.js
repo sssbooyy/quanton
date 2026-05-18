@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import express from "express";
 import dotenv from "dotenv";
+import axios from "axios";
 import { initTelegramBot, sendAdminAlert, stopTelegramBot } from "./services/telegramBot.js";
 import {
   PORT,
@@ -39,6 +40,8 @@ import {
 dotenv.config();
 
 const app = express();
+const rateCache = { data: null, updatedAtMs: 0 };
+const RATE_TTL_MS = 10 * 60 * 1000;
 
 app.set("trust proxy", 1);
 app.disable("x-powered-by");
@@ -106,6 +109,45 @@ app.get("/gifts/undervalued", async (_req, res, next) => {
     res.set("Cache-Control", "public, max-age=45, stale-while-revalidate=300");
     res.json(await listUndervaluedForApi());
   } catch (e) {
+    next(e);
+  }
+});
+
+app.get("/rates/ton-uzs", async (_req, res, next) => {
+  try {
+    if (rateCache.data && Date.now() - rateCache.updatedAtMs < RATE_TTL_MS) {
+      res.set("Cache-Control", "public, max-age=300");
+      return res.json(rateCache.data);
+    }
+
+    const [tonRes, uzsRes] = await Promise.all([
+      axios.get("https://api.coingecko.com/api/v3/simple/price", {
+        timeout: 10_000,
+        params: { ids: "the-open-network", vs_currencies: "usd" },
+      }),
+      axios.get("https://open.er-api.com/v6/latest/USD", { timeout: 10_000 }),
+    ]);
+
+    const tonUsd = Number(tonRes.data?.["the-open-network"]?.usd);
+    const usdUzs = Number(uzsRes.data?.rates?.UZS);
+    if (!Number.isFinite(tonUsd) || tonUsd <= 0 || !Number.isFinite(usdUzs) || usdUzs <= 0) {
+      throw new Error("Invalid rate provider response.");
+    }
+
+    const data = {
+      tonUsd,
+      usdUzs,
+      tonUzs: Math.round(tonUsd * usdUzs),
+      updatedAt: new Date().toISOString(),
+    };
+    rateCache.data = data;
+    rateCache.updatedAtMs = Date.now();
+    res.set("Cache-Control", "public, max-age=300");
+    res.json(data);
+  } catch (e) {
+    if (rateCache.data) {
+      return res.json({ ...rateCache.data, stale: true });
+    }
     next(e);
   }
 });

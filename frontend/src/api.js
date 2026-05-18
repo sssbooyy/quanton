@@ -60,3 +60,8 @@ export async function getOrder(orderId) {
   const res = await client.get(`/orders/${encodeURIComponent(orderId)}`);
   return res.data;
 }
+
+export async function getTonUzsRate() {
+  const res = await client.get("/rates/ton-uzs");
+  return res.data;
+}

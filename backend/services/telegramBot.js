@@ -26,6 +26,15 @@ import { scheduleGiftImageUpscale, syncUpscaleMetadataFields } from "./imageUpsc
 
 let bot = null;
 const languageCache = new Map();
+const TELEGRAM_ALLOWED_UPDATES = [
+  "message",
+  "edited_message",
+  "callback_query",
+  "business_connection",
+  "business_message",
+  "edited_business_message",
+  "deleted_business_messages",
+];
 
 const BOT_I18N = {
   en: {
@@ -371,6 +380,105 @@ function amountPaidLabel(order) {
     return `${Math.round(uzs).toLocaleString("en-US").replace(/,/g, " ")} UZS (${ton} TON)`;
   }
   return `${ton} TON`;
+}
+
+function logBusinessUpdate(update) {
+  if (!update || typeof update !== "object") return;
+  if (update.business_connection) {
+    const bc = update.business_connection;
+    console.log("[telegram-business] incoming business_connection", {
+      updateId: update.update_id,
+      business_connection_id: bc.id || bc.business_connection_id || "",
+      userId: bc.user?.id || "",
+      userUsername: bc.user?.username || "",
+      canReply: bc.can_reply,
+      isEnabled: bc.is_enabled,
+    });
+  }
+  if (update.business_message) {
+    const msg = update.business_message;
+    console.log("[telegram-business] incoming business_message", {
+      updateId: update.update_id,
+      business_connection_id: msg.business_connection_id || "",
+      messageId: msg.message_id,
+      fromId: msg.from?.id || "",
+      fromUsername: msg.from?.username || "",
+      chatId: msg.chat?.id || "",
+      chatType: msg.chat?.type || "",
+      text: typeof msg.text === "string" ? msg.text.slice(0, 160) : "",
+    });
+  }
+  if (update.edited_business_message) {
+    const msg = update.edited_business_message;
+    console.log("[telegram-business] incoming edited_business_message", {
+      updateId: update.update_id,
+      business_connection_id: msg.business_connection_id || "",
+      messageId: msg.message_id,
+      fromId: msg.from?.id || "",
+      chatId: msg.chat?.id || "",
+    });
+  }
+  if (update.deleted_business_messages) {
+    const deleted = update.deleted_business_messages;
+    console.log("[telegram-business] incoming deleted_business_messages", {
+      updateId: update.update_id,
+      business_connection_id: deleted.business_connection_id || "",
+      chatId: deleted.chat?.id || "",
+      messageIds: deleted.message_ids || [],
+    });
+  }
+}
+
+function logUnknownUpdateTypes(update) {
+  if (!update || typeof update !== "object") return;
+  const known = new Set([
+    "update_id",
+    ...TELEGRAM_ALLOWED_UPDATES,
+    "channel_post",
+    "edited_channel_post",
+    "inline_query",
+    "chosen_inline_result",
+    "shipping_query",
+    "pre_checkout_query",
+    "poll",
+    "poll_answer",
+    "my_chat_member",
+    "chat_member",
+    "chat_join_request",
+  ]);
+  const unknown = Object.keys(update).filter((k) => !known.has(k));
+  if (unknown.length) {
+    console.log("[telegram] unknown update type(s)", {
+      updateId: update.update_id,
+      keys: unknown,
+    });
+  }
+}
+
+function installBusinessUpdateLogger(botInstance) {
+  const original = botInstance.processUpdate?.bind(botInstance);
+  if (typeof original !== "function") {
+    console.warn("[telegram-business] processUpdate hook unavailable; business update raw logging disabled.");
+    return;
+  }
+  botInstance.processUpdate = (update) => {
+    logBusinessUpdate(update);
+    logUnknownUpdateTypes(update);
+    try {
+      return original(update);
+    } catch (e) {
+      if (
+        update?.business_connection ||
+        update?.business_message ||
+        update?.edited_business_message ||
+        update?.deleted_business_messages
+      ) {
+        console.warn("[telegram-business] business update ignored by node-telegram-bot-api", e?.message || e);
+        return undefined;
+      }
+      throw e;
+    }
+  };
 }
 
 function adminReviewKeyboard(listingId, lang = "en") {
@@ -729,12 +837,58 @@ export function initTelegramBot() {
     polling: {
       interval: 300,
       autoStart: true,
-      params: { timeout: 10 },
+      params: {
+        timeout: 10,
+        allowed_updates: TELEGRAM_ALLOWED_UPDATES,
+      },
     },
   });
+  installBusinessUpdateLogger(bot);
 
   bot.on("polling_error", (err) => {
     console.error("[telegram] polling_error:", err?.message || err);
+  });
+
+  bot.on("business_connection", (connection) => {
+    console.log("[telegram-business] business_connection event", {
+      business_connection_id: connection?.id || connection?.business_connection_id || "",
+      userId: connection?.user?.id || "",
+      userUsername: connection?.user?.username || "",
+      canReply: connection?.can_reply,
+      isEnabled: connection?.is_enabled,
+    });
+  });
+
+  bot.on("business_message", (msg) => {
+    console.log("[telegram-business] business_message event", {
+      business_connection_id: msg?.business_connection_id || "",
+      messageId: msg?.message_id,
+      fromId: msg?.from?.id || "",
+      fromUsername: msg?.from?.username || "",
+      chatId: msg?.chat?.id || "",
+      chatType: msg?.chat?.type || "",
+    });
+  });
+
+  bot.on("edited_business_message", (msg) => {
+    console.log("[telegram-business] edited_business_message event", {
+      business_connection_id: msg?.business_connection_id || "",
+      messageId: msg?.message_id,
+      fromId: msg?.from?.id || "",
+      chatId: msg?.chat?.id || "",
+    });
+  });
+
+  bot.on("deleted_business_messages", (deleted) => {
+    console.log("[telegram-business] deleted_business_messages event", {
+      business_connection_id: deleted?.business_connection_id || "",
+      chatId: deleted?.chat?.id || "",
+      messageIds: deleted?.message_ids || [],
+    });
+  });
+
+  console.log("[telegram] Telegram Business support enabled", {
+    allowedUpdates: TELEGRAM_ALLOWED_UPDATES,
   });
 
   bot.onText(/\/start/, async (msg) => {

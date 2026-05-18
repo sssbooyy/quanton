@@ -50,18 +50,6 @@ function getMiniAppUrl() {
   }
 }
 
-/**
- * Reply keyboard shown after /start. One row: Web App button (opens MINI_APP_URL inside Telegram).
- * @returns {import("node-telegram-bot-api").ReplyKeyboardMarkup | undefined}
- */
-function buildOpenMarketKeyboard(url) {
-  return {
-    keyboard: [[{ text: "🚀 Open Quanton Market", web_app: { url } }]],
-    resize_keyboard: true,
-    is_persistent: true,
-  };
-}
-
 export function initTelegramBot() {
   if (!process.env.BOT_TOKEN) {
     console.log("[telegram] BOT_TOKEN is missing — bot disabled (API still runs).");
@@ -88,7 +76,6 @@ export function initTelegramBot() {
 
   bot.onText(/\/start/, (msg) => {
     const miniAppUrl = getMiniAppUrl();
-    const reply_markup = miniAppUrl ? buildOpenMarketKeyboard(miniAppUrl) : undefined;
 
     const lines = [
       "Welcome to Quanton Market",
@@ -101,8 +88,7 @@ export function initTelegramBot() {
       "Dev price command: /price <listingId> <amountTon>",
     ];
 
-    const options = reply_markup ? { reply_markup } : {};
-    bot.sendMessage(msg.chat.id, lines.join("\n"), options).catch((e) => {
+    bot.sendMessage(msg.chat.id, lines.join("\n")).catch((e) => {
       console.error("[telegram] sendMessage failed:", e?.message || e);
     });
   });

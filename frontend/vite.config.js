@@ -13,10 +13,14 @@ export default defineConfig(() => ({
   define: {
     global: "globalThis",
   },
+  optimizeDeps: {
+    include: ["buffer"],
+  },
 
   resolve: {
     alias: {
       "@shared": path.resolve(__dirname, "../shared"),
+      buffer: "buffer",
     },
   },
 

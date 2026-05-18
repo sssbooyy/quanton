@@ -35,9 +35,8 @@ function buildRasterScatterLayout(surface, reducedMotion) {
   const seedN = hashPresentationSeed(layoutSeedStr);
   /** Normalized Euclidean distance from center; skip below this (clean collectible zone). */
   const exclusion = isCard ? 0.17 : 0.2;
-  const maxR = isCard ? 0.58 : 0.6;
-  /** Fewer, better-spaced symbols than the raw scatter; the visual style stays unchanged. */
-  const count = reducedMotion ? (isCard ? 13 : 18) : isCard ? 24 : 34;
+  /** Fixed staggered rows; density changes only for reduced motion. */
+  const count = reducedMotion ? (isCard ? 12 : 14) : isCard ? 20 : 24;
   /** Min-distance multiplier keeps large symbols from visually stacking. */
   const spacingK = 0.55 + seeded01(seedN, 0, 88) * 0.12;
 
@@ -61,43 +60,35 @@ function buildRasterScatterLayout(surface, reducedMotion) {
     return false;
   }
 
-  const rowCount = reducedMotion ? (isCard ? 4 : 5) : isCard ? 6 : 7;
-  const colCount = isCard ? 6 : 7;
-  const xMin = isCard ? 0.1 : 0.08;
-  const xMax = isCard ? 0.9 : 0.92;
-  const yMin = isCard ? 0.1 : 0.08;
-  const yMax = isCard ? 0.9 : 0.92;
-  const xStep = (xMax - xMin) / (colCount - 1);
-  const yStep = (yMax - yMin) / (rowCount - 1);
-
   /** @type {{ x: number; y: number; row: number; col: number; score: number }[]} */
   const slots = [];
-  for (let row = 0; row < rowCount; row++) {
-    const colsInRow = row % 2 === 0 ? colCount : colCount - 1;
-    const rowOffset = row % 2 === 0 ? 0 : xStep * 0.5;
-    for (let col = 0; col < colsInRow; col++) {
-      const jitterX = (seeded01(seedN, row * 31 + col, 301) - 0.5) * xStep * 0.16;
-      const jitterY = (seeded01(seedN, row * 31 + col, 302) - 0.5) * yStep * 0.16;
-      const x = xMin + col * xStep + rowOffset + jitterX;
-      const y = yMin + row * yStep + jitterY;
+  const yRows = reducedMotion
+    ? [-0.02, 0.25, 0.52, 0.79, 1.06]
+    : [-0.04, 0.15, 0.34, 0.53, 0.72, 0.91, 1.1];
+  const evenXs = isCard ? [0.15, 0.5, 0.85] : [0.14, 0.5, 0.86];
+  const oddXs = isCard ? [-0.02, 0.32, 0.66, 1] : [-0.04, 0.31, 0.66, 1.04];
+
+  for (let row = 0; row < yRows.length; row++) {
+    const xs = row % 2 === 0 ? evenXs : oddXs;
+    for (let col = 0; col < xs.length; col++) {
+      const jitterX = (seeded01(seedN, row * 31 + col, 301) - 0.5) * 0.012;
+      const jitterY = (seeded01(seedN, row * 31 + col, 302) - 0.5) * 0.012;
+      const x = xs[col] + jitterX;
+      const y = yRows[row] + jitterY;
       const d = Math.hypot(x - 0.5, y - 0.5);
-      if (x < 0.045 || x > 0.955 || y < 0.045 || y > 0.955) continue;
-      if (d < exclusion || d > maxR) continue;
+      if (x < -0.08 || x > 1.08 || y < -0.08 || y > 1.12) continue;
+      if (d < exclusion) continue;
       slots.push({
         x,
         y,
         row,
         col,
-        score: d + seeded01(seedN, row * 47 + col, 303) * 0.14,
+        score: row * 10 + col,
       });
     }
   }
 
-  slots.sort((a, b) => {
-    const byScore = a.score - b.score;
-    if (Math.abs(byScore) > 0.0001) return byScore;
-    return seeded01(seedN, a.row * 53 + a.col, 304) - seeded01(seedN, b.row * 53 + b.col, 304);
-  });
+  slots.sort((a, b) => a.score - b.score);
 
   for (let i = 0; i < count; i++) {
     const scale = 0.78 + seeded01(seedN, i, 20) * 0.28;
@@ -107,7 +98,7 @@ function buildRasterScatterLayout(surface, reducedMotion) {
 
     let best = null;
     for (let attempt = 0; attempt < slots.length; attempt++) {
-      const slot = slots[(i * 7 + attempt) % slots.length];
+      const slot = slots[(i + attempt) % slots.length];
       if (!slot) break;
       if (instances.some((inst) => inst.slotRow === slot.row && inst.slotCol === slot.col)) continue;
       if (collides(slot.x, slot.y, sizePx)) continue;
@@ -122,8 +113,8 @@ function buildRasterScatterLayout(surface, reducedMotion) {
       y: best.y,
       slotRow: best.row,
       slotCol: best.col,
-      xPct: Math.min(100, Math.max(0, best.x * 100)),
-      yPct: Math.min(100, Math.max(0, best.y * 100)),
+      xPct: best.x * 100,
+      yPct: best.y * 100,
       sizePx,
       opacityMul,
     });

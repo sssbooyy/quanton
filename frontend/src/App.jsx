@@ -69,7 +69,6 @@ const MANUAL_LISTING_FALLBACK_ENABLED =
   import.meta.env.VITE_ENABLE_MANUAL_LISTING === "true" ||
   (import.meta.env.VITE_ENABLE_MANUAL_LISTING_FALLBACK !== "false" &&
     import.meta.env.VITE_ENABLE_MANUAL_LISTING !== "false");
-const QUANTON_BOT_URL = String(import.meta.env.VITE_QUANTON_BOT_URL || "https://t.me/QuantonMarketBot");
 
 function getTelegramUser() {
   try {
@@ -773,16 +772,6 @@ export default function App() {
             </div>
           </details>
         </div>
-
-        <section className="escrowOnboarding">
-          <div>
-            <h2 className="escrowOnboarding__title">{tk("escrowOnboardingTitle")}</h2>
-            <p className="escrowOnboarding__body">{tk("escrowOnboardingBody")}</p>
-          </div>
-          <a className="escrowOnboarding__button" href={QUANTON_BOT_URL} target="_blank" rel="noopener noreferrer">
-            {tk("escrowSendGift")}
-          </a>
-        </section>
 
         {loading ? (
           <div className="loadingPanel">

@@ -34,8 +34,8 @@ function buildRasterScatterLayout(seedStr, surface, reducedMotion) {
   const seedN = hashPresentationSeed(seedStr);
   const isCard = surface === "card";
   /** Normalized Euclidean distance from center; skip below this (clean collectible zone). */
-  const exclusion = isCard ? 0.19 : 0.23;
-  const maxR = isCard ? 0.58 : 0.56;
+  const exclusion = isCard ? 0.17 : 0.2;
+  const maxR = isCard ? 0.52 : 0.5;
   /** Fewer, better-spaced symbols than the raw scatter; the visual style stays unchanged. */
   const count = reducedMotion ? (isCard ? 13 : 18) : isCard ? 24 : 34;
   /** Min-distance multiplier keeps large symbols from visually stacking. */
@@ -129,7 +129,7 @@ function buildRasterScatterLayout(seedStr, surface, reducedMotion) {
       if (collides(x, y, sizePx)) continue;
 
       const edgePenalty = Math.max(0, d - maxR * 0.88) * 2.4;
-      const centerPenalty = Math.max(0, exclusion + 0.035 - d) * 4.2;
+      const centerPenalty = Math.max(0, exclusion + 0.025 - d) * 4.2;
       const radiusPenalty = Math.abs(d - preferredR) * 0.9;
       const score =
         crowdScore(x, y, sizePx) +

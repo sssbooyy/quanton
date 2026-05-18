@@ -158,6 +158,7 @@ export default function App() {
       return 0;
     }
   });
+  const [tonUzsRateLoading, setTonUzsRateLoading] = useState(false);
 
   const tk = useMemo(() => (key) => t(lang, key), [lang]);
 
@@ -225,25 +226,47 @@ export default function App() {
     }
   }, [currency]);
 
-  useEffect(() => {
-    getTonUzsRate()
-      .then((data) => {
-        const rate = Number(data?.tonUzs);
-        if (Number.isFinite(rate) && rate > 0) {
-          setTonUzsRate(rate);
-          try {
-            window.localStorage.setItem("quanton_ton_uzs_rate_v1", JSON.stringify(data));
-          } catch {
-            /* ignore */
-          }
+  async function refreshTonUzsRate() {
+    setTonUzsRateLoading(true);
+    try {
+      const data = await getTonUzsRate();
+      const rate = Number(data?.tonUzs);
+      if (Number.isFinite(rate) && rate > 0) {
+        setTonUzsRate(rate);
+        try {
+          window.localStorage.setItem("quanton_ton_uzs_rate_v1", JSON.stringify(data));
+        } catch {
+          /* ignore */
         }
-      })
-      .catch((err) => console.warn("[rates] ton-uzs unavailable", err?.message || err));
+      }
+    } catch (err) {
+      console.warn("[rates] ton-uzs unavailable", err?.message || err);
+    } finally {
+      setTonUzsRateLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    refreshTonUzsRate();
   }, []);
 
+  useEffect(() => {
+    console.info("[currency]", {
+      selectedCurrency: currency,
+      tonUzsRate,
+      displayPrice: formatMarketplacePrice(1, currency, tonUzsRate),
+      rateLoading: tonUzsRateLoading,
+    });
+  }, [currency, tonUzsRate, tonUzsRateLoading]);
+
   const displayPrice = useMemo(
-    () => (tonAmount) => formatMarketplacePrice(tonAmount, currency, tonUzsRate),
-    [currency, tonUzsRate],
+    () => (tonAmount) => {
+      if (currency === CURRENCIES.UZS && !tonUzsRate) {
+        return tonUzsRateLoading ? "…" : formatTonPrice(tonAmount);
+      }
+      return formatMarketplacePrice(tonAmount, currency, tonUzsRate);
+    },
+    [currency, tonUzsRate, tonUzsRateLoading],
   );
 
   function openGiftModal() {
@@ -475,7 +498,17 @@ export default function App() {
           </div>
           <div className="currencyToggle" role="group" aria-label="Currency">
             {[CURRENCIES.TON, CURRENCIES.UZS].map((c) => (
-              <button key={c} type="button" className={currency === c ? "active" : ""} onClick={() => setCurrency(c)}>
+              <button
+                key={c}
+                type="button"
+                className={currency === c ? "active" : ""}
+                onClick={() => {
+                  setCurrency(c);
+                  if (c === CURRENCIES.UZS && !tonUzsRate && !tonUzsRateLoading) {
+                    refreshTonUzsRate();
+                  }
+                }}
+              >
                 {c}
               </button>
             ))}

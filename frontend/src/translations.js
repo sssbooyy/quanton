@@ -124,7 +124,7 @@ export const translations = {
     cartTotal: "Total",
     cartClear: "Clear",
     cartRemove: "Remove",
-    cartCheckout: "Checkout (soon)",
+    cartCheckout: "Checkout",
     addToCart: "Add to cart",
     inCart: "In cart",
 
@@ -282,7 +282,7 @@ export const translations = {
     cartTotal: "Итого",
     cartClear: "Очистить",
     cartRemove: "Убрать",
-    cartCheckout: "Оформление (скоро)",
+    cartCheckout: "Оформление",
     addToCart: "В корзину",
     inCart: "В корзине",
 

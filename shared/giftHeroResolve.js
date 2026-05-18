@@ -485,11 +485,23 @@ export function traitSolidPatternOpacityForHex(hex, opts) {
  * Fixed wrap opacity; blend mode differs only by surface (card vs detail hero), not backdrop analysis.
  * @param {unknown} _hex unused (API stability)
  * @param {{ isCardSurface: boolean; reducedMotion?: boolean }} opts
- * @returns {{ opacity: number; mixBlendMode: string }}
+ * @returns {{ opacity: number; mixBlendMode: string; filter?: string }}
  */
 export function symbolRasterPatternStyleForHex(_hex, opts) {
-  void _hex;
   const { isCardSurface } = opts;
+  const rgb = parseHex6(String(_hex || ""));
+  const luminance = rgb ? relativeLuminanceRgb(rgb) : 1;
+  const saturation = rgb ? saturationRgb(rgb) : 1;
+  const darkGraphite = luminance < 0.12 && saturation < 0.28;
+
+  if (darkGraphite) {
+    return {
+      opacity: 0.24,
+      mixBlendMode: "normal",
+      filter: "brightness(0.42) contrast(1.15) saturate(0.6)",
+    };
+  }
+
   return {
     opacity: 0.5,
     mixBlendMode: isCardSurface ? "soft-light" : "overlay",

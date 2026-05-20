@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getMineProfile, postMineDaily, postMineTap } from "../api.js";
+import { formatMiningApiError } from "../lib/miningApiError.js";
 import { getTelegramUserIdForMining, hapticNotification, miningAuthBody, miningAuthHeaders } from "../lib/telegramUser.js";
 
 const PROFILE_POLL_MS = 8000;
@@ -25,9 +26,7 @@ export function useMining() {
       });
       return data.profile;
     } catch (e) {
-      const msg = e.response?.data?.error || e.message || "Failed to load mining profile.";
-      setError(msg);
-      console.error("[mining] profile error", e);
+      setError(formatMiningApiError(e, "/mine/profile"));
       return null;
     } finally {
       setLoading(false);
@@ -63,11 +62,9 @@ export function useMining() {
       console.log("[mining] tap ok", data.shardsEarned);
       return data;
     } catch (e) {
-      const msg = e.response?.data?.error || e.message || "Tap failed.";
       if (e.response?.data?.profile) setProfile(e.response.data.profile);
-      setError(msg);
+      setError(formatMiningApiError(e, "/mine/tap"));
       hapticNotification("error");
-      console.warn("[mining] tap error", e.response?.data || e.message);
       return null;
     } finally {
       setTapping(false);
@@ -86,9 +83,8 @@ export function useMining() {
       console.log("[mining] daily claimed", data.reward);
       return data;
     } catch (e) {
-      const msg = e.response?.data?.error || e.message || "Daily claim failed.";
       if (e.response?.data?.profile) setProfile(e.response.data.profile);
-      setError(msg);
+      setError(formatMiningApiError(e, "/mine/daily"));
       hapticNotification("error");
       return null;
     }

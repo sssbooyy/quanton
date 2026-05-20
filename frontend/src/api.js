@@ -21,12 +21,17 @@ client.interceptors.response.use(
     const full = `${baseURL}${path.startsWith("/") ? "" : "/"}${path}`;
     const status = err.response?.status;
     const data = err.response?.data;
-    console.error("[api]", method, full, {
+    const logPayload = {
       status,
       message: err.message,
       code: err.code,
       responseData: data,
-    });
+    };
+    if (path.includes("/mine")) {
+      logPayload.requestHeaders = err.config?.headers;
+      logPayload.requestParams = err.config?.params;
+    }
+    console.error("[api]", method, full, logPayload);
     return Promise.reject(err);
   }
 );
@@ -91,17 +96,29 @@ export async function getTonUzsRate() {
   return res.data;
 }
 
+function mineRequestConfig(headers = {}, body = {}) {
+  const telegramId = String(
+    headers["X-Telegram-User-Id"] || body?.telegramId || body?.telegramUser?.id || ""
+  ).trim();
+  return {
+    headers,
+    params: telegramId ? { telegramId } : {},
+  };
+}
+
 export async function getMineProfile(headers = {}) {
-  const res = await client.get("/mine/profile", { headers });
+  const res = await client.get("/mine/profile", mineRequestConfig(headers));
   return res.data;
 }
 
 export async function postMineTap(body, headers = {}) {
-  const res = await client.post("/mine/tap", body, { headers });
+  const { headers: h, params } = mineRequestConfig(headers, body);
+  const res = await client.post("/mine/tap", body, { headers: h, params });
   return res.data;
 }
 
 export async function postMineDaily(body, headers = {}) {
-  const res = await client.post("/mine/daily", body, { headers });
+  const { headers: h, params } = mineRequestConfig(headers, body);
+  const res = await client.post("/mine/daily", body, { headers: h, params });
   return res.data;
 }

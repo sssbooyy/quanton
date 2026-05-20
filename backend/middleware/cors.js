@@ -39,8 +39,17 @@ export function createCorsMiddleware() {
       callback(null, false);
     },
     credentials: true,
-    methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Accept"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Accept",
+      "Authorization",
+      "X-Telegram-User-Id",
+      "X-Telegram-User-Json",
+      "X-Metadata-Sync-Secret",
+      "X-Clear-Listings-Secret",
+      "X-Debug-Providers-Secret",
+    ],
     maxAge: 86400,
   });
 }

@@ -554,8 +554,8 @@ app.post("/orders/create", async (req, res, next) => {
       ...publicOrder(order),
       comment: payload,
     };
-    if (paymentMethod === "ton" && tonWallet?.tonapiAddress) {
-      body.marketplaceWalletAddress = tonWallet.tonapiAddress;
+    if (paymentMethod === "ton" && tonWallet?.friendlyAddress) {
+      body.marketplaceWalletAddress = tonWallet.friendlyAddress;
     }
     res.status(201).json(body);
   } catch (e) {

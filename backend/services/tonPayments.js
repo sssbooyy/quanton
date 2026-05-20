@@ -85,7 +85,8 @@ export function validateMarketplaceWallet(raw = MARKETPLACE_WALLET_ADDRESS) {
     format = "friendly";
   }
 
-  const tonapiAddress = Address.isFriendly(trimmed)
+  const rawAddress = parsed.toRawString();
+  const friendlyAddress = Address.isFriendly(trimmed)
     ? trimmed
     : parsed.toString({ bounceable: true, testOnly, urlSafe: true });
 
@@ -94,14 +95,15 @@ export function validateMarketplaceWallet(raw = MARKETPLACE_WALLET_ADDRESS) {
     bounceable,
     testOnly,
     workchain: parsed.workChain,
-    raw: parsed.toRawString(),
-    tonapiAddress,
+    rawAddress,
+    friendlyAddress,
   });
 
   return {
     trimmed,
     parsed,
-    tonapiAddress,
+    rawAddress,
+    friendlyAddress,
     bounceable,
     testOnly,
     workchain: parsed.workChain,
@@ -193,17 +195,21 @@ export async function findMatchingIncomingPayment(order) {
     return { error: "TON_API_KEY is not configured.", code: "TON_API_KEY_MISSING" };
   }
 
-  const tonapiAddress = wallet.tonapiAddress;
-  const url = `${TONAPI_BASE_URL}/blockchain/accounts/${encodeURIComponent(tonapiAddress)}/transactions`;
+  const rawAddress = wallet.rawAddress;
+  const friendlyAddress = wallet.friendlyAddress;
+  const encodedRaw = encodeURIComponent(rawAddress);
+  const url = `${TONAPI_BASE_URL}/blockchain/accounts/${encodedRaw}/transactions`;
+  const urlPath = `/blockchain/accounts/${encodedRaw}/transactions`;
 
   console.log("[ton] TonAPI verification request", {
     orderId: order?.orderId,
-    tonapiAddress,
-    addressLength: tonapiAddress.length,
+    rawAddress,
+    friendlyAddress,
+    addressLength: rawAddress.length,
     bounceable: wallet.bounceable,
     testOnly: wallet.testOnly,
     workchain: wallet.workchain,
-    urlPath: `/blockchain/accounts/${tonapiAddress}/transactions`,
+    urlPath,
   });
 
   let res;
@@ -221,7 +227,9 @@ export async function findMatchingIncomingPayment(order) {
       status: status || "",
       message: e?.message || String(e),
       apiBody,
-      tonapiAddress,
+      rawAddress,
+      friendlyAddress,
+      urlPath,
     });
     if (status === 401) {
       return {
@@ -242,7 +250,7 @@ export async function findMatchingIncomingPayment(order) {
   }
 
   const txs = Array.isArray(res.data?.transactions) ? res.data.transactions : [];
-  const expectedReceiver = normalizeTonAddress(wallet.parsed);
+  const expectedReceiver = normalizeTonAddress(wallet.rawAddress);
   const expectedAmount = BigInt(tonToNanoString(order.totalTon));
   const createdUtime = Math.floor(new Date(order.createdAt).getTime() / 1000);
 

@@ -554,8 +554,24 @@ app.post("/orders/create", async (req, res, next) => {
       ...publicOrder(order),
       comment: payload,
     };
-    if (paymentMethod === "ton" && tonWallet?.friendlyAddress) {
-      body.marketplaceWalletAddress = tonWallet.friendlyAddress;
+    if (paymentMethod === "ton") {
+      const marketplaceWalletAddress = String(tonWallet?.friendlyAddress || "").trim();
+      if (!marketplaceWalletAddress) {
+        return res.status(503).json({
+          error: "Marketplace wallet address is not available for TON checkout.",
+          code: "MARKETPLACE_WALLET_ADDRESS_MISSING",
+        });
+      }
+      body.marketplaceWalletAddress = marketplaceWalletAddress;
+      body.payload = payload;
+      body.orderId = order.orderId;
+      body.totalTon = order.totalTon;
+      console.log("[orders] create ton order response", {
+        orderId: order.orderId,
+        marketplaceWalletAddress,
+        totalTon: order.totalTon,
+        payload,
+      });
     }
     res.status(201).json(body);
   } catch (e) {

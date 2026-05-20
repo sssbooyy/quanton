@@ -461,6 +461,16 @@ export default function App() {
         cardProvider: paymentMethod.provider,
       });
       currentOrderId = order.orderId;
+      const marketplaceWalletAddress = String(order.marketplaceWalletAddress || "").trim();
+      const orderPayload = String(order.payload || order.comment || order.orderId || "").trim();
+      const orderTotalTon = Number(order.totalTon);
+
+      console.log("[checkout] order payment details", {
+        orderId: order.orderId,
+        marketplaceWalletAddress,
+        totalTon: orderTotalTon,
+        payload: orderPayload,
+      });
 
       if (paymentMethod.type === "card") {
         setCheckoutState({ status: "card_pending", error: "", orderId: order.orderId });
@@ -473,14 +483,31 @@ export default function App() {
         return;
       }
 
+      if (!marketplaceWalletAddress) {
+        setCheckoutState({
+          status: "failed",
+          error: "Marketplace wallet address is missing. Please try again later.",
+          orderId: order.orderId,
+        });
+        return;
+      }
+      if (!Number.isFinite(orderTotalTon) || orderTotalTon <= 0) {
+        setCheckoutState({
+          status: "failed",
+          error: "Order total is invalid. Please refresh and try again.",
+          orderId: order.orderId,
+        });
+        return;
+      }
+
       setCheckoutState({ status: "wallet_confirmation", error: "", orderId: order.orderId });
       await tonConnectUI.sendTransaction({
-        validUntil: Math.floor(Date.now() / 1000) + 10 * 60,
+        validUntil: Math.floor(Date.now() / 1000) + 600,
         messages: [
           {
-            address: order.marketplaceWalletAddress,
-            amount: toNano(String(order.totalTon)).toString(),
-            payload: tonCommentPayload(order.payload || order.comment || order.orderId),
+            address: marketplaceWalletAddress,
+            amount: toNano(String(orderTotalTon)).toString(),
+            payload: tonCommentPayload(orderPayload),
           },
         ],
       });

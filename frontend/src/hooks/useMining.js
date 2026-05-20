@@ -1,28 +1,69 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getMineProfile, postMineDaily, postMineTap } from "../api.js";
 import { formatMiningApiError } from "../lib/miningApiError.js";
-import { getTelegramUserIdForMining, hapticNotification, miningAuthBody, miningAuthHeaders } from "../lib/telegramUser.js";
+import {
+  getTelegramUserIdForMining,
+  hapticNotification,
+  isTelegramMiniApp,
+  miningAuthBody,
+  miningAuthHeaders,
+} from "../lib/telegramUser.js";
 
 const PROFILE_POLL_MS = 8000;
+const TELEGRAM_INIT_WAIT_MS = 400;
 
 export function useMining() {
   const [profile, setProfile] = useState(null);
+  const [identityReady, setIdentityReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [tapping, setTapping] = useState(false);
   const [floats, setFloats] = useState([]);
   const tapLock = useRef(false);
 
+  useEffect(() => {
+    let cancelled = false;
+    const boot = () => {
+      try {
+        window.Telegram?.WebApp?.ready?.();
+        window.Telegram?.WebApp?.expand?.();
+      } catch {
+        /* ignore */
+      }
+      if (!cancelled) {
+        const id = getTelegramUserIdForMining();
+        console.log("[mining] identity ready", {
+          telegramId: id,
+          inTelegram: isTelegramMiniApp(),
+        });
+        setIdentityReady(true);
+      }
+    };
+    if (isTelegramMiniApp()) {
+      const t = window.setTimeout(boot, TELEGRAM_INIT_WAIT_MS);
+      return () => {
+        cancelled = true;
+        window.clearTimeout(t);
+      };
+    }
+    boot();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const refresh = useCallback(async () => {
+    const telegramId = getTelegramUserIdForMining();
     const headers = miningAuthHeaders();
     try {
       setError("");
       const data = await getMineProfile(headers);
       setProfile(data.profile);
       console.log("[mining] profile loaded", {
-        telegramId: getTelegramUserIdForMining(),
+        telegramId,
         shards: data.profile?.shards,
         energy: data.profile?.energy,
+        level: data.profile?.level,
       });
       return data.profile;
     } catch (e) {
@@ -34,10 +75,11 @@ export function useMining() {
   }, []);
 
   useEffect(() => {
+    if (!identityReady) return undefined;
     refresh();
     const id = window.setInterval(refresh, PROFILE_POLL_MS);
     return () => window.clearInterval(id);
-  }, [refresh]);
+  }, [identityReady, refresh]);
 
   const addFloat = useCallback((amount) => {
     const id = `${Date.now()}_${Math.random()}`;

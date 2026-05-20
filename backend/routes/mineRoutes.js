@@ -14,8 +14,8 @@ router.use(requireTelegramUser);
 
 router.get("/profile", async (req, res, next) => {
   try {
-    await getOrCreateMiningUser(req.telegramUserId, req.telegramProfilePatch);
-    const result = await getMiningProfile(req.telegramUserId);
+    console.log("[mining] GET /profile", { telegramId: req.telegramUserId });
+    const result = await getMiningProfile(req.telegramUserId, req.telegramProfilePatch);
     if (result.error) {
       return res.status(400).json({ error: result.error });
     }
@@ -27,7 +27,7 @@ router.get("/profile", async (req, res, next) => {
 
 router.post("/tap", async (req, res, next) => {
   try {
-    await getOrCreateMiningUser(req.telegramUserId, req.telegramProfilePatch);
+    console.log("[mining] POST /tap", { telegramId: req.telegramUserId });
     const result = await processMiningTap(req.telegramUserId, {
       tapCount: req.body?.tapCount ?? 1,
     });

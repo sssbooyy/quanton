@@ -69,22 +69,60 @@ function getUpgradeLevel(user, upgradeId) {
   return Number(row?.level) || 0;
 }
 
-function ensureMiningFields(user) {
-  if (user.shards == null) user.shards = MINING_DEFAULTS.shards;
-  if (user.level == null) user.level = MINING_DEFAULTS.level;
-  if (user.xp == null) user.xp = MINING_DEFAULTS.xp;
-  if (user.energy == null) user.energy = MINING_DEFAULTS.energy;
-  if (user.maxEnergy == null) user.maxEnergy = MINING_DEFAULTS.maxEnergy;
-  if (user.miningPower == null) user.miningPower = MINING_DEFAULTS.miningPower;
-  if (user.dailyStreak == null) user.dailyStreak = MINING_DEFAULTS.dailyStreak;
-  if (user.totalTaps == null) user.totalTaps = MINING_DEFAULTS.totalTaps;
-  if (!user.energyUpdatedAt) user.energyUpdatedAt = new Date();
-  if (!Array.isArray(user.upgrades) || !user.upgrades.length) {
+const PROFILE_ONLY_KEYS = new Set([
+  "firstName",
+  "lastName",
+  "username",
+  "languageCode",
+  "isPremium",
+  "photoUrl",
+]);
+
+function applyProfilePatch(user, profilePatch = {}) {
+  if (!profilePatch || typeof profilePatch !== "object") return;
+  for (const [key, value] of Object.entries(profilePatch)) {
+    if (PROFILE_ONLY_KEYS.has(key)) user[key] = value;
+  }
+}
+
+/** Fill missing mining fields only — never overwrite existing progress. */
+function ensureMiningFields(user, { isNewUser = false } = {}) {
+  const fill = (field, defaultValue) => {
+    const current = user[field];
+    if (typeof current === "number" && Number.isFinite(current)) return;
+    if (current instanceof Date) return;
+    if (field === "upgrades" && Array.isArray(current) && current.length) return;
+    user[field] = defaultValue;
+  };
+
+  if (isNewUser) {
+    user.shards = MINING_DEFAULTS.shards;
+    user.level = MINING_DEFAULTS.level;
+    user.xp = MINING_DEFAULTS.xp;
+    user.energy = MINING_DEFAULTS.energy;
+    user.maxEnergy = MINING_DEFAULTS.maxEnergy;
+    user.miningPower = MINING_DEFAULTS.miningPower;
+    user.dailyStreak = MINING_DEFAULTS.dailyStreak;
+    user.totalTaps = MINING_DEFAULTS.totalTaps;
     user.upgrades = defaultUpgrades();
+    user.energyUpdatedAt = new Date();
   } else {
-    const ids = new Set(user.upgrades.map((u) => u.id));
-    for (const id of Object.keys(UPGRADE_CATALOG)) {
-      if (!ids.has(id)) user.upgrades.push({ id, level: 0 });
+    fill("shards", MINING_DEFAULTS.shards);
+    fill("level", MINING_DEFAULTS.level);
+    fill("xp", MINING_DEFAULTS.xp);
+    fill("energy", MINING_DEFAULTS.energy);
+    fill("maxEnergy", MINING_DEFAULTS.maxEnergy);
+    fill("miningPower", MINING_DEFAULTS.miningPower);
+    fill("dailyStreak", MINING_DEFAULTS.dailyStreak);
+    fill("totalTaps", MINING_DEFAULTS.totalTaps);
+    if (!user.energyUpdatedAt) user.energyUpdatedAt = new Date();
+    if (!Array.isArray(user.upgrades) || !user.upgrades.length) {
+      user.upgrades = defaultUpgrades();
+    } else {
+      const ids = new Set(user.upgrades.map((u) => u.id));
+      for (const id of Object.keys(UPGRADE_CATALOG)) {
+        if (!ids.has(id)) user.upgrades.push({ id, level: 0 });
+      }
     }
   }
   recalcMaxEnergy(user);
@@ -201,28 +239,50 @@ export async function getOrCreateMiningUser(telegramId, profilePatch = {}) {
   if (!id) return { error: "telegramId is required." };
 
   let user = await User.findOne({ telegramId: id });
-  if (!user) {
+  const isNewUser = !user;
+
+  console.log("[mining] resolve user", {
+    telegramId: id,
+    found: !isNewUser,
+    action: isNewUser ? "create" : "load",
+    shardsBefore: user?.shards,
+    energyBefore: user?.energy,
+  });
+
+  if (isNewUser) {
     user = new User({
       telegramId: id,
-      ...profilePatch,
-      ...MINING_DEFAULTS,
       upgrades: defaultUpgrades(),
       energyUpdatedAt: new Date(),
     });
-  } else if (profilePatch && Object.keys(profilePatch).length) {
-    Object.assign(user, profilePatch);
+    applyProfilePatch(user, profilePatch);
+    ensureMiningFields(user, { isNewUser: true });
+  } else {
+    applyProfilePatch(user, profilePatch);
+    ensureMiningFields(user, { isNewUser: false });
   }
-  ensureMiningFields(user);
+
+  const energyBeforeRegen = user.energy;
   applyEnergyRegeneration(user);
   await user.save();
-  return { user };
+
+  console.log("[mining] user saved", {
+    telegramId: id,
+    isNewUser,
+    shards: user.shards,
+    energy: user.energy,
+    energyBeforeRegen,
+    xp: user.xp,
+    totalTaps: user.totalTaps,
+  });
+
+  return { user, isNewUser };
 }
 
-export async function getMiningProfile(telegramId) {
-  const out = await getOrCreateMiningUser(telegramId);
+export async function getMiningProfile(telegramId, profilePatch = {}) {
+  const out = await getOrCreateMiningUser(telegramId, profilePatch);
   if (out.error) return out;
-  console.log("[mining] profile", { telegramId, shards: out.user.shards, energy: out.user.energy });
-  return { profile: miningProfileResponse(out.user) };
+  return { profile: miningProfileResponse(out.user), isNewUser: out.isNewUser };
 }
 
 export async function processMiningTap(telegramId, { tapCount = 1 } = {}) {
@@ -234,13 +294,21 @@ export async function processMiningTap(telegramId, { tapCount = 1 } = {}) {
     return { error: "Too many taps. Please slow down.", code: rate.reason, retryAfterMs: rate.retryAfterMs };
   }
 
-  const out = await getOrCreateMiningUser(id);
-  if (out.error) return out;
-  const user = out.user;
+  let user = await User.findOne({ telegramId: id });
+  if (!user) {
+    const created = await getOrCreateMiningUser(id);
+    if (created.error) return created;
+    user = created.user;
+  } else {
+    ensureMiningFields(user, { isNewUser: false });
+    applyEnergyRegeneration(user);
+  }
 
   const taps = Math.min(Math.max(1, Math.floor(Number(tapCount) || 1)), 5);
+  const shardsBefore = user.shards;
+  const energyBefore = user.energy;
+
   if (user.energy < taps) {
-    applyEnergyRegeneration(user);
     await user.save();
     return {
       error: "Not enough energy.",
@@ -261,9 +329,12 @@ export async function processMiningTap(telegramId, { tapCount = 1 } = {}) {
   console.log("[mining] tap", {
     telegramId: id,
     taps,
+    shardsBefore,
+    shardsAfter: user.shards,
     shardsEarned,
-    energy: user.energy,
-    totalShards: user.shards,
+    energyBefore,
+    energyAfter: user.energy,
+    totalTaps: user.totalTaps,
   });
 
   return {

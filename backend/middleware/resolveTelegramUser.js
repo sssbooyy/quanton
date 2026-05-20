@@ -25,6 +25,12 @@ export function resolveTelegramProfilePatch(req) {
 
 export function requireTelegramUser(req, res, next) {
   const telegramId = resolveTelegramUserId(req);
+  console.log("[mining] resolved telegramId", {
+    telegramId: telegramId || "(missing)",
+    fromHeader: Boolean(req.headers["x-telegram-user-id"]),
+    fromQuery: Boolean(req.query?.telegramId),
+    fromBody: Boolean(req.body?.telegramUser?.id || req.body?.telegramId),
+  });
   if (!telegramId) {
     return res.status(400).json({
       error: "Telegram user id is required. Open the app inside Telegram or pass x-telegram-user-id.",

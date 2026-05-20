@@ -416,10 +416,49 @@
 }
 
 .mineUpgradeCard {
+  position: relative;
   padding: 14px;
   border-radius: 14px;
-  background: rgba(15, 23, 42, 0.75);
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.55), rgba(15, 23, 42, 0.88));
   border: 1px solid rgba(148, 163, 184, 0.12);
+  backdrop-filter: blur(10px);
+  transition: border-color 0.25s, box-shadow 0.25s;
+  overflow: hidden;
+}
+
+.mineUpgradeCard--affordable {
+  border-color: rgba(56, 189, 248, 0.45);
+  box-shadow:
+    0 0 0 1px rgba(56, 189, 248, 0.15),
+    0 0 24px rgba(99, 102, 241, 0.2);
+  animation: mineUpgradeGlow 2.2s ease-in-out infinite;
+}
+
+.mineUpgradeCard--affordable::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(120deg, rgba(56, 189, 248, 0.12), transparent 40%, rgba(167, 139, 250, 0.1));
+  pointer-events: none;
+}
+
+.mineUpgradeCard--success {
+  border-color: rgba(34, 211, 238, 0.65);
+}
+
+@keyframes mineUpgradeGlow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(56, 189, 248, 0.15),
+      0 0 18px rgba(99, 102, 241, 0.18);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(56, 189, 248, 0.35),
+      0 0 32px rgba(56, 189, 248, 0.28);
+  }
 }
 
 .mineUpgradeCard__head {
@@ -435,20 +474,69 @@
 }
 
 .mineUpgradeCard__desc {
-  margin: 0 0 10px;
+  margin: 0 0 6px;
   font-size: 12px;
   color: rgba(226, 232, 240, 0.6);
 }
 
+.mineUpgradeCard__next {
+  margin: 0 0 10px;
+  font-size: 11px;
+  color: rgba(56, 189, 248, 0.9);
+}
+
+.mineUpgradeCard__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mineUpgradeCard__cost {
+  font-size: 11px;
+  color: #a5b4fc;
+}
+
+.mineUpgradeCard__need {
+  color: rgba(248, 113, 113, 0.85);
+}
+
+.mineUpgradeCard__maxed {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: rgba(34, 211, 238, 0.85);
+}
+
 .mineUpgradeCard__btn {
   width: 100%;
-  padding: 8px;
+  padding: 10px;
   border-radius: 10px;
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  border: 1px solid rgba(99, 102, 241, 0.25);
   background: rgba(30, 41, 59, 0.6);
   color: #94a3b8;
   font-size: 12px;
+  font-weight: 600;
   cursor: not-allowed;
+  transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.15s;
+}
+
+.mineUpgradeCard__btn--buy {
+  cursor: pointer;
+  color: #e0f2fe;
+  border-color: rgba(56, 189, 248, 0.5);
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(99, 102, 241, 0.35));
+  box-shadow: 0 4px 20px rgba(56, 189, 248, 0.2);
+}
+
+.mineUpgradeCard__btn--buy:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.mineUpgradeCard__btn:disabled {
+  opacity: 0.5;
+}
+
+.mineFloat--cost {
+  color: #fca5a5;
 }
 
 .mineFooterNote {

@@ -5,6 +5,7 @@ import {
   getMiningProfile,
   getOrCreateMiningUser,
   processMiningTap,
+  purchaseMiningUpgrade,
   UPGRADE_CATALOG,
 } from "../services/miningService.js";
 
@@ -47,6 +48,26 @@ router.post("/daily", async (req, res, next) => {
     const result = await claimDailyReward(req.telegramUserId);
     if (result.error) {
       return res.status(409).json(result);
+    }
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/upgrade", async (req, res, next) => {
+  try {
+    const upgradeId = String(req.body?.upgradeId ?? "").trim();
+    console.log("[mining] POST /upgrade", { telegramId: req.telegramUserId, upgradeId });
+    const result = await purchaseMiningUpgrade(req.telegramUserId, upgradeId);
+    if (result.error) {
+      const status =
+        result.code === "insufficient_shards" || result.code === "max_level"
+          ? 409
+          : result.code === "invalid_upgrade"
+            ? 400
+            : 400;
+      return res.status(status).json(result);
     }
     res.json({ ok: true, ...result });
   } catch (e) {

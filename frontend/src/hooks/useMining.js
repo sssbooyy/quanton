@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getMineProfile, postMineDaily, postMineTap } from "../api.js";
+import { getMineProfile, postMineDaily, postMineTap, postMineUpgrade } from "../api.js";
 import { formatMiningApiError } from "../lib/miningApiError.js";
 import {
   getTelegramUserIdForMining,
@@ -18,6 +18,8 @@ export function useMining() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [tapping, setTapping] = useState(false);
+  const [upgradingId, setUpgradingId] = useState(null);
+  const [upgradeFlash, setUpgradeFlash] = useState(null);
   const [floats, setFloats] = useState([]);
   const tapLock = useRef(false);
 
@@ -132,6 +134,32 @@ export function useMining() {
     }
   }, []);
 
+  const purchaseUpgrade = useCallback(async (upgradeId) => {
+    if (!upgradeId || upgradingId) return null;
+    setUpgradingId(upgradeId);
+    try {
+      setError("");
+      const data = await postMineUpgrade(
+        miningAuthBody({ upgradeId }),
+        miningAuthHeaders()
+      );
+      if (data.profile) setProfile(data.profile);
+      setUpgradeFlash({ upgradeId, cost: data.cost, at: Date.now() });
+      window.setTimeout(() => setUpgradeFlash(null), 1200);
+      if (data.cost) addFloat(-data.cost);
+      hapticNotification("success");
+      console.log("[mining] upgrade purchased", data);
+      return data;
+    } catch (e) {
+      if (e.response?.data?.profile) setProfile(e.response.data.profile);
+      setError(formatMiningApiError(e, "/mine/upgrade"));
+      hapticNotification("error");
+      return null;
+    } finally {
+      setUpgradingId(null);
+    }
+  }, [addFloat, upgradingId]);
+
   const energyPct =
     profile && profile.maxEnergy > 0 ? Math.min(100, (profile.energy / profile.maxEnergy) * 100) : 0;
 
@@ -145,6 +173,9 @@ export function useMining() {
     refresh,
     tap,
     claimDaily,
+    purchaseUpgrade,
+    upgradingId,
+    upgradeFlash,
     setError,
   };
 }

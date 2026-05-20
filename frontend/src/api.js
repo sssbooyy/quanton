@@ -122,3 +122,9 @@ export async function postMineDaily(body, headers = {}) {
   const res = await client.post("/mine/daily", body, { headers: h, params });
   return res.data;
 }
+
+export async function postMineUpgrade(body, headers = {}) {
+  const { headers: h, params } = mineRequestConfig(headers, body);
+  const res = await client.post("/mine/upgrade", body, { headers: h, params });
+  return res.data;
+}

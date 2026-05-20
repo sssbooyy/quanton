@@ -1,36 +1,26 @@
 import { User } from "../models/User.js";
+import {
+  BASE_MAX_ENERGY,
+  UPGRADE_CATALOG,
+  buildUpgradeProfileRow,
+  computeMaxEnergy,
+  computeRegenIntervalMs,
+  computeRegenSeconds,
+  computeShardsPerTap,
+  defaultUpgrades,
+  getUpgradeLevel,
+  isValidUpgradeId,
+  setUpgradeLevel,
+  upgradeCost,
+} from "../config/miningUpgrades.js";
 
-/** +1 energy every 5 seconds (backend source of truth). */
-export const ENERGY_REGEN_INTERVAL_MS = 5000;
+export { UPGRADE_CATALOG } from "../config/miningUpgrades.js";
+
 const MAX_TAPS_PER_SECOND = 10;
 const MIN_TAP_INTERVAL_MS = 50;
 const DAILY_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 const tapRateBuckets = new Map();
-
-export const UPGRADE_CATALOG = {
-  bigger_battery: {
-    id: "bigger_battery",
-    name: "Bigger Battery",
-    description: "Increases maximum energy storage.",
-    maxLevel: 10,
-    energyPerLevel: 100,
-  },
-  turbo_miner: {
-    id: "turbo_miner",
-    name: "Turbo Miner",
-    description: "Boosts shard rewards per tap.",
-    maxLevel: 10,
-    shardBonusPerLevel: 0.1,
-  },
-  faster_recharge: {
-    id: "faster_recharge",
-    name: "Faster Recharge",
-    description: "Speeds up passive energy regeneration.",
-    maxLevel: 10,
-    regenMsReductionPerLevel: 200,
-  },
-};
 
 const LEVEL_XP_THRESHOLDS = [0, 0, 100, 250, 450, 700, 1000, 1400, 1900, 2500, 3200];
 
@@ -38,16 +28,21 @@ export const MINING_DEFAULTS = {
   shards: 0,
   level: 1,
   xp: 0,
-  energy: 1000,
-  maxEnergy: 1000,
+  energy: BASE_MAX_ENERGY,
+  maxEnergy: BASE_MAX_ENERGY,
   miningPower: 1,
   dailyStreak: 0,
   totalTaps: 0,
 };
 
-function defaultUpgrades() {
-  return Object.keys(UPGRADE_CATALOG).map((id) => ({ id, level: 0 }));
-}
+const PROFILE_ONLY_KEYS = new Set([
+  "firstName",
+  "lastName",
+  "username",
+  "languageCode",
+  "isPremium",
+  "photoUrl",
+]);
 
 function levelFromXp(xp) {
   let level = 1;
@@ -63,20 +58,6 @@ function xpToNextLevel(xp, level) {
   const need = LEVEL_XP_THRESHOLDS[next];
   return Math.max(0, need - xp);
 }
-
-function getUpgradeLevel(user, upgradeId) {
-  const row = (user.upgrades || []).find((u) => u.id === upgradeId);
-  return Number(row?.level) || 0;
-}
-
-const PROFILE_ONLY_KEYS = new Set([
-  "firstName",
-  "lastName",
-  "username",
-  "languageCode",
-  "isPremium",
-  "photoUrl",
-]);
 
 function applyProfilePatch(user, profilePatch = {}) {
   if (!profilePatch || typeof profilePatch !== "object") return;
@@ -130,16 +111,8 @@ function ensureMiningFields(user, { isNewUser = false } = {}) {
 }
 
 function recalcMaxEnergy(user) {
-  const batteryLevel = getUpgradeLevel(user, "bigger_battery");
-  const bonus = (UPGRADE_CATALOG.bigger_battery.energyPerLevel || 0) * batteryLevel;
-  user.maxEnergy = MINING_DEFAULTS.maxEnergy + bonus;
+  user.maxEnergy = computeMaxEnergy(user);
   user.energy = Math.min(user.energy, user.maxEnergy);
-}
-
-function regenIntervalMs(user) {
-  const lvl = getUpgradeLevel(user, "faster_recharge");
-  const reduction = (UPGRADE_CATALOG.faster_recharge.regenMsReductionPerLevel || 0) * lvl;
-  return Math.max(1000, ENERGY_REGEN_INTERVAL_MS - reduction);
 }
 
 export function applyEnergyRegeneration(user, now = Date.now()) {
@@ -151,7 +124,7 @@ export function applyEnergyRegeneration(user, now = Date.now()) {
   }
   const updatedAt = user.energyUpdatedAt ? new Date(user.energyUpdatedAt).getTime() : now;
   const elapsed = Math.max(0, now - updatedAt);
-  const interval = regenIntervalMs(user);
+  const interval = computeRegenIntervalMs(user);
   const gained = Math.floor(elapsed / interval);
   if (gained > 0) {
     user.energy = Math.min(maxE, user.energy + gained);
@@ -161,9 +134,7 @@ export function applyEnergyRegeneration(user, now = Date.now()) {
 }
 
 function shardRewardPerTap(user) {
-  const turbo = getUpgradeLevel(user, "turbo_miner");
-  const mult = 1 + turbo * (UPGRADE_CATALOG.turbo_miner.shardBonusPerLevel || 0);
-  return Math.max(1, Math.floor(user.miningPower * mult));
+  return computeShardsPerTap(user);
 }
 
 function checkTapRateLimit(telegramId) {
@@ -193,17 +164,9 @@ function checkTapRateLimit(telegramId) {
 }
 
 export function miningProfileResponse(user) {
-  const upgrades = (user.upgrades || []).map((u) => {
-    const meta = UPGRADE_CATALOG[u.id] || {};
-    return {
-      id: u.id,
-      level: u.level,
-      name: meta.name || u.id,
-      description: meta.description || "",
-      maxLevel: meta.maxLevel || 10,
-    };
-  });
+  const upgrades = Object.keys(UPGRADE_CATALOG).map((id) => buildUpgradeProfileRow(user, id));
   const level = levelFromXp(user.xp);
+  const regenIntervalMs = computeRegenIntervalMs(user);
   return {
     telegramId: user.telegramId,
     shards: user.shards,
@@ -217,7 +180,9 @@ export function miningProfileResponse(user) {
     lastDailyClaim: user.lastDailyClaim || null,
     totalTaps: user.totalTaps,
     upgrades,
-    energyRegenIntervalMs: regenIntervalMs(user),
+    shardsPerTap: computeShardsPerTap(user),
+    regenSeconds: computeRegenSeconds(user),
+    energyRegenIntervalMs: regenIntervalMs,
     canClaimDaily: canClaimDailyReward(user),
     utilitySlots: {
       featuredListings: false,
@@ -332,6 +297,7 @@ export async function processMiningTap(telegramId, { tapCount = 1 } = {}) {
     shardsBefore,
     shardsAfter: user.shards,
     shardsEarned,
+    shardsPerTap: shardRewardPerTap(user),
     energyBefore,
     energyAfter: user.energy,
     totalTaps: user.totalTaps,
@@ -340,6 +306,73 @@ export async function processMiningTap(telegramId, { tapCount = 1 } = {}) {
   return {
     shardsEarned,
     taps,
+    profile: miningProfileResponse(user),
+  };
+}
+
+export async function purchaseMiningUpgrade(telegramId, upgradeId) {
+  const id = String(telegramId || "").trim();
+  const key = String(upgradeId || "").trim();
+
+  if (!id) return { error: "telegramId is required." };
+  if (!isValidUpgradeId(key)) {
+    return { error: "Invalid upgrade id.", code: "invalid_upgrade" };
+  }
+
+  let user = await User.findOne({ telegramId: id });
+  if (!user) {
+    const created = await getOrCreateMiningUser(id);
+    if (created.error) return created;
+    user = created.user;
+  } else {
+    ensureMiningFields(user, { isNewUser: false });
+    applyEnergyRegeneration(user);
+  }
+
+  const meta = UPGRADE_CATALOG[key];
+  const oldLevel = getUpgradeLevel(user, key);
+  if (oldLevel >= meta.maxLevel) {
+    return { error: "Upgrade is already at max level.", code: "max_level", profile: miningProfileResponse(user) };
+  }
+
+  const cost = upgradeCost(key, oldLevel);
+  const shardsBefore = Math.max(0, Number(user.shards) || 0);
+  if (shardsBefore < cost) {
+    return {
+      error: "Not enough shards.",
+      code: "insufficient_shards",
+      required: cost,
+      shards: shardsBefore,
+      profile: miningProfileResponse(user),
+    };
+  }
+
+  user.shards = shardsBefore - cost;
+  setUpgradeLevel(user, key, oldLevel + 1);
+  recalcMaxEnergy(user);
+
+  await user.save();
+
+  const newLevel = getUpgradeLevel(user, key);
+  console.log("[mining] upgrade purchase", {
+    telegramId: id,
+    upgradeId: key,
+    oldLevel,
+    newLevel,
+    cost,
+    shardsBefore,
+    shardsAfter: user.shards,
+    maxEnergy: user.maxEnergy,
+    shardsPerTap: computeShardsPerTap(user),
+    regenSeconds: computeRegenSeconds(user),
+  });
+
+  return {
+    upgradeId: key,
+    oldLevel,
+    newLevel,
+    cost,
+    shardsSpent: cost,
     profile: miningProfileResponse(user),
   };
 }

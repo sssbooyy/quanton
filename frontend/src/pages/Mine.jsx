@@ -19,11 +19,27 @@ function StatCard({ label, value, accent }) {
   );
 }
 
-function UpgradeCard({ upgrade }) {
+function UpgradeCard({ upgrade, shards, onBuy, purchasing, flashSuccess }) {
   const lvl = upgrade?.level ?? 0;
-  const max = upgrade?.maxLevel ?? 10;
+  const max = upgrade?.maxLevel ?? 50;
+  const cost = upgrade?.nextCost;
+  const canAfford = upgrade?.canAfford && !upgrade?.isMaxed;
+  const isMaxed = upgrade?.isMaxed;
+  const busy = purchasing === upgrade?.id;
+  const showGlow = canAfford && !busy;
+  const justBought = flashSuccess && flashSuccess.upgradeId === upgrade?.id;
+
   return (
-    <div className="mineUpgradeCard">
+    <motion.div
+      className={`mineUpgradeCard ${showGlow ? "mineUpgradeCard--affordable" : ""} ${justBought ? "mineUpgradeCard--success" : ""}`}
+      layout
+      animate={
+        justBought
+          ? { scale: [1, 1.03, 1], boxShadow: "0 0 28px rgba(56, 189, 248, 0.45)" }
+          : { scale: 1 }
+      }
+      transition={{ duration: 0.45 }}
+    >
       <div className="mineUpgradeCard__head">
         <strong>{upgrade?.name || upgrade?.id}</strong>
         <span className="mono mineUpgradeCard__lvl">
@@ -31,10 +47,30 @@ function UpgradeCard({ upgrade }) {
         </span>
       </div>
       <p className="mineUpgradeCard__desc">{upgrade?.description || ""}</p>
-      <button type="button" className="mineUpgradeCard__btn" disabled>
-        Upgrade soon
-      </button>
-    </div>
+      {upgrade?.nextEffect ? (
+        <p className="mineUpgradeCard__next mono">{upgrade.nextEffect}</p>
+      ) : null}
+      <div className="mineUpgradeCard__footer">
+        {isMaxed ? (
+          <span className="mineUpgradeCard__maxed mono">MAXED</span>
+        ) : (
+          <span className="mineUpgradeCard__cost mono">
+            {cost?.toLocaleString()} shards
+            {shards < cost ? (
+              <span className="mineUpgradeCard__need"> · need {(cost - shards).toLocaleString()} more</span>
+            ) : null}
+          </span>
+        )}
+        <button
+          type="button"
+          className={`mineUpgradeCard__btn ${canAfford ? "mineUpgradeCard__btn--buy" : ""}`}
+          disabled={isMaxed || !canAfford || busy}
+          onClick={() => onBuy(upgrade.id)}
+        >
+          {busy ? "Upgrading…" : isMaxed ? "Max level" : canAfford ? "Upgrade" : "Not enough shards"}
+        </button>
+      </div>
+    </motion.div>
   );
 }
 
@@ -55,8 +91,21 @@ function MineSkeleton() {
 }
 
 export default function Mine() {
-  const { profile, loading, error, tapping, floats, energyPct, refresh, tap, claimDaily, setError } =
-    useMining();
+  const {
+    profile,
+    loading,
+    error,
+    tapping,
+    floats,
+    energyPct,
+    refresh,
+    tap,
+    claimDaily,
+    purchaseUpgrade,
+    upgradingId,
+    upgradeFlash,
+    setError,
+  } = useMining();
 
   if (loading && !profile) {
     return <MineSkeleton />;
@@ -64,6 +113,7 @@ export default function Mine() {
 
   const xpMax = profile?.xpToNextLevel > 0 ? profile.xp + profile.xpToNextLevel : profile?.xp || 1;
   const xpPct = profile ? Math.min(100, (profile.xp / xpMax) * 100) : 0;
+  const regenSec = profile?.regenSeconds ?? (profile?.energyRegenIntervalMs ?? 5000) / 1000;
 
   async function handleMineTap() {
     hapticImpact("medium");
@@ -73,6 +123,11 @@ export default function Mine() {
   async function handleDaily() {
     hapticImpact("light");
     await claimDaily();
+  }
+
+  async function handleUpgrade(upgradeId) {
+    hapticImpact("light");
+    await purchaseUpgrade(upgradeId);
   }
 
   return (
@@ -98,9 +153,9 @@ export default function Mine() {
 
       <section className="mineStatsGrid" aria-label="Mining stats">
         <StatCard label="Shards" value={profile?.shards ?? 0} accent />
-        <StatCard label="Energy" value={`${profile?.energy ?? 0}/${profile?.maxEnergy ?? 0}`} />
+        <StatCard label="Per tap" value={profile?.shardsPerTap ?? 1} />
         <StatCard label="Level" value={profile?.level ?? 1} />
-        <StatCard label="XP" value={profile?.xp ?? 0} />
+        <StatCard label="Regen" value={`${regenSec}s`} />
       </section>
 
       <section className="mineEnergy" aria-label="Energy">
@@ -118,7 +173,7 @@ export default function Mine() {
             transition={{ type: "spring", stiffness: 120, damping: 20 }}
           />
         </div>
-        <p className="mineEnergy__hint mono">+1 energy every {(profile?.energyRegenIntervalMs ?? 5000) / 1000}s (server)</p>
+        <p className="mineEnergy__hint mono">+1 energy every {regenSec}s (server)</p>
         <div className="mineXpTrack">
           <div className="mineXpTrack__fill" style={{ width: `${xpPct}%` }} />
         </div>
@@ -144,20 +199,20 @@ export default function Mine() {
           <span className="mineTapBtn__ring" aria-hidden="true" />
           <span className="mineTapBtn__label">Mine Shards</span>
           <span className="mineTapBtn__sub mono">
-            {(profile?.energy ?? 0) <= 0 ? "Recharging…" : "Tap to earn"}
+            {(profile?.energy ?? 0) <= 0 ? "Recharging…" : `+${profile?.shardsPerTap ?? 1} shard / tap`}
           </span>
         </motion.button>
         <AnimatePresence>
           {floats.map((f, i) => (
             <motion.span
               key={f.id}
-              className="mineFloat mono"
+              className={`mineFloat mono ${f.amount < 0 ? "mineFloat--cost" : ""}`}
               initial={{ opacity: 0, y: 0, scale: 0.6 }}
               animate={{ opacity: 1, y: -72 - i * 8, scale: 1 }}
               exit={{ opacity: 0, y: -100 }}
               transition={{ duration: 0.75, ease: "easeOut" }}
             >
-              +{f.amount}
+              {f.amount > 0 ? `+${f.amount}` : f.amount}
             </motion.span>
           ))}
         </AnimatePresence>
@@ -184,7 +239,14 @@ export default function Mine() {
         <h2 className="mineUpgrades__title">Upgrades</h2>
         <div className="mineUpgrades__grid">
           {(profile?.upgrades || []).map((u) => (
-            <UpgradeCard key={u.id} upgrade={u} />
+            <UpgradeCard
+              key={u.id}
+              upgrade={u}
+              shards={profile?.shards ?? 0}
+              onBuy={handleUpgrade}
+              purchasing={upgradingId}
+              flashSuccess={upgradeFlash}
+            />
           ))}
         </div>
       </section>

@@ -51,6 +51,9 @@ import {
   resolveBackdropTraitSolid,
   resolveCollectibleHeroPresentation,
 } from "@shared/giftHeroResolve.js";
+import BottomNav from "./components/BottomNav.jsx";
+import Mine from "./pages/Mine.jsx";
+import TabPlaceholder from "./pages/TabPlaceholder.jsx";
 import { resolveGiftCollectibleVisualLayers } from "@shared/giftCollectibleLayers.js";
 import {
   giftBackdropLabel,
@@ -98,6 +101,8 @@ function checkoutStatusText(status) {
       return "Transaction sent. Submitting payment claim...";
     case "awaiting_admin_confirmation":
       return "Payment sent. Waiting for admin confirmation.";
+    case "payment_submitted":
+      return "Payment submitted. Admin will confirm shortly.";
     case "verifying_payment":
       return "Verifying payment on TON...";
     case "opening_card_payment":
@@ -192,6 +197,7 @@ export default function App() {
     }
   });
   const [tonUzsRateLoading, setTonUzsRateLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("market");
 
   const tk = useMemo(() => (key) => t(lang, key), [lang]);
 
@@ -577,13 +583,23 @@ export default function App() {
   }
 
   return (
-    <div className="shell shell--miniapp">
+    <div className="shell shell--miniapp shell--withNav">
       {successToast && (
         <div className="successToast" role="status" aria-live="polite">
           {successToast}
         </div>
       )}
 
+      {activeTab === "mine" ? <Mine /> : null}
+      {activeTab === "activity" ? (
+        <TabPlaceholder title="Activity" subtitle="Your orders and marketplace activity will appear here." />
+      ) : null}
+      {activeTab === "profile" ? (
+        <TabPlaceholder title="Profile" subtitle="Wallet, stats, and cosmetics coming soon." />
+      ) : null}
+
+      {activeTab === "market" ? (
+        <>
       <header className="topbar topbar--terminal">
         <div className="brand">
           <img
@@ -898,8 +914,10 @@ export default function App() {
           onClose={() => setTestPayment(null)}
         />
       ) : null}
+        </>
+      ) : null}
 
-      {MANUAL_LISTING_FALLBACK_ENABLED && giftModalOpen && (
+      {activeTab === "market" && MANUAL_LISTING_FALLBACK_ENABLED && giftModalOpen && (
         <div className="modalOverlay" role="presentation">
           <button
             type="button"
@@ -996,6 +1014,8 @@ export default function App() {
           </div>
         </div>
       )}
+
+      <BottomNav active={activeTab} onChange={setActiveTab} />
     </div>
   );
 }

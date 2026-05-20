@@ -90,3 +90,18 @@ export async function getTonUzsRate() {
   const res = await client.get("/rates/ton-uzs");
   return res.data;
 }
+
+export async function getMineProfile(headers = {}) {
+  const res = await client.get("/mine/profile", { headers });
+  return res.data;
+}
+
+export async function postMineTap(body, headers = {}) {
+  const res = await client.post("/mine/tap", body, { headers });
+  return res.data;
+}
+
+export async function postMineDaily(body, headers = {}) {
+  const res = await client.post("/mine/daily", body, { headers });
+  return res.data;
+}

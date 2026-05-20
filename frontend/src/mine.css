@@ -1,0 +1,459 @@
+/* Quanton Mining — Hamster-style dark Mini App UI */
+
+.shell--withNav {
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+}
+
+.bottomNav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 90;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, rgba(10, 12, 18, 0.72), rgba(6, 8, 14, 0.96));
+  border-top: 1px solid rgba(99, 102, 241, 0.22);
+  backdrop-filter: blur(14px);
+}
+
+.bottomNav__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 4px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: rgba(226, 232, 240, 0.55);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s;
+}
+
+.bottomNav__item--active {
+  color: #e0f2fe;
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.12), rgba(99, 102, 241, 0.08));
+  box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.2);
+}
+
+.bottomNav__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tabPlaceholder {
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+
+.tabPlaceholder__card {
+  text-align: center;
+  padding: 28px 24px;
+  border-radius: 20px;
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.5), rgba(15, 23, 42, 0.85));
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  max-width: 320px;
+}
+
+.tabPlaceholder__kicker {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: rgba(148, 163, 184, 0.7);
+  margin: 0 0 8px;
+}
+
+.tabPlaceholder__title {
+  margin: 0 0 10px;
+  font-size: 1.5rem;
+}
+
+.tabPlaceholder__sub {
+  margin: 0;
+  color: rgba(226, 232, 240, 0.65);
+  font-size: 0.9rem;
+}
+
+.minePage {
+  padding: 12px 14px 24px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.minePage--loading .mineSkeleton {
+  border-radius: 16px;
+  background: linear-gradient(
+    90deg,
+    rgba(30, 41, 59, 0.35) 0%,
+    rgba(51, 65, 85, 0.5) 50%,
+    rgba(30, 41, 59, 0.35) 100%
+  );
+  background-size: 200% 100%;
+  animation: mineShimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes mineShimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+.mineSkeleton--hero {
+  height: 120px;
+  margin-bottom: 14px;
+}
+
+.mineSkeletonRow {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.mineSkeleton--stat {
+  height: 56px;
+}
+
+.mineSkeleton--bar {
+  height: 12px;
+  margin-bottom: 20px;
+}
+
+.mineSkeleton--card {
+  height: 88px;
+}
+
+.mineHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.mineHeader__kicker {
+  margin: 0 0 4px;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: rgba(56, 189, 248, 0.85);
+}
+
+.mineHeader__title {
+  margin: 0;
+  font-size: 1.45rem;
+  background: linear-gradient(135deg, #e0f2fe, #a5b4fc);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.mineHeader__refresh {
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  background: rgba(15, 23, 42, 0.6);
+  color: #94a3b8;
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.mineError {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fecaca;
+  font-size: 12px;
+}
+
+.mineError__dismiss {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.mineStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.mineStat {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.55), rgba(15, 23, 42, 0.9));
+  border: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.mineStat--accent {
+  border-color: rgba(56, 189, 248, 0.35);
+  box-shadow: 0 0 24px rgba(56, 189, 248, 0.08);
+}
+
+.mineStat__label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(148, 163, 184, 0.85);
+  margin-bottom: 4px;
+}
+
+.mineStat__value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.mineEnergy {
+  margin-bottom: 20px;
+}
+
+.mineEnergy__labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  margin-bottom: 6px;
+  color: rgba(226, 232, 240, 0.8);
+}
+
+.mineEnergy__track {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.9);
+  overflow: hidden;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.mineEnergy__fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #0ea5e9, #6366f1, #a855f7);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.45);
+}
+
+.mineXpTrack {
+  height: 4px;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: rgba(30, 41, 59, 0.8);
+  overflow: hidden;
+}
+
+.mineXpTrack__fill {
+  height: 100%;
+  background: linear-gradient(90deg, #22d3ee, #818cf8);
+  border-radius: inherit;
+}
+
+.mineEnergy__hint {
+  margin: 6px 0 0;
+  font-size: 10px;
+  color: rgba(148, 163, 184, 0.65);
+}
+
+.mineTapZone {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  margin-bottom: 20px;
+}
+
+.mineTapGlow {
+  position: absolute;
+  width: min(280px, 85vw);
+  height: min(280px, 85vw);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, transparent 70%);
+  pointer-events: none;
+  animation: minePulse 2.5s ease-in-out infinite;
+}
+
+@keyframes minePulse {
+  0%,
+  100% {
+    transform: scale(0.95);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+}
+
+.mineTapBtn {
+  position: relative;
+  z-index: 2;
+  width: min(220px, 72vw);
+  height: min(220px, 72vw);
+  border-radius: 50%;
+  border: 2px solid rgba(56, 189, 248, 0.45);
+  background: linear-gradient(145deg, #1e293b 0%, #0f172a 45%, #312e81 100%);
+  color: #f8fafc;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: opacity 0.2s;
+}
+
+.mineTapBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.mineTapBtn__ring {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 1px dashed rgba(129, 140, 248, 0.35);
+  animation: mineSpin 12s linear infinite;
+}
+
+@keyframes mineSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.mineTapBtn__label {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.mineTapBtn__sub {
+  font-size: 11px;
+  color: rgba(226, 232, 240, 0.65);
+}
+
+.mineFloat {
+  position: absolute;
+  z-index: 3;
+  top: 28%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #7dd3fc;
+  text-shadow: 0 0 12px rgba(56, 189, 248, 0.8);
+  pointer-events: none;
+}
+
+.mineDailyCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.15), rgba(99, 102, 241, 0.12));
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.mineDailyCard h2 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+
+.mineDailyCard p {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(226, 232, 240, 0.7);
+}
+
+.mineDailyCard__btn {
+  flex-shrink: 0;
+  padding: 10px 18px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #0ea5e9, #6366f1);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.mineDailyCard__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.mineUpgrades__title {
+  margin: 0 0 12px;
+  font-size: 1rem;
+}
+
+.mineUpgrades__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mineUpgradeCard {
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.mineUpgradeCard__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.mineUpgradeCard__lvl {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.mineUpgradeCard__desc {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: rgba(226, 232, 240, 0.6);
+}
+
+.mineUpgradeCard__btn {
+  width: 100%;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  background: rgba(30, 41, 59, 0.6);
+  color: #94a3b8;
+  font-size: 12px;
+  cursor: not-allowed;
+}
+
+.mineFooterNote {
+  margin: 16px 0 0;
+  text-align: center;
+  font-size: 10px;
+  color: rgba(148, 163, 184, 0.5);
+}

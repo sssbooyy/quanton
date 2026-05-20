@@ -455,6 +455,7 @@ export default function App() {
         listingIds: cart.items.map((g) => g.id),
         buyerTelegramId: tgUser?.id ? String(tgUser.id) : "",
         buyerUsername: tgUser?.username ? String(tgUser.username) : "",
+        telegramUser: tgUser || undefined,
         buyerWalletAddress: paymentMethod.type === "ton" ? walletAddress : "",
         paymentMethod: paymentMethod.type,
         cardProvider: paymentMethod.provider,

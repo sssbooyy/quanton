@@ -528,8 +528,13 @@ async function safeSendMessage(chatId, text, options = {}, label = "telegram") {
     console.log(`[telegram] TELEGRAM SEND SUCCESS ${label}: chat=${id}`);
     return { ok: true };
   } catch (e) {
-    console.error(`[telegram] TELEGRAM SEND FAIL ${label}: chat=${id}`, e?.message || e);
-    return { ok: false, error: e?.message || String(e) };
+    const apiBody = e?.response?.body ?? e?.response?.data ?? null;
+    console.error(`[telegram] TELEGRAM SEND FAIL ${label}: chat=${id}`, {
+      message: e?.message || String(e),
+      code: e?.code || "",
+      apiBody,
+    });
+    return { ok: false, error: e?.message || String(e), apiBody };
   }
 }
 
@@ -1244,47 +1249,177 @@ export async function getTelegramWebhookInfo() {
 }
 
 export async function sendAdminAlert(text) {
-  if (!bot || !process.env.ADMIN_CHAT_ID) return;
-  await bot.sendMessage(process.env.ADMIN_CHAT_ID, text, { parse_mode: "HTML" });
+  return notifyAdmin(text, { parse_mode: "HTML" }, "admin_alert");
+}
+
+function isGiftStillReservedForPayment(g) {
+  const escrow = String(g?.escrowStatus || "");
+  const status = String(g?.status || "").toLowerCase();
+  if (escrow === "reserved") return true;
+  if (status === "awaiting_seller_transfer") return true;
+  if (["sold", "transferred", "completed"].includes(status)) return false;
+  if (g.listingSource === "manual_admin_verified") {
+    return ["listed", "approved", "reserved", "pending_admin_review"].includes(status);
+  }
+  return status === "approved" || status === "reserved";
+}
+
+export async function handleManualEscrowAfterPayment(orderInput, payment = {}) {
+  const replay = Boolean(payment.replay);
+  const lookupId = String(orderInput?.orderId || "").trim();
+  const order = lookupId ? await Order.findOne({ orderId: lookupId }) : orderInput;
+  if (!order?.orderId) {
+    console.error("[payments] POST_PAYMENT_FLOW_ABORT", { reason: "order_not_found", orderId: lookupId });
+    return { error: "Order not found." };
+  }
+
+  console.log("[payments] POST_PAYMENT_FLOW_START");
+  console.log("[payments] ORDER_ID", order.orderId);
+  console.log("[payments] PAYMENT_METHOD", order.paymentMethod || "ton");
+  console.log("[payments] LISTING_IDS", order.listingIds || []);
+  console.log("[payments] SELLER_TELEGRAM_ID", order.sellerTelegramId || "");
+  console.log("[payments] BUYER_TELEGRAM_ID", order.buyerTelegramId || "");
+  console.log("[payments] ADMIN_CHAT_ID", adminChatId() || "(missing)");
+
+  const gifts = await Gift.find({ listingId: { $in: order.listingIds } });
+  if (!gifts.length) {
+    console.error("[payments] POST_PAYMENT_FLOW_ABORT", { orderId: order.orderId, reason: "no_gifts" });
+    return { error: "Order listings were not found." };
+  }
+
+  if (!replay && order.status === "paid") {
+    return { order, transferResults: order.transferResults || [] };
+  }
+
+  if (replay && order.status === "paid") {
+    await notifyManualOrderPaid(order, gifts);
+    console.log("[payments] POST_PAYMENT_FLOW_DONE", { orderId: order.orderId, replay: true });
+    return { order, transferResults: order.transferResults || [], replay: true };
+  }
+
+  if (order.status !== "pending_payment") {
+    console.error("[payments] POST_PAYMENT_FLOW_ABORT", { orderId: order.orderId, status: order.status });
+    return { error: `Order is ${order.status}.` };
+  }
+
+  const badState = gifts.find((g) => !isGiftStillReservedForPayment(g));
+  if (badState) {
+    order.status = "failed";
+    await order.save();
+    console.error("[payments] POST_PAYMENT_FLOW_ABORT", {
+      orderId: order.orderId,
+      listingId: badState.listingId,
+      status: badState.status,
+      escrowStatus: badState.escrowStatus,
+    });
+    return { error: `${badState.name} is no longer reserved for this order.` };
+  }
+
+  order.status = "paid";
+  order.txHash = payment.txHash || order.txHash || "";
+  order.paidAt = new Date();
+  order.transferStatus = "pending_manual_transfer";
+  order.payoutStatus = "waiting_seller_wallet";
+  const primaryGift = gifts[0];
+  if (primaryGift) {
+    order.sellerTelegramId = primaryGift.sellerTelegramId || primaryGift.escrowOwnerTelegramId || order.sellerTelegramId || "";
+    order.sellerUsername = primaryGift.sellerUsername || order.sellerUsername || "";
+  }
+  if (order.paymentMethod === "card") {
+    order.cardPaymentStatus = "paid";
+  }
+
+  const transferResults = [];
+  for (const gift of gifts) {
+    gift.status = "awaiting_seller_transfer";
+    gift.escrowStatus = gift.listingSource === "escrow" ? "sold" : "none";
+    gift.buyerTelegramId = order.buyerTelegramId || "";
+    gift.buyerUsername = order.buyerUsername || "";
+    gift.orderId = order.orderId;
+    gift.txHash = order.txHash;
+    gift.paidAt = order.paidAt;
+    gift.transferStatus = "pending_manual_transfer";
+    gift.payoutStatus = "waiting_seller_wallet";
+    await gift.save();
+    transferResults.push({
+      listingId: gift.listingId,
+      ok: false,
+      manual: true,
+      retryable: false,
+      status: "pending_manual_transfer",
+      message: "Payment received; seller must transfer gift manually. Payout waits for buyer confirmation.",
+    });
+  }
+
+  order.transferStatus = "pending_manual_transfer";
+  order.transferResults = transferResults;
+  await order.save();
+
+  await notifyManualOrderPaid(order, gifts);
+  console.log("[payments] POST_PAYMENT_FLOW_DONE", { orderId: order.orderId });
+  return { order, transferResults };
 }
 
 export async function notifyManualOrderPaid(order, gifts) {
-  console.log("[telegram] POST-PAYMENT NOTIFICATION FLOW START", {
-    orderId: order?.orderId,
-    paymentMethod: order?.paymentMethod,
-    buyerTelegramId: order?.buyerTelegramId || "",
-    sellerTelegramId: order?.sellerTelegramId || "",
-    listingIds: order?.listingIds || [],
-  });
-  if (!bot) {
-    console.error("[telegram] POST-PAYMENT NOTIFICATION FLOW BLOCKED: bot is not initialized");
-  }
-  const buyer = displayTelegramUser({ id: order.buyerTelegramId, username: order.buyerUsername });
   const giftList = Array.isArray(gifts) ? gifts : [];
+  const buyer = displayTelegramUser({ id: order.buyerTelegramId, username: order.buyerUsername });
   const giftLines = giftList.map((g) => `${g.name} / ${g.listingId}`).join("\n");
   const giftNames = giftList.map((g) => g.name).join(", ");
   const firstGift = giftList[0];
   const seller = firstGift
-    ? displayTelegramUser({ id: firstGift.sellerTelegramId || firstGift.escrowOwnerTelegramId || order.sellerTelegramId, username: firstGift.sellerUsername || order.sellerUsername })
+    ? displayTelegramUser({
+        id: firstGift.sellerTelegramId || firstGift.escrowOwnerTelegramId || order.sellerTelegramId,
+        username: firstGift.sellerUsername || order.sellerUsername,
+      })
     : displayTelegramUser({ id: order.sellerTelegramId, username: order.sellerUsername });
-  if (!adminChatId()) console.error("[telegram] ADMIN NOTIFICATION MISSING: ADMIN_CHAT_ID is not configured");
-  if (!order.buyerTelegramId) console.error("[telegram] BUYER NOTIFICATION MISSING: order.buyerTelegramId is empty", { orderId: order.orderId });
-  for (const gift of gifts || []) {
-    const sellerChatId = gift.sellerTelegramId || gift.escrowOwnerTelegramId;
+
+  if (!bot) {
+    console.error("[payments] SEND_ADMIN_FAIL", { orderId: order.orderId, error: "bot_not_initialized" });
+    console.error("[payments] SEND_SELLER_FAIL", { orderId: order.orderId, error: "bot_not_initialized" });
+    console.error("[payments] SEND_BUYER_FAIL", { orderId: order.orderId, error: "bot_not_initialized" });
+    return;
+  }
+
+  const adminId = adminChatId();
+  if (!adminId) {
+    console.error("[payments] SEND_ADMIN_FAIL", { orderId: order.orderId, error: "ADMIN_CHAT_ID_missing" });
+  } else {
+    const adminLang = await getUserLanguageOrDefault(adminId);
+    const adminResult = await notifyAdmin(
+      tr(adminLang, "paidAdmin", {
+        orderId: order.orderId,
+        buyer,
+        seller,
+        giftLines,
+        amount: amountPaidLabel(order),
+        paymentMethod: paymentMethodLabel(order),
+      }),
+      {},
+      "admin_payment_received"
+    );
+    if (adminResult.ok) {
+      console.log("[payments] SEND_ADMIN_OK", { orderId: order.orderId, adminChatId: adminId });
+    } else {
+      console.error("[payments] SEND_ADMIN_FAIL", {
+        orderId: order.orderId,
+        adminChatId: adminId,
+        error: adminResult.error,
+      });
+    }
+  }
+
+  for (const gift of giftList) {
+    const sellerChatId = String(gift.sellerTelegramId || gift.escrowOwnerTelegramId || order.sellerTelegramId || "").trim();
     if (!sellerChatId) {
-      console.error("[telegram] SELLER NOTIFICATION MISSING: gift has no seller telegram id", {
+      console.error("[payments] SEND_SELLER_FAIL", {
         orderId: order.orderId,
         listingId: gift.listingId,
+        error: "seller_telegram_id_missing",
       });
       continue;
     }
-    console.log("[telegram] SENDING SELLER NOTIFICATION", {
-      orderId: order.orderId,
-      listingId: gift.listingId,
-      sellerTelegramId: sellerChatId,
-    });
     const sellerLang = await getUserLanguageOrDefault(sellerChatId);
-    await notifyChat(
+    const sellerResult = await notifyChat(
       sellerChatId,
       tr(sellerLang, "paidSeller", {
         name: gift.name,
@@ -1292,29 +1427,46 @@ export async function notifyManualOrderPaid(order, gifts) {
         buyer,
       }),
       {},
-      "seller_payment_received"
+      `seller_payment_received:${gift.listingId}`
     );
+    if (sellerResult.ok) {
+      console.log("[payments] SEND_SELLER_OK", {
+        orderId: order.orderId,
+        listingId: gift.listingId,
+        sellerTelegramId: sellerChatId,
+      });
+    } else {
+      console.error("[payments] SEND_SELLER_FAIL", {
+        orderId: order.orderId,
+        listingId: gift.listingId,
+        sellerTelegramId: sellerChatId,
+        error: sellerResult.error,
+      });
+    }
   }
-  const adminLang = await getUserLanguageOrDefault(adminChatId());
-  console.log("[telegram] SENDING ADMIN NOTIFICATION", { orderId: order.orderId, adminChatId: adminChatId() });
-  await notifyAdmin(tr(adminLang, "paidAdmin", {
-    orderId: order.orderId,
-    buyer,
-    seller,
-    giftLines,
-    amount: amountPaidLabel(order),
-    paymentMethod: paymentMethodLabel(order),
-  }), {}, "admin_payment_received");
-  const buyerLang = await getUserLanguageOrDefault(order.buyerTelegramId);
-  console.log("[telegram] SENDING BUYER NOTIFICATION", {
-    orderId: order.orderId,
-    buyerTelegramId: order.buyerTelegramId || "",
-  });
-  await notifyChat(
-    order.buyerTelegramId,
+
+  const buyerChatId = String(order.buyerTelegramId || "").trim();
+  if (!buyerChatId) {
+    console.error("[payments] SEND_BUYER_FAIL", {
+      orderId: order.orderId,
+      error: "buyer_telegram_id_missing",
+    });
+    return;
+  }
+  const buyerLang = await getUserLanguageOrDefault(buyerChatId);
+  const buyerResult = await notifyChat(
+    buyerChatId,
     tr(buyerLang, "paidBuyer", { orderId: order.orderId, giftNames }),
     { reply_markup: buyerReceiptKeyboard(order.orderId, buyerLang) },
     "buyer_payment_received"
   );
-  console.log("[telegram] POST-PAYMENT NOTIFICATION FLOW END", { orderId: order.orderId });
+  if (buyerResult.ok) {
+    console.log("[payments] SEND_BUYER_OK", { orderId: order.orderId, buyerTelegramId: buyerChatId });
+  } else {
+    console.error("[payments] SEND_BUYER_FAIL", {
+      orderId: order.orderId,
+      buyerTelegramId: buyerChatId,
+      error: buyerResult.error,
+    });
+  }
 }

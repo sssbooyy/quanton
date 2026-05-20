@@ -2,7 +2,14 @@ import crypto from "crypto";
 import express from "express";
 import dotenv from "dotenv";
 import axios from "axios";
-import { getTelegramWebhookInfo, handleTelegramWebhookUpdate, initTelegramBot, notifyManualOrderPaid, sendAdminAlert, stopTelegramBot } from "./services/telegramBot.js";
+import {
+  getTelegramWebhookInfo,
+  handleManualEscrowAfterPayment,
+  handleTelegramWebhookUpdate,
+  initTelegramBot,
+  sendAdminAlert,
+  stopTelegramBot,
+} from "./services/telegramBot.js";
 import {
   PORT,
   isProduction,
@@ -389,10 +396,26 @@ function reserveQueryForListings(listingIds) {
     listingId: { $in: listingIds },
     $or: [
       { listingSource: "manual_url", status: "approved" },
-      { listingSource: "manual_admin_verified", status: "listed", verificationStatus: "admin_verified" },
+      { listingSource: "manual_admin_verified", status: { $in: ["listed", "approved"], verificationStatus: "admin_verified" } },
       { listingSource: "escrow", status: "approved", escrowStatus: "listed" },
     ],
   };
+}
+
+function resolveBuyerFromRequest(req) {
+  const body = req.body || {};
+  let buyerTelegramId = String(body.buyerTelegramId ?? "").trim();
+  let buyerUsername = String(body.buyerUsername ?? "").replace(/^@/, "").trim();
+  const tg = body.telegramUser || body.buyer || {};
+  if (!buyerTelegramId && tg?.id) buyerTelegramId = String(tg.id).trim();
+  if (!buyerUsername && tg?.username) buyerUsername = String(tg.username).replace(/^@/, "").trim();
+  if (!buyerTelegramId) {
+    console.warn("[orders] buyerTelegramId missing", {
+      hasTelegramUser: Boolean(tg?.id),
+      buyerWalletAddress: String(body.buyerWalletAddress ?? "").trim() || "",
+    });
+  }
+  return { buyerTelegramId, buyerUsername };
 }
 
 function cardProviderEnabled(provider) {
@@ -410,84 +433,7 @@ function assertCardTestAllowed(req, res) {
 }
 
 async function completePaidOrder(order, payment = {}) {
-  console.log("[payments] PAYMENT VERIFIED", {
-    orderId: order?.orderId,
-    paymentMethod: order?.paymentMethod,
-    cardProvider: order?.cardProvider || "",
-    txHash: payment?.txHash || "",
-    test: Boolean(payment?.test),
-  });
-  const gifts = await Gift.find({ listingId: { $in: order.listingIds } });
-  const badState = gifts.find(
-    (g) => g.escrowStatus !== "reserved" || ["sold", "transferred"].includes(String(g.status || "").toLowerCase())
-  );
-  if (badState) {
-    order.status = "failed";
-    await order.save();
-    return { error: `${badState.name} is no longer reserved for this order.` };
-  }
-
-  order.status = "paid";
-  order.txHash = payment.txHash || order.txHash || "";
-  order.paidAt = new Date();
-  order.transferStatus = "pending_manual_transfer";
-  order.payoutStatus = "waiting_seller_wallet";
-  const primaryGift = gifts[0];
-  if (primaryGift) {
-    order.sellerTelegramId = primaryGift.sellerTelegramId || primaryGift.escrowOwnerTelegramId || "";
-    order.sellerUsername = primaryGift.sellerUsername || "";
-  }
-  console.log("[payments] PAYMENT VERIFIED PARTICIPANTS", {
-    orderId: order.orderId,
-    sellerTelegramId: order.sellerTelegramId || "",
-    sellerUsername: order.sellerUsername || "",
-    buyerTelegramId: order.buyerTelegramId || "",
-    buyerUsername: order.buyerUsername || "",
-    listingIds: order.listingIds,
-  });
-  if (order.paymentMethod === "card") {
-    order.cardPaymentStatus = "paid";
-  }
-
-  const transferResults = [];
-  for (const gift of gifts) {
-    gift.status = "awaiting_seller_transfer";
-    gift.escrowStatus = gift.listingSource === "escrow" ? "sold" : "none";
-    gift.buyerTelegramId = order.buyerTelegramId || "";
-    gift.buyerUsername = order.buyerUsername || "";
-    gift.orderId = order.orderId;
-    gift.txHash = order.txHash;
-    gift.paidAt = order.paidAt;
-    gift.transferStatus = "pending_manual_transfer";
-    gift.payoutStatus = "waiting_seller_wallet";
-    await gift.save();
-    transferResults.push({
-      listingId: gift.listingId,
-      ok: false,
-      manual: true,
-      retryable: false,
-      status: "pending_manual_transfer",
-      message: "Payment received; seller must transfer gift manually. Payout waits for buyer confirmation.",
-    });
-  }
-
-  order.transferStatus = "pending_manual_transfer";
-  order.transferResults = transferResults;
-  await order.save();
-  console.log("[payments] TRIGGERING POST-PAYMENT TELEGRAM NOTIFICATIONS", {
-    orderId: order.orderId,
-    transferStatus: order.transferStatus,
-    payoutStatus: order.payoutStatus,
-  });
-  try {
-    await notifyManualOrderPaid(order, gifts);
-  } catch (e) {
-    console.error("[telegram] POST-PAYMENT NOTIFICATION FLOW CRASHED", {
-      orderId: order.orderId,
-      error: e?.message || String(e),
-    });
-  }
-  return { order, transferResults };
+  return handleManualEscrowAfterPayment(order, payment);
 }
 
 app.post("/orders/create", async (req, res, next) => {
@@ -550,12 +496,14 @@ app.post("/orders/create", async (req, res, next) => {
       return res.status(409).json({ error: "One or more listings were reserved by another buyer. Please refresh and try again." });
     }
 
+    const { buyerTelegramId, buyerUsername } = resolveBuyerFromRequest(req);
+    const primaryGift = gifts[0];
     const order = await Order.create({
       orderId,
-      buyerTelegramId: String(req.body?.buyerTelegramId ?? "").trim(),
-      buyerUsername: String(req.body?.buyerUsername ?? "").replace(/^@/, "").trim(),
-      sellerTelegramId: gifts[0]?.sellerTelegramId || gifts[0]?.escrowOwnerTelegramId || "",
-      sellerUsername: gifts[0]?.sellerUsername || "",
+      buyerTelegramId,
+      buyerUsername,
+      sellerTelegramId: primaryGift?.sellerTelegramId || primaryGift?.escrowOwnerTelegramId || "",
+      sellerUsername: primaryGift?.sellerUsername || "",
       buyerWalletAddress: String(req.body?.buyerWalletAddress ?? "").trim(),
       listingIds,
       totalTon,
@@ -604,10 +552,18 @@ app.post("/orders/verify-payment", async (req, res, next) => {
       return res.status(409).json({ error: `Order is ${order.status}.`, order: publicOrder(order) });
     }
 
+    let orderDirty = false;
     if (req.body?.buyerWalletAddress && !order.buyerWalletAddress) {
       order.buyerWalletAddress = String(req.body.buyerWalletAddress).trim();
-      await order.save();
+      orderDirty = true;
     }
+    const buyerIdentity = resolveBuyerFromRequest(req);
+    if (buyerIdentity.buyerTelegramId && !order.buyerTelegramId) {
+      order.buyerTelegramId = buyerIdentity.buyerTelegramId;
+      order.buyerUsername = buyerIdentity.buyerUsername || order.buyerUsername;
+      orderDirty = true;
+    }
+    if (orderDirty) await order.save();
 
     const payment = await findMatchingIncomingPayment(order);
     if (payment.error) {
@@ -716,6 +672,32 @@ app.post("/payments/test/:orderId/fail", async (req, res, next) => {
       { $set: { status: "approved", escrowStatus: "listed" } }
     );
     res.json({ ok: true, order: publicOrder(order) });
+  } catch (e) {
+    next(e);
+  }
+});
+
+app.post("/admin/orders/:orderId/replay-post-payment", async (req, res, next) => {
+  try {
+    if (!assertMetadataJobAllowed(req, res)) return;
+    const orderId = String(req.params.orderId ?? "").trim();
+    if (!orderId) {
+      return res.status(400).json({ error: "orderId is required." });
+    }
+    const order = await Order.findOne({ orderId });
+    if (!order) {
+      return res.status(404).json({ error: "Order not found." });
+    }
+    const result = await handleManualEscrowAfterPayment(order, { replay: true });
+    if (result.error) {
+      return res.status(409).json({ error: result.error, order: publicOrder(order) });
+    }
+    res.json({
+      ok: true,
+      replay: true,
+      order: publicOrder(result.order),
+      transferResults: result.transferResults || [],
+    });
   } catch (e) {
     next(e);
   }

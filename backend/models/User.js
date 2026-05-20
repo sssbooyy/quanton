@@ -8,6 +8,14 @@ const miningUpgradeSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const referredUserSchema = new mongoose.Schema(
+  {
+    telegramId: { type: String, required: true, trim: true },
+    joinedAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
 /**
  * Telegram Mini App user profile (from WebApp initDataUnsafe.user).
  * Upserted when a listing is submitted with `telegramUser` or via mining endpoints.
@@ -38,8 +46,19 @@ const userSchema = new mongoose.Schema(
     lastDailyClaim: { type: Date, default: null },
     totalTaps: { type: Number, default: 0, min: 0 },
     upgrades: { type: [miningUpgradeSchema], default: [] },
+
+    referralCode: { type: String, trim: true, uppercase: true, sparse: true, unique: true },
+    invitedBy: { type: String, default: null, trim: true },
+    referralCount: { type: Number, default: 0, min: 0 },
+    referralRewardsEarned: { type: Number, default: 0, min: 0 },
+    referredUsers: { type: [referredUserSchema], default: [] },
   },
   { timestamps: true }
 );
+
+userSchema.index({ shards: -1 });
+userSchema.index({ level: -1, xp: -1 });
+userSchema.index({ totalTaps: -1 });
+userSchema.index({ referralCount: -1 });
 
 export const User = mongoose.models.User || mongoose.model("User", userSchema);

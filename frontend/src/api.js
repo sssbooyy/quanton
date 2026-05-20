@@ -128,3 +128,23 @@ export async function postMineUpgrade(body, headers = {}) {
   const res = await client.post("/mine/upgrade", body, { headers: h, params });
   return res.data;
 }
+
+export async function getMineLeaderboard(type, headers = {}) {
+  const { headers: h, params } = mineRequestConfig(headers);
+  const res = await client.get("/mine/leaderboard", {
+    headers: h,
+    params: { ...params, type },
+  });
+  return res.data;
+}
+
+export async function getMineReferral(headers = {}) {
+  const res = await client.get("/mine/referral", mineRequestConfig(headers));
+  return res.data;
+}
+
+export async function postMineClaimReferral(body, headers = {}) {
+  const { headers: h, params } = mineRequestConfig(headers, body);
+  const res = await client.post("/mine/claim-referral", body, { headers: h, params });
+  return res.data;
+}

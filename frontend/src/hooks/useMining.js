@@ -1,6 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getMineProfile, postMineDaily, postMineTap, postMineUpgrade } from "../api.js";
+import {
+  getMineProfile,
+  getMineReferral,
+  postMineClaimReferral,
+  postMineDaily,
+  postMineTap,
+  postMineUpgrade,
+} from "../api.js";
 import { formatMiningApiError } from "../lib/miningApiError.js";
+import {
+  clearPendingReferralCode,
+  consumePendingReferralCode,
+} from "../lib/miningReferral.js";
 import {
   getTelegramUserIdForMining,
   hapticNotification,
@@ -20,8 +31,12 @@ export function useMining() {
   const [tapping, setTapping] = useState(false);
   const [upgradingId, setUpgradingId] = useState(null);
   const [upgradeFlash, setUpgradeFlash] = useState(null);
+  const [referral, setReferral] = useState(null);
+  const [referralLoading, setReferralLoading] = useState(false);
+  const [referralClaimMsg, setReferralClaimMsg] = useState("");
   const [floats, setFloats] = useState([]);
   const tapLock = useRef(false);
+  const referralClaimed = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -76,12 +91,56 @@ export function useMining() {
     }
   }, []);
 
+  const loadReferral = useCallback(async () => {
+    setReferralLoading(true);
+    try {
+      const data = await getMineReferral(miningAuthHeaders());
+      setReferral(data);
+      return data;
+    } catch (e) {
+      console.warn("[mining] referral load failed", e?.message);
+      return null;
+    } finally {
+      setReferralLoading(false);
+    }
+  }, []);
+
+  const tryClaimPendingReferral = useCallback(async () => {
+    if (referralClaimed.current) return null;
+    const code = consumePendingReferralCode();
+    if (!code) return null;
+    referralClaimed.current = true;
+    try {
+      const data = await postMineClaimReferral(
+        miningAuthBody({ referralCode: code }),
+        miningAuthHeaders()
+      );
+      if (data.profile) setProfile(data.profile);
+      if (data.ok && !data.alreadyClaimed) {
+        setReferralClaimMsg("Referral bonus applied! Welcome to Quanton Mining.");
+        hapticNotification("success");
+      }
+      clearPendingReferralCode();
+      await loadReferral();
+      return data;
+    } catch (e) {
+      const codeErr = e.response?.data?.code;
+      if (codeErr === "already_referred" || codeErr === "demo_not_eligible") {
+        clearPendingReferralCode();
+      }
+      if (e.response?.data?.profile) setProfile(e.response.data.profile);
+      return null;
+    }
+  }, [loadReferral]);
+
   useEffect(() => {
     if (!identityReady) return undefined;
     refresh();
+    loadReferral();
+    tryClaimPendingReferral();
     const id = window.setInterval(refresh, PROFILE_POLL_MS);
     return () => window.clearInterval(id);
-  }, [identityReady, refresh]);
+  }, [identityReady, refresh, loadReferral, tryClaimPendingReferral]);
 
   const addFloat = useCallback((amount) => {
     const id = `${Date.now()}_${Math.random()}`;
@@ -176,6 +235,10 @@ export function useMining() {
     purchaseUpgrade,
     upgradingId,
     upgradeFlash,
+    referral,
+    referralLoading,
+    referralClaimMsg,
+    loadReferral,
     setError,
   };
 }

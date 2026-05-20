@@ -1,4 +1,5 @@
 import { User } from "../models/User.js";
+import { ensureUserReferralCode } from "./miningReferralService.js";
 import {
   BASE_MAX_ENERGY,
   UPGRADE_CATALOG,
@@ -229,6 +230,7 @@ export async function getOrCreateMiningUser(telegramId, profilePatch = {}) {
 
   const energyBeforeRegen = user.energy;
   applyEnergyRegeneration(user);
+  await ensureUserReferralCode(user);
   await user.save();
 
   console.log("[mining] user saved", {

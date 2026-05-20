@@ -8,6 +8,8 @@ import {
   purchaseMiningUpgrade,
   UPGRADE_CATALOG,
 } from "../services/miningService.js";
+import { getMiningLeaderboard } from "../services/miningLeaderboardService.js";
+import { claimReferralReward, getReferralInfo } from "../services/miningReferralService.js";
 
 const router = Router();
 
@@ -50,6 +52,59 @@ router.post("/daily", async (req, res, next) => {
       return res.status(409).json(result);
     }
     res.json({ ok: true, ...result });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/leaderboard", async (req, res, next) => {
+  try {
+    const type = String(req.query?.type ?? "shards").trim().toLowerCase();
+    console.log("[mining] GET /leaderboard", { telegramId: req.telegramUserId, type });
+    const result = await getMiningLeaderboard(type, req.telegramUserId);
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/referral", async (req, res, next) => {
+  try {
+    await getOrCreateMiningUser(req.telegramUserId, req.telegramProfilePatch);
+    const result = await getReferralInfo(req.telegramUserId);
+    if (result.error) {
+      return res.status(404).json(result);
+    }
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/claim-referral", async (req, res, next) => {
+  try {
+    const referralCode = String(req.body?.referralCode ?? "").trim();
+    console.log("[mining] POST /claim-referral", {
+      telegramId: req.telegramUserId,
+      referralCode: referralCode ? "(present)" : "(missing)",
+    });
+    await getOrCreateMiningUser(req.telegramUserId, req.telegramProfilePatch);
+    const result = await claimReferralReward(
+      req.telegramUserId,
+      referralCode,
+      req.telegramProfilePatch
+    );
+    if (result.error) {
+      const status =
+        result.code === "demo_not_eligible" || result.code === "already_referred"
+          ? 409
+          : result.code === "self_referral"
+            ? 400
+            : 404;
+      return res.status(status).json(result);
+    }
+    const profile = await getMiningProfile(req.telegramUserId, req.telegramProfilePatch);
+    res.json({ ok: true, ...result, profile: profile.profile });
   } catch (e) {
     next(e);
   }

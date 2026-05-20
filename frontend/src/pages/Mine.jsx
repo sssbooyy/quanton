@@ -1,6 +1,15 @@
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMining } from "../hooks/useMining.js";
+import MineLeaderboard from "../components/MineLeaderboard.jsx";
+import MineReferralCard from "../components/MineReferralCard.jsx";
 import { hapticImpact } from "../lib/telegramUser.js";
+
+const MINE_VIEWS = [
+  { id: "play", label: "Mine" },
+  { id: "ranks", label: "Ranks" },
+  { id: "invite", label: "Invite" },
+];
 
 function StatCard({ label, value, accent }) {
   return (
@@ -90,64 +99,39 @@ function MineSkeleton() {
   );
 }
 
-export default function Mine() {
-  const {
-    profile,
-    loading,
-    error,
-    tapping,
-    floats,
-    energyPct,
-    refresh,
-    tap,
-    claimDaily,
-    purchaseUpgrade,
-    upgradingId,
-    upgradeFlash,
-    setError,
-  } = useMining();
-
-  if (loading && !profile) {
-    return <MineSkeleton />;
-  }
-
+function MinePlayView({
+  profile,
+  error,
+  tapping,
+  floats,
+  energyPct,
+  upgradeFlash,
+  upgradingId,
+  referralClaimMsg,
+  setError,
+  refresh,
+  tap,
+  claimDaily,
+  purchaseUpgrade,
+}) {
   const xpMax = profile?.xpToNextLevel > 0 ? profile.xp + profile.xpToNextLevel : profile?.xp || 1;
   const xpPct = profile ? Math.min(100, (profile.xp / xpMax) * 100) : 0;
   const regenSec = profile?.regenSeconds ?? (profile?.energyRegenIntervalMs ?? 5000) / 1000;
 
-  async function handleMineTap() {
-    hapticImpact("medium");
-    await tap();
-  }
-
-  async function handleDaily() {
-    hapticImpact("light");
-    await claimDaily();
-  }
-
-  async function handleUpgrade(upgradeId) {
-    hapticImpact("light");
-    await purchaseUpgrade(upgradeId);
-  }
-
   return (
-    <main className="minePage">
-      <header className="mineHeader">
-        <div>
-          <p className="mineHeader__kicker mono">QUANTON MINING</p>
-          <h1 className="mineHeader__title">Shard Mine</h1>
-        </div>
-        <button type="button" className="mineHeader__refresh mono" onClick={() => refresh()}>
-          Sync
-        </button>
-      </header>
-
+    <>
       {error ? (
         <p className="mineError mono" role="alert">
           {error}
           <button type="button" className="mineError__dismiss" onClick={() => setError("")}>
             ×
           </button>
+        </p>
+      ) : null}
+
+      {referralClaimMsg ? (
+        <p className="mineSuccess mono" role="status">
+          {referralClaimMsg}
         </p>
       ) : null}
 
@@ -194,7 +178,10 @@ export default function Mine() {
               ? { boxShadow: "0 0 48px rgba(56, 189, 248, 0.55)" }
               : { boxShadow: "0 0 32px rgba(99, 102, 241, 0.35)" }
           }
-          onClick={handleMineTap}
+          onClick={() => {
+            hapticImpact("medium");
+            tap();
+          }}
         >
           <span className="mineTapBtn__ring" aria-hidden="true" />
           <span className="mineTapBtn__label">Mine Shards</span>
@@ -229,7 +216,10 @@ export default function Mine() {
           type="button"
           className="mineDailyCard__btn"
           disabled={!profile?.canClaimDaily}
-          onClick={handleDaily}
+          onClick={() => {
+            hapticImpact("light");
+            claimDaily();
+          }}
         >
           {profile?.canClaimDaily ? "Claim" : "Claimed"}
         </button>
@@ -243,16 +233,98 @@ export default function Mine() {
               key={u.id}
               upgrade={u}
               shards={profile?.shards ?? 0}
-              onBuy={handleUpgrade}
+              onBuy={(id) => {
+                hapticImpact("light");
+                purchaseUpgrade(id);
+              }}
               purchasing={upgradingId}
               flashSuccess={upgradeFlash}
             />
           ))}
         </div>
       </section>
+    </>
+  );
+}
+
+export default function Mine() {
+  const [view, setView] = useState("play");
+  const mining = useMining();
+
+  if (mining.loading && !mining.profile) {
+    return <MineSkeleton />;
+  }
+
+  return (
+    <main className="minePage">
+      <header className="mineHeader">
+        <div>
+          <p className="mineHeader__kicker mono">QUANTON MINING</p>
+          <h1 className="mineHeader__title">Shard Mine</h1>
+        </div>
+        <button type="button" className="mineHeader__refresh mono" onClick={() => mining.refresh()}>
+          Sync
+        </button>
+      </header>
+
+      <nav className="mineViewNav" aria-label="Mining sections">
+        {MINE_VIEWS.map((v) => (
+          <button
+            key={v.id}
+            type="button"
+            className={`mineViewNav__btn mono ${view === v.id ? "mineViewNav__btn--active" : ""}`}
+            onClick={() => {
+              hapticImpact("light");
+              setView(v.id);
+            }}
+          >
+            {v.label}
+          </button>
+        ))}
+      </nav>
+
+      <AnimatePresence mode="wait">
+        {view === "play" ? (
+          <motion.div
+            key="play"
+            initial={{ opacity: 0, x: -12 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 12 }}
+            transition={{ duration: 0.2 }}
+          >
+            <MinePlayView {...mining} />
+          </motion.div>
+        ) : null}
+        {view === "ranks" ? (
+          <motion.div
+            key="ranks"
+            initial={{ opacity: 0, x: -12 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 12 }}
+            transition={{ duration: 0.2 }}
+          >
+            <MineLeaderboard />
+          </motion.div>
+        ) : null}
+        {view === "invite" ? (
+          <motion.div
+            key="invite"
+            initial={{ opacity: 0, x: -12 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 12 }}
+            transition={{ duration: 0.2 }}
+          >
+            <MineReferralCard
+              referral={mining.referral}
+              loading={mining.referralLoading}
+              onCopy={() => mining.loadReferral()}
+            />
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       <p className="mineFooterNote mono">
-        Shards are off-chain. Utility (listings, discounts, crates) ships later.
+        Shards are off-chain. Climb ranks and invite friends — no tokens or withdrawals.
       </p>
     </main>
   );

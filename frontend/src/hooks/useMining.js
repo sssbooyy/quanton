@@ -36,7 +36,9 @@ export function useMining() {
   const [referralClaimMsg, setReferralClaimMsg] = useState("");
   const [levelUp, setLevelUp] = useState(null);
   const [floats, setFloats] = useState([]);
-  const tapLock = useRef(false);
+  const pendingTapsRef = useRef(0);
+  const tapInFlightRef = useRef(false);
+  const flushTimerRef = useRef(null);
   const referralClaimed = useRef(false);
 
   useEffect(() => {
@@ -165,20 +167,22 @@ export function useMining() {
     }, 900);
   }, []);
 
-  const tap = useCallback(async () => {
-    if (tapLock.current || tapping) return null;
-    if ((profile?.energy ?? 0) <= 0) {
-      hapticNotification("error");
-      return null;
-    }
-    tapLock.current = true;
+  const flushTaps = useCallback(async () => {
+    if (tapInFlightRef.current) return null;
+    const maxBatch = profile?.maxTapBatch ?? 5;
+    const energy = profile?.energy ?? 0;
+    const batch = Math.min(pendingTapsRef.current, maxBatch, energy);
+    pendingTapsRef.current = Math.max(0, pendingTapsRef.current - batch);
+    if (batch < 1) return null;
+
+    tapInFlightRef.current = true;
     setTapping(true);
     try {
-      const data = await postMineTap(miningAuthBody({ tapCount: 1 }), miningAuthHeaders());
+      const data = await postMineTap(miningAuthBody({ tapCount: batch }), miningAuthHeaders());
       if (data.profile) setProfile(data.profile);
       if (data.shardsEarned) addFloat(data.shardsEarned);
       handleLevelUpResponse(data);
-      console.log("[mining] tap ok", data.shardsEarned);
+      console.log("[mining] tap ok", { batch, shardsEarned: data.shardsEarned });
       return data;
     } catch (e) {
       if (e.response?.data?.profile) setProfile(e.response.data.profile);
@@ -186,12 +190,34 @@ export function useMining() {
       hapticNotification("error");
       return null;
     } finally {
+      tapInFlightRef.current = false;
       setTapping(false);
-      window.setTimeout(() => {
-        tapLock.current = false;
-      }, 80);
+      if (pendingTapsRef.current > 0 && (profile?.energy ?? 0) > 0) {
+        flushTimerRef.current = window.setTimeout(flushTaps, 40);
+      }
     }
-  }, [addFloat, handleLevelUpResponse, profile?.energy, tapping]);
+  }, [addFloat, handleLevelUpResponse, profile?.energy, profile?.maxTapBatch]);
+
+  const queueTap = useCallback(
+    (count = 1) => {
+      if ((profile?.energy ?? 0) <= 0) {
+        hapticNotification("error");
+        return null;
+      }
+      pendingTapsRef.current += Math.max(1, Math.floor(count));
+      window.clearTimeout(flushTimerRef.current);
+      flushTimerRef.current = window.setTimeout(flushTaps, 50);
+      return null;
+    },
+    [flushTaps, profile?.energy]
+  );
+
+  useEffect(
+    () => () => {
+      window.clearTimeout(flushTimerRef.current);
+    },
+    []
+  );
 
   const claimDaily = useCallback(async () => {
     try {
@@ -247,7 +273,9 @@ export function useMining() {
     floats,
     energyPct,
     refresh,
-    tap,
+    tap: queueTap,
+    queueTap,
+    flushTaps,
     claimDaily,
     purchaseUpgrade,
     upgradingId,

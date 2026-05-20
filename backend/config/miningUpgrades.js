@@ -5,7 +5,12 @@ export const ENERGY_REGEN_BASE_MS = 5000;
 export const MIN_REGEN_INTERVAL_MS = 1000;
 export const REGEN_MS_REDUCTION_PER_LEVEL = 500;
 
-export const UPGRADE_IDS = ["bigger_battery", "turbo_miner", "faster_recharge"];
+export const BASE_MAX_TAP_BATCH = 5;
+export const BASE_MAX_TAPS_PER_SECOND = 10;
+export const TAP_BATCH_PER_LEVEL = 2;
+export const TAPS_PER_SEC_PER_LEVEL = 5;
+
+export const UPGRADE_IDS = ["bigger_battery", "turbo_miner", "faster_recharge", "multi_tap"];
 
 export const UPGRADE_CATALOG = {
   bigger_battery: {
@@ -30,6 +35,15 @@ export const UPGRADE_CATALOG = {
     description: "−0.5s energy regen interval per level (min 1s).",
     maxLevel: 50,
     costBase: 750,
+  },
+  multi_tap: {
+    id: "multi_tap",
+    name: "Multi Tap",
+    description: "Tap faster and mine with more fingers.",
+    maxLevel: 10,
+    costBase: 1000,
+    batchPerLevel: TAP_BATCH_PER_LEVEL,
+    tapsPerSecPerLevel: TAPS_PER_SEC_PER_LEVEL,
   },
 };
 
@@ -79,6 +93,16 @@ export function computeRegenSeconds(user) {
 }
 
 /** Shards earned per tap (Turbo Miner + miningPower). */
+export function computeMaxTapBatch(user) {
+  const lvl = getUpgradeLevel(user, "multi_tap");
+  return BASE_MAX_TAP_BATCH + lvl * TAP_BATCH_PER_LEVEL;
+}
+
+export function computeMaxTapsPerSecond(user) {
+  const lvl = getUpgradeLevel(user, "multi_tap");
+  return BASE_MAX_TAPS_PER_SECOND + lvl * TAPS_PER_SEC_PER_LEVEL;
+}
+
 export function computeShardsPerTap(user) {
   const turbo = getUpgradeLevel(user, "turbo_miner");
   const base = 1 + turbo * (UPGRADE_CATALOG.turbo_miner.shardsPerLevel || 1);
@@ -106,6 +130,22 @@ export function nextShardsPerTapAfterUpgrade(user) {
   return Math.max(1, (1 + turbo) * power);
 }
 
+function maxTapBatchForLevel(multiTapLevel) {
+  return BASE_MAX_TAP_BATCH + multiTapLevel * TAP_BATCH_PER_LEVEL;
+}
+
+function maxTapsPerSecondForLevel(multiTapLevel) {
+  return BASE_MAX_TAPS_PER_SECOND + multiTapLevel * TAPS_PER_SEC_PER_LEVEL;
+}
+
+export function nextMaxTapBatchAfterUpgrade(user) {
+  return maxTapBatchForLevel(getUpgradeLevel(user, "multi_tap") + 1);
+}
+
+export function nextMaxTapsPerSecondAfterUpgrade(user) {
+  return maxTapsPerSecondForLevel(getUpgradeLevel(user, "multi_tap") + 1);
+}
+
 export function upgradeEffectPreview(upgradeId, user) {
   const lvl = getUpgradeLevel(user, upgradeId);
   switch (upgradeId) {
@@ -115,6 +155,14 @@ export function upgradeEffectPreview(upgradeId, user) {
       return { current: computeShardsPerTap(user), next: nextShardsPerTapAfterUpgrade(user), unit: "shards/tap" };
     case "faster_recharge":
       return { current: computeRegenSeconds(user), next: nextRegenSecondsAfterUpgrade(user), unit: "regen (s)" };
+    case "multi_tap":
+      return {
+        currentBatch: computeMaxTapBatch(user),
+        nextBatch: nextMaxTapBatchAfterUpgrade(user),
+        currentTps: computeMaxTapsPerSecond(user),
+        nextTps: nextMaxTapsPerSecondAfterUpgrade(user),
+        unit: "multi_tap",
+      };
     default:
       return { current: lvl, next: lvl + 1, unit: "level" };
   }
@@ -138,10 +186,17 @@ export function buildUpgradeProfileRow(user, upgradeId) {
     nextCost: cost,
     canAfford: cost != null && shards >= cost,
     isMaxed,
-    nextEffect: isMaxed
-      ? null
-      : `${preview.unit}: ${formatEffectValue(upgradeId, preview.current)} → ${formatEffectValue(upgradeId, preview.next)}`,
+    nextEffect: isMaxed ? null : formatNextEffect(upgradeId, preview),
+    maxTapBatch: upgradeId === "multi_tap" ? computeMaxTapBatch(user) : undefined,
+    maxTapsPerSecond: upgradeId === "multi_tap" ? computeMaxTapsPerSecond(user) : undefined,
   };
+}
+
+function formatNextEffect(upgradeId, preview) {
+  if (upgradeId === "multi_tap") {
+    return `batch ${preview.currentBatch}→${preview.nextBatch} · ${preview.currentTps}→${preview.nextTps} taps/s`;
+  }
+  return `${preview.unit}: ${formatEffectValue(upgradeId, preview.current)} → ${formatEffectValue(upgradeId, preview.next)}`;
 }
 
 function formatEffectValue(upgradeId, value) {

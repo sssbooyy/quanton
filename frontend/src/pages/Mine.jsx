@@ -58,6 +58,11 @@ function UpgradeCard({ upgrade, shards, onBuy, purchasing, flashSuccess }) {
         </span>
       </div>
       <p className="mineUpgradeCard__desc">{upgrade?.description || ""}</p>
+      {upgrade?.id === "multi_tap" && upgrade.maxTapBatch != null ? (
+        <p className="mineUpgradeCard__stats mono">
+          Batch {upgrade.maxTapBatch} · {upgrade.maxTapsPerSecond}/s
+        </p>
+      ) : null}
       {upgrade?.nextEffect ? (
         <p className="mineUpgradeCard__next mono">{upgrade.nextEffect}</p>
       ) : null}
@@ -171,22 +176,26 @@ function MinePlayView({
         <motion.button
           type="button"
           className="mineTapBtn"
-          disabled={tapping || (profile?.energy ?? 0) <= 0}
+          disabled={(profile?.energy ?? 0) <= 0}
           whileTap={{ scale: 0.94 }}
           animate={
             tapping
               ? { boxShadow: "0 0 48px rgba(56, 189, 248, 0.55)" }
               : { boxShadow: "0 0 32px rgba(99, 102, 241, 0.35)" }
           }
-          onClick={() => {
-            hapticImpact("medium");
-            tap();
+          onPointerDown={(e) => {
+            e.preventDefault();
+            hapticImpact("light");
+            tap(1);
           }}
+          style={{ touchAction: "manipulation" }}
         >
           <span className="mineTapBtn__ring" aria-hidden="true" />
           <span className="mineTapBtn__label">Mine Shards</span>
           <span className="mineTapBtn__sub mono">
-            {(profile?.energy ?? 0) <= 0 ? "Recharging…" : `+${profile?.shardsPerTap ?? 1} shard / tap`}
+            {(profile?.energy ?? 0) <= 0
+              ? "Recharging…"
+              : `+${profile?.shardsPerTap ?? 1}/tap · batch ${profile?.maxTapBatch ?? 5} · ${profile?.maxTapsPerSecond ?? 10}/s`}
           </span>
         </motion.button>
         <AnimatePresence>

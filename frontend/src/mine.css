@@ -479,6 +479,12 @@
   color: rgba(226, 232, 240, 0.6);
 }
 
+.mineUpgradeCard__stats {
+  margin: 0 0 6px;
+  font-size: 11px;
+  color: rgba(56, 189, 248, 0.85);
+}
+
 .mineUpgradeCard__next {
   margin: 0 0 10px;
   font-size: 11px;

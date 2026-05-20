@@ -10,6 +10,8 @@ import {
   UPGRADE_CATALOG,
   buildUpgradeProfileRow,
   computeMaxEnergy,
+  computeMaxTapBatch,
+  computeMaxTapsPerSecond,
   computeRegenIntervalMs,
   computeRegenSeconds,
   computeShardsPerTap,
@@ -22,8 +24,6 @@ import {
 
 export { UPGRADE_CATALOG } from "../config/miningUpgrades.js";
 
-const MAX_TAPS_PER_SECOND = 10;
-const MIN_TAP_INTERVAL_MS = 50;
 const DAILY_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 const tapRateBuckets = new Map();
@@ -131,30 +131,40 @@ function shardRewardPerTap(user) {
   return computeShardsPerTap(user);
 }
 
-function checkTapRateLimit(telegramId) {
+function checkTapRateLimit(telegramId, user, tapCount = 1) {
   const now = Date.now();
+  const maxPerSec = computeMaxTapsPerSecond(user);
+  const maxBatch = computeMaxTapBatch(user);
+  const taps = Math.min(Math.max(1, Math.floor(Number(tapCount) || 1)), maxBatch);
+  const minRequestInterval = Math.max(35, Math.floor(1000 / Math.max(maxPerSec, 1)));
+
   let bucket = tapRateBuckets.get(telegramId);
   if (!bucket) {
-    bucket = { timestamps: [], lastTapMs: 0, throttledUntil: 0 };
+    bucket = { events: [], lastRequestMs: 0, throttledUntil: 0 };
     tapRateBuckets.set(telegramId, bucket);
   }
   if (now < bucket.throttledUntil) {
     return { ok: false, reason: "throttled", retryAfterMs: bucket.throttledUntil - now };
   }
-  if (now - bucket.lastTapMs < MIN_TAP_INTERVAL_MS) {
-    bucket.throttledUntil = now + 500;
-    console.warn("[mining] tap spam cooldown", { telegramId });
-    return { ok: false, reason: "cooldown", retryAfterMs: 500 };
+  if (now - bucket.lastRequestMs < minRequestInterval) {
+    bucket.throttledUntil = now + 300;
+    return { ok: false, reason: "cooldown", retryAfterMs: 300 };
   }
-  bucket.timestamps = bucket.timestamps.filter((t) => now - t < 1000);
-  if (bucket.timestamps.length >= MAX_TAPS_PER_SECOND) {
-    bucket.throttledUntil = now + 2000;
-    console.warn("[mining] tap rate limit exceeded", { telegramId, count: bucket.timestamps.length });
-    return { ok: false, reason: "rate_limit", retryAfterMs: 2000 };
+  bucket.events = bucket.events.filter((e) => now - e.t < 1000);
+  const recentTaps = bucket.events.reduce((sum, e) => sum + e.n, 0);
+  if (recentTaps + taps > maxPerSec) {
+    bucket.throttledUntil = now + 800;
+    console.warn("[mining] tap rate limit exceeded", {
+      telegramId,
+      recentTaps,
+      requested: taps,
+      maxPerSec,
+    });
+    return { ok: false, reason: "rate_limit", retryAfterMs: 800 };
   }
-  bucket.timestamps.push(now);
-  bucket.lastTapMs = now;
-  return { ok: true };
+  bucket.events.push({ t: now, n: taps });
+  bucket.lastRequestMs = now;
+  return { ok: true, taps };
 }
 
 export function miningProfileResponse(user) {
@@ -173,6 +183,8 @@ export function miningProfileResponse(user) {
     totalTaps: user.totalTaps,
     upgrades,
     shardsPerTap: computeShardsPerTap(user),
+    maxTapBatch: computeMaxTapBatch(user),
+    maxTapsPerSecond: computeMaxTapsPerSecond(user),
     regenSeconds: computeRegenSeconds(user),
     energyRegenIntervalMs: regenIntervalMs,
     canClaimDaily: canClaimDailyReward(user),
@@ -247,11 +259,6 @@ export async function processMiningTap(telegramId, { tapCount = 1 } = {}) {
   const id = String(telegramId || "").trim();
   if (!id) return { error: "telegramId is required." };
 
-  const rate = checkTapRateLimit(id);
-  if (!rate.ok) {
-    return { error: "Too many taps. Please slow down.", code: rate.reason, retryAfterMs: rate.retryAfterMs };
-  }
-
   let user = await User.findOne({ telegramId: id });
   if (!user) {
     const created = await getOrCreateMiningUser(id);
@@ -262,7 +269,13 @@ export async function processMiningTap(telegramId, { tapCount = 1 } = {}) {
     applyEnergyRegeneration(user);
   }
 
-  const taps = Math.min(Math.max(1, Math.floor(Number(tapCount) || 1)), 5);
+  const rate = checkTapRateLimit(id, user, tapCount);
+  if (!rate.ok) {
+    return { error: "Too many taps. Please slow down.", code: rate.reason, retryAfterMs: rate.retryAfterMs };
+  }
+
+  const maxBatch = computeMaxTapBatch(user);
+  const taps = Math.min(Math.max(1, Math.floor(Number(tapCount) || 1)), maxBatch);
   const shardsBefore = user.shards;
   const energyBefore = user.energy;
 

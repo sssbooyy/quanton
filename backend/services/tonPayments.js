@@ -195,21 +195,21 @@ export async function findMatchingIncomingPayment(order) {
     return { error: "TON_API_KEY is not configured.", code: "TON_API_KEY_MISSING" };
   }
 
-  const rawAddress = wallet.rawAddress;
+  const accountId = wallet.rawAddress;
   const friendlyAddress = wallet.friendlyAddress;
-  const encodedRaw = encodeURIComponent(rawAddress);
-  const url = `${TONAPI_BASE_URL}/blockchain/accounts/${encodedRaw}/transactions`;
-  const urlPath = `/blockchain/accounts/${encodedRaw}/transactions`;
+  const finalUrlPath = `/blockchain/accounts/${accountId}/transactions`;
+  const url = `${TONAPI_BASE_URL}${finalUrlPath}`;
 
   console.log("[ton] TonAPI verification request", {
     orderId: order?.orderId,
-    rawAddress,
+    rawAddress: accountId,
     friendlyAddress,
-    addressLength: rawAddress.length,
+    finalAccountId: accountId,
+    finalUrlPath,
+    addressLength: accountId.length,
     bounceable: wallet.bounceable,
     testOnly: wallet.testOnly,
     workchain: wallet.workchain,
-    urlPath,
   });
 
   let res;
@@ -227,9 +227,9 @@ export async function findMatchingIncomingPayment(order) {
       status: status || "",
       message: e?.message || String(e),
       apiBody,
-      rawAddress,
+      finalAccountId: accountId,
       friendlyAddress,
-      urlPath,
+      finalUrlPath,
     });
     if (status === 401) {
       return {

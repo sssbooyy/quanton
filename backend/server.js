@@ -396,7 +396,11 @@ function reserveQueryForListings(listingIds) {
     listingId: { $in: listingIds },
     $or: [
       { listingSource: "manual_url", status: "approved" },
-      { listingSource: "manual_admin_verified", status: { $in: ["listed", "approved"], verificationStatus: "admin_verified" } },
+      {
+        listingSource: "manual_admin_verified",
+        status: { $in: ["listed", "approved"] },
+        verificationStatus: "admin_verified",
+      },
       { listingSource: "escrow", status: "approved", escrowStatus: "listed" },
     ],
   };
@@ -488,10 +492,28 @@ app.post("/orders/create", async (req, res, next) => {
       totalUzs = Math.round(totalTon * tonUzsRate);
       paymentUrl = `/payment-test/${encodeURIComponent(orderId)}?provider=${encodeURIComponent(cardProvider)}`;
     }
-    const reserve = await Gift.updateMany(
-      reserveQueryForListings(listingIds),
-      { $set: { escrowStatus: "reserved", status: "reserved" } }
-    );
+    const reserveFilter = reserveQueryForListings(listingIds);
+    console.log("[orders] reserve listings query", {
+      listingIds,
+      filter: JSON.stringify(reserveFilter),
+    });
+    let reserve;
+    try {
+      reserve = await Gift.updateMany(reserveFilter, { $set: { escrowStatus: "reserved", status: "reserved" } });
+    } catch (reserveErr) {
+      console.error("[orders] reserve listings failed", {
+        listingIds,
+        filter: JSON.stringify(reserveFilter),
+        error: reserveErr?.message || String(reserveErr),
+      });
+      throw reserveErr;
+    }
+    console.log("[orders] reserve listings result", {
+      listingIds,
+      matchedCount: reserve.matchedCount,
+      modifiedCount: reserve.modifiedCount,
+      expected: listingIds.length,
+    });
     if (reserve.modifiedCount !== listingIds.length) {
       return res.status(409).json({ error: "One or more listings were reserved by another buyer. Please refresh and try again." });
     }

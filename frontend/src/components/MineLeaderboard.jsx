@@ -82,7 +82,7 @@ export default function MineLeaderboard() {
       </div>
 
       {lb.error ? (
-        <p className="mineError mono" role="alert">
+        <p className="mineToast mineToast--error mono" role="alert">
           {lb.error}
         </p>
       ) : null}

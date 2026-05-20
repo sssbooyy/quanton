@@ -1,107 +1,64 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMining } from "../hooks/useMining.js";
+import MineCrystal from "../components/mine/MineCrystal.jsx";
+import MineSideDock from "../components/mine/MineSideDock.jsx";
+import MineUpgradeCard from "../components/mine/MineUpgradeCard.jsx";
+import MineProfilePanel from "../components/mine/MineProfilePanel.jsx";
 import MineLeaderboard from "../components/MineLeaderboard.jsx";
 import MineLevelCard from "../components/MineLevelCard.jsx";
 import MineLevelUpModal from "../components/MineLevelUpModal.jsx";
-import MineReferralCard from "../components/MineReferralCard.jsx";
 import { hapticImpact } from "../lib/telegramUser.js";
 
-const MINE_VIEWS = [
-  { id: "play", label: "Mine" },
-  { id: "ranks", label: "Ranks" },
-  { id: "invite", label: "Invite" },
-];
+const UPGRADE_ORDER = ["multi_tap", "turbo_miner", "bigger_battery", "faster_recharge"];
 
-function StatCard({ label, value, accent }) {
-  return (
-    <div className={`mineStat ${accent ? "mineStat--accent" : ""}`}>
-      <span className="mineStat__label">{label}</span>
-      <motion.span
-        key={String(value)}
-        className="mineStat__value mono"
-        initial={{ scale: 1.12, opacity: 0.6 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 400, damping: 22 }}
-      >
-        {value}
-      </motion.span>
-    </div>
+function sortUpgrades(upgrades = []) {
+  return [...upgrades].sort(
+    (a, b) => UPGRADE_ORDER.indexOf(a.id) - UPGRADE_ORDER.indexOf(b.id)
   );
 }
 
-function UpgradeCard({ upgrade, shards, onBuy, purchasing, flashSuccess }) {
-  const lvl = upgrade?.level ?? 0;
-  const max = upgrade?.maxLevel ?? 50;
-  const cost = upgrade?.nextCost;
-  const canAfford = upgrade?.canAfford && !upgrade?.isMaxed;
-  const isMaxed = upgrade?.isMaxed;
-  const busy = purchasing === upgrade?.id;
-  const showGlow = canAfford && !busy;
-  const justBought = flashSuccess && flashSuccess.upgradeId === upgrade?.id;
-
+function StatPill({ icon, label, value, progress }) {
   return (
-    <motion.div
-      className={`mineUpgradeCard ${showGlow ? "mineUpgradeCard--affordable" : ""} ${justBought ? "mineUpgradeCard--success" : ""}`}
-      layout
-      animate={
-        justBought
-          ? { scale: [1, 1.03, 1], boxShadow: "0 0 28px rgba(56, 189, 248, 0.45)" }
-          : { scale: 1 }
-      }
-      transition={{ duration: 0.45 }}
-    >
-      <div className="mineUpgradeCard__head">
-        <strong>{upgrade?.name || upgrade?.id}</strong>
-        <span className="mono mineUpgradeCard__lvl">
-          Lv {lvl}/{max}
-        </span>
-      </div>
-      <p className="mineUpgradeCard__desc">{upgrade?.description || ""}</p>
-      {upgrade?.id === "multi_tap" && upgrade.maxTapBatch != null ? (
-        <p className="mineUpgradeCard__stats mono">
-          Batch {upgrade.maxTapBatch} · {upgrade.maxTapsPerSecond}/s
-        </p>
-      ) : null}
-      {upgrade?.nextEffect ? (
-        <p className="mineUpgradeCard__next mono">{upgrade.nextEffect}</p>
-      ) : null}
-      <div className="mineUpgradeCard__footer">
-        {isMaxed ? (
-          <span className="mineUpgradeCard__maxed mono">MAXED</span>
-        ) : (
-          <span className="mineUpgradeCard__cost mono">
-            {cost?.toLocaleString()} shards
-            {shards < cost ? (
-              <span className="mineUpgradeCard__need"> · need {(cost - shards).toLocaleString()} more</span>
-            ) : null}
-          </span>
-        )}
-        <button
-          type="button"
-          className={`mineUpgradeCard__btn ${canAfford ? "mineUpgradeCard__btn--buy" : ""}`}
-          disabled={isMaxed || !canAfford || busy}
-          onClick={() => onBuy(upgrade.id)}
+    <div className="mineStatPill glass">
+      <span className="mineStatPill__icon" aria-hidden="true">
+        {icon}
+      </span>
+      <div className="mineStatPill__meta">
+        <span className="mineStatPill__label">{label}</span>
+        <motion.span
+          key={String(value)}
+          className="mineStatPill__value mono"
+          initial={{ opacity: 0.6, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
         >
-          {busy ? "Upgrading…" : isMaxed ? "Max level" : canAfford ? "Upgrade" : "Not enough shards"}
-        </button>
+          {value}
+        </motion.span>
+        {progress != null ? (
+          <div className="mineStatPill__track">
+            <motion.div
+              className="mineStatPill__fill"
+              initial={false}
+              animate={{ width: `${progress}%` }}
+            />
+          </div>
+        ) : null}
       </div>
-    </motion.div>
+    </div>
   );
 }
 
 function MineSkeleton() {
   return (
     <div className="minePage minePage--loading" aria-busy="true">
-      <div className="mineSkeleton mineSkeleton--hero" />
+      <div className="mineSkeleton mineSkeleton--level" />
       <div className="mineSkeletonRow">
-        <div className="mineSkeleton mineSkeleton--stat" />
-        <div className="mineSkeleton mineSkeleton--stat" />
-        <div className="mineSkeleton mineSkeleton--stat" />
-        <div className="mineSkeleton mineSkeleton--stat" />
+        <div className="mineSkeleton mineSkeleton--pill" />
+        <div className="mineSkeleton mineSkeleton--pill" />
+        <div className="mineSkeleton mineSkeleton--pill" />
       </div>
-      <div className="mineSkeleton mineSkeleton--bar" />
-      <div className="mineSkeleton mineSkeleton--card" />
+      <div className="mineSkeleton mineSkeleton--arena" />
+      <div className="mineSkeleton mineSkeleton--upg" />
     </div>
   );
 }
@@ -118,127 +75,127 @@ function MinePlayView({
   levelUp,
   dismissLevelUp,
   setError,
-  refresh,
+  setView,
   tap,
   claimDaily,
   purchaseUpgrade,
 }) {
+  const sortedUpgrades = useMemo(() => sortUpgrades(profile?.upgrades), [profile?.upgrades]);
   const regenSec = profile?.regenSeconds ?? (profile?.energyRegenIntervalMs ?? 5000) / 1000;
+
+  const leftActions = [
+    {
+      id: "daily",
+      icon: "🎁",
+      label: "Daily",
+      badge: profile?.canClaimDaily ? "!" : null,
+      disabled: !profile?.canClaimDaily,
+      highlight: profile?.canClaimDaily,
+      onClick: () => {
+        hapticImpact("light");
+        claimDaily();
+      },
+    },
+    {
+      id: "missions",
+      icon: "📋",
+      label: "Missions",
+      disabled: true,
+      onClick: () => hapticImpact("light"),
+    },
+  ];
+
+  const rightActions = [
+    {
+      id: "invite",
+      icon: "🤝",
+      label: "Invite",
+      onClick: () => {
+        hapticImpact("light");
+        setView("profile");
+      },
+    },
+    {
+      id: "boost",
+      icon: "🚀",
+      label: "Boost",
+      disabled: true,
+      onClick: () => hapticImpact("light"),
+    },
+    {
+      id: "crates",
+      icon: "📦",
+      label: "Crates",
+      disabled: true,
+      onClick: () => hapticImpact("light"),
+    },
+    {
+      id: "leaders",
+      icon: "🏆",
+      label: "Leaders",
+      highlight: true,
+      onClick: () => {
+        hapticImpact("light");
+        setView("ranks");
+      },
+    },
+  ];
 
   return (
     <>
       {error ? (
-        <p className="mineError mono" role="alert">
+        <p className="mineToast mineToast--error mono" role="alert">
           {error}
-          <button type="button" className="mineError__dismiss" onClick={() => setError("")}>
+          <button type="button" onClick={() => setError("")} aria-label="Dismiss">
             ×
           </button>
         </p>
       ) : null}
 
       {referralClaimMsg ? (
-        <p className="mineSuccess mono" role="status">
+        <p className="mineToast mineToast--ok mono" role="status">
           {referralClaimMsg}
         </p>
       ) : null}
 
       <MineLevelCard profile={profile} />
-
-      <section className="mineStatsGrid" aria-label="Mining stats">
-        <StatCard label="Shards" value={profile?.shards ?? 0} accent />
-        <StatCard label="Per tap" value={profile?.shardsPerTap ?? 1} />
-        <StatCard label="Total XP" value={profile?.xp ?? 0} />
-        <StatCard label="Regen" value={`${regenSec}s`} />
-      </section>
-
       <MineLevelUpModal levelUp={levelUp} onClose={dismissLevelUp} />
 
-      <section className="mineEnergy" aria-label="Energy">
-        <div className="mineEnergy__labels">
-          <span>Energy</span>
-          <span className="mono">
-            {profile?.energy ?? 0} / {profile?.maxEnergy ?? 0}
-          </span>
-        </div>
-        <div className="mineEnergy__track">
-          <motion.div
-            className="mineEnergy__fill"
-            initial={false}
-            animate={{ width: `${energyPct}%` }}
-            transition={{ type: "spring", stiffness: 120, damping: 20 }}
-          />
-        </div>
-        <p className="mineEnergy__hint mono">+1 energy every {regenSec}s (server)</p>
-      </section>
+      <div className="mineStatStrip">
+        <StatPill
+          icon="⚡"
+          label="Energy"
+          value={`${profile?.energy ?? 0}/${profile?.maxEnergy ?? 0}`}
+          progress={energyPct}
+        />
+        <StatPill icon="💎" label="Per tap" value={profile?.shardsPerTap ?? 1} />
+        <StatPill icon="👆" label="Speed" value={`${profile?.maxTapsPerSecond ?? 10}/s`} />
+      </div>
 
-      <section className="mineTapZone">
-        <div className="mineTapGlow" aria-hidden="true" />
-        <motion.button
-          type="button"
-          className="mineTapBtn"
-          disabled={(profile?.energy ?? 0) <= 0}
-          whileTap={{ scale: 0.94 }}
-          animate={
-            tapping
-              ? { boxShadow: "0 0 48px rgba(56, 189, 248, 0.55)" }
-              : { boxShadow: "0 0 32px rgba(99, 102, 241, 0.35)" }
-          }
-          onPointerDown={(e) => {
-            e.preventDefault();
+      <section className="mineArena" aria-label="Mining">
+        <MineSideDock side="left" actions={leftActions} />
+        <MineCrystal
+          profile={profile}
+          tapping={tapping}
+          floats={floats}
+          onTap={(n) => {
             hapticImpact("light");
-            tap(1);
+            tap(n);
           }}
-          style={{ touchAction: "manipulation" }}
-        >
-          <span className="mineTapBtn__ring" aria-hidden="true" />
-          <span className="mineTapBtn__label">Mine Shards</span>
-          <span className="mineTapBtn__sub mono">
-            {(profile?.energy ?? 0) <= 0
-              ? "Recharging…"
-              : `+${profile?.shardsPerTap ?? 1}/tap · batch ${profile?.maxTapBatch ?? 5} · ${profile?.maxTapsPerSecond ?? 10}/s`}
-          </span>
-        </motion.button>
-        <AnimatePresence>
-          {floats.map((f, i) => (
-            <motion.span
-              key={f.id}
-              className={`mineFloat mono ${f.amount < 0 ? "mineFloat--cost" : ""}`}
-              initial={{ opacity: 0, y: 0, scale: 0.6 }}
-              animate={{ opacity: 1, y: -72 - i * 8, scale: 1 }}
-              exit={{ opacity: 0, y: -100 }}
-              transition={{ duration: 0.75, ease: "easeOut" }}
-            >
-              {f.amount > 0 ? `+${f.amount}` : f.amount}
-            </motion.span>
-          ))}
-        </AnimatePresence>
+        />
+        <MineSideDock side="right" actions={rightActions} />
       </section>
 
-      <section className="mineDailyCard">
-        <div className="mineDailyCard__copy">
-          <h2>Daily reward</h2>
-          <p className="mono">
-            Streak: {profile?.dailyStreak ?? 0} day{(profile?.dailyStreak ?? 0) === 1 ? "" : "s"}
-          </p>
+      <p className="mineArenaHint mono">Regen +1 energy / {regenSec}s · batch up to {profile?.maxTapBatch ?? 5}</p>
+
+      <section className="mineUpgradesSection">
+        <div className="mineSectionHead">
+          <h2>Upgrades</h2>
+          <span className="mineSectionHead__sub mono">Power up your mine</span>
         </div>
-        <button
-          type="button"
-          className="mineDailyCard__btn"
-          disabled={!profile?.canClaimDaily}
-          onClick={() => {
-            hapticImpact("light");
-            claimDaily();
-          }}
-        >
-          {profile?.canClaimDaily ? "Claim" : "Claimed"}
-        </button>
-      </section>
-
-      <section className="mineUpgrades">
-        <h2 className="mineUpgrades__title">Upgrades</h2>
-        <div className="mineUpgrades__grid">
-          {(profile?.upgrades || []).map((u) => (
-            <UpgradeCard
+        <div className="mineUpgradesGrid">
+          {sortedUpgrades.map((u) => (
+            <MineUpgradeCard
               key={u.id}
               upgrade={u}
               shards={profile?.shards ?? 0}
@@ -266,75 +223,87 @@ export default function Mine() {
 
   return (
     <main className="minePage">
-      <header className="mineHeader">
+      <div className="mineBg" aria-hidden="true">
+        <div className="mineBg__grid" />
+        <div className="mineBg__glow mineBg__glow--tl" />
+        <div className="mineBg__glow mineBg__glow--br" />
+      </div>
+
+      <header className="mineTopBar glass">
         <div>
-          <p className="mineHeader__kicker mono">QUANTON MINING</p>
-          <h1 className="mineHeader__title">Shard Mine</h1>
+          <p className="mineTopBar__kicker mono">QUANTON</p>
+          <h1 className="mineTopBar__title">Shard Mining</h1>
         </div>
-        <button type="button" className="mineHeader__refresh mono" onClick={() => mining.refresh()}>
+        <button type="button" className="mineTopBar__sync mono" onClick={() => mining.refresh()}>
           Sync
         </button>
       </header>
 
-      <nav className="mineViewNav" aria-label="Mining sections">
-        {MINE_VIEWS.map((v) => (
+      <nav className="mineTabs glass" aria-label="Mining views">
+        {[
+          { id: "play", label: "Mine" },
+          { id: "ranks", label: "Ranks" },
+          { id: "profile", label: "Profile" },
+        ].map((tab) => (
           <button
-            key={v.id}
+            key={tab.id}
             type="button"
-            className={`mineViewNav__btn mono ${view === v.id ? "mineViewNav__btn--active" : ""}`}
+            className={`mineTabs__btn mono ${view === tab.id ? "mineTabs__btn--active" : ""}`}
             onClick={() => {
               hapticImpact("light");
-              setView(v.id);
+              setView(tab.id);
             }}
           >
-            {v.label}
+            {tab.label}
           </button>
         ))}
       </nav>
 
-      <AnimatePresence mode="wait">
-        {view === "play" ? (
-          <motion.div
-            key="play"
-            initial={{ opacity: 0, x: -12 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 12 }}
-            transition={{ duration: 0.2 }}
-          >
-            <MinePlayView {...mining} />
-          </motion.div>
-        ) : null}
-        {view === "ranks" ? (
-          <motion.div
-            key="ranks"
-            initial={{ opacity: 0, x: -12 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 12 }}
-            transition={{ duration: 0.2 }}
-          >
-            <MineLeaderboard />
-          </motion.div>
-        ) : null}
-        {view === "invite" ? (
-          <motion.div
-            key="invite"
-            initial={{ opacity: 0, x: -12 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 12 }}
-            transition={{ duration: 0.2 }}
-          >
-            <MineReferralCard
-              referral={mining.referral}
-              loading={mining.referralLoading}
-              onCopy={() => mining.loadReferral()}
-            />
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
-
-      <p className="mineFooterNote mono">
-        Shards are off-chain. Climb ranks and invite friends — no tokens or withdrawals.
-      </p>
+      <div className="mineScroll">
+        <AnimatePresence mode="wait">
+          {view === "play" ? (
+            <motion.div
+              key="play"
+              className="mineView"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.22 }}
+            >
+              <MinePlayView {...mining} setView={setView} />
+            </motion.div>
+          ) : null}
+          {view === "ranks" ? (
+            <motion.div
+              key="ranks"
+              className="mineView"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+            >
+              <div className="minePanel glass">
+                <MineLeaderboard />
+              </div>
+            </motion.div>
+          ) : null}
+          {view === "profile" ? (
+            <motion.div
+              key="profile"
+              className="mineView"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+            >
+              <MineProfilePanel
+                profile={mining.profile}
+                referral={mining.referral}
+                loading={mining.referralLoading}
+                onCopy={() => mining.loadReferral()}
+              />
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      </div>
     </main>
   );
 }

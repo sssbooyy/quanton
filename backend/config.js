@@ -67,6 +67,8 @@ function sanitizeTonAddressEnv(v) {
 /** TON checkout */
 export const MARKETPLACE_WALLET_ADDRESS = sanitizeTonAddressEnv(process.env.MARKETPLACE_WALLET_ADDRESS);
 export const TON_API_KEY = process.env.TON_API_KEY?.trim() || "";
+/** When false (default), TON checkout uses manual admin confirmation instead of TonAPI verify. */
+export const AUTO_TON_VERIFY = parseBoolEnv(process.env.AUTO_TON_VERIFY);
 export const TELEGRAM_BUSINESS_CONNECTION_ID = process.env.TELEGRAM_BUSINESS_CONNECTION_ID?.trim() || "";
 export const TELEGRAM_WEBHOOK_URL = process.env.TELEGRAM_WEBHOOK_URL?.trim() || "";
 export const ESCROW_INTAKE_SECRET = process.env.ESCROW_INTAKE_SECRET?.trim() || "";

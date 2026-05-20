@@ -143,6 +143,14 @@ const BOT_I18N = {
     buyerConfirmedNo: "not confirmed yet",
     payoutRequiresBuyer: "Buyer confirmation is required before payout.",
     payoutRequiresAddress: "Seller payout address is required before payout.",
+    paymentClaimAdmin: "Buyer claims payment sent\n\nOrder: {orderId}\nGift: {giftLines}\nSeller: {seller}\nBuyer: {buyer}\nAmount: {amount}\nWallet: {wallet}\nTx: {txHash}\nWallet app: {walletApp}",
+    confirmPaymentButton: "Confirm payment",
+    rejectPaymentButton: "Reject payment",
+    cbPaymentConfirmed: "Payment confirmed.",
+    cbPaymentRejected: "Payment rejected.",
+    paymentRejectedBuyer: "Payment could not be confirmed. Please contact support.\n\nOrder: {orderId}",
+    paymentConfirmedAdmin: "Payment confirmed for order {orderId}. Escrow flow started.",
+    paymentRejectedAdmin: "Payment rejected for order {orderId}. Listings released.",
   },
   ru: {
     languagePrompt: "Добро пожаловать в Quanton Marketplace.\nВыберите язык.",
@@ -246,6 +254,14 @@ const BOT_I18N = {
     buyerConfirmedNo: "пока не подтверждено",
     payoutRequiresBuyer: "Для выплаты сначала нужно подтверждение покупателя.",
     payoutRequiresAddress: "Для выплаты нужен адрес выплаты продавца.",
+    paymentClaimAdmin: "Покупатель сообщил об оплате\n\nЗаказ: {orderId}\nПодарок: {giftLines}\nПродавец: {seller}\nПокупатель: {buyer}\nСумма: {amount}\nКошелёк: {wallet}\nTx: {txHash}\nКошелёк app: {walletApp}",
+    confirmPaymentButton: "Подтвердить оплату",
+    rejectPaymentButton: "Отклонить оплату",
+    cbPaymentConfirmed: "Оплата подтверждена.",
+    cbPaymentRejected: "Оплата отклонена.",
+    paymentRejectedBuyer: "Оплату не удалось подтвердить. Свяжитесь с поддержкой.\n\nЗаказ: {orderId}",
+    paymentConfirmedAdmin: "Оплата подтверждена для заказа {orderId}. Запущен escrow.",
+    paymentRejectedAdmin: "Оплата отклонена для заказа {orderId}. Лоты возвращены в продажу.",
   },
 };
 
@@ -374,6 +390,7 @@ function paymentMethodLabel(order) {
   if (order.paymentMethod === "card") {
     return order.cardProvider === "payme" ? "Payme / Humo / Uzcard" : "Click / Humo / Uzcard";
   }
+  if (order.paymentMethod === "ton_manual_admin") return "TON (admin confirmed)";
   return "TON Wallet";
 }
 
@@ -511,6 +528,115 @@ function adminPayoutKeyboard(orderId, lang = "en") {
   return {
     inline_keyboard: [[{ text: tr(lang, "payoutButton"), callback_data: `admin_payout:${orderId}` }]],
   };
+}
+
+function adminPaymentReviewKeyboard(orderId, lang = "en") {
+  return {
+    inline_keyboard: [
+      [
+        { text: tr(lang, "confirmPaymentButton"), callback_data: `confirm_payment:${orderId}` },
+        { text: tr(lang, "rejectPaymentButton"), callback_data: `reject_payment:${orderId}` },
+      ],
+    ],
+  };
+}
+
+async function releaseListingReservations(order) {
+  const listingIds = order?.listingIds || [];
+  if (!listingIds.length) return;
+  await Gift.updateMany(
+    { listingId: { $in: listingIds }, listingSource: "manual_url", status: "reserved", escrowStatus: "reserved" },
+    { $set: { status: "approved", escrowStatus: "none" } }
+  );
+  await Gift.updateMany(
+    {
+      listingId: { $in: listingIds },
+      listingSource: "manual_admin_verified",
+      status: "reserved",
+      escrowStatus: "reserved",
+    },
+    { $set: { status: "listed", escrowStatus: "none" } }
+  );
+  await Gift.updateMany(
+    { listingId: { $in: listingIds }, listingSource: "escrow", status: "reserved", escrowStatus: "reserved" },
+    { $set: { status: "approved", escrowStatus: "listed" } }
+  );
+}
+
+export async function notifyAdminPaymentClaim(order, gifts = []) {
+  const giftList = Array.isArray(gifts) ? gifts : [];
+  const giftLines = giftList.map((g) => `${g.name} / ${g.listingId}`).join("\n");
+  const firstGift = giftList[0];
+  const buyer = displayTelegramUser({ id: order.buyerTelegramId, username: order.buyerUsername });
+  const seller = firstGift
+    ? displayTelegramUser({
+        id: firstGift.sellerTelegramId || firstGift.escrowOwnerTelegramId || order.sellerTelegramId,
+        username: firstGift.sellerUsername || order.sellerUsername,
+      })
+    : displayTelegramUser({ id: order.sellerTelegramId, username: order.sellerUsername });
+  const adminLang = await getUserLanguageOrDefault(adminChatId());
+  await notifyAdmin(
+    tr(adminLang, "paymentClaimAdmin", {
+      orderId: order.orderId,
+      giftLines: giftLines || "—",
+      seller,
+      buyer,
+      amount: amountPaidLabel(order),
+      wallet: order.marketplaceWalletAddress || "—",
+      txHash: order.txHash || "—",
+      walletApp: order.walletAppInfo || "—",
+    }),
+    { reply_markup: adminPaymentReviewKeyboard(order.orderId, adminLang) },
+    "admin_payment_claim"
+  );
+}
+
+export async function confirmAdminTonPayment(orderId) {
+  const order = await Order.findOne({ orderId: String(orderId || "").trim() });
+  if (!order) throw new Error("Order not found.");
+  if (order.status === "paid") return { order, alreadyPaid: true };
+  if (order.paymentReviewStatus !== "waiting_admin_confirmation") {
+    throw new Error(`Order payment review is ${order.paymentReviewStatus || "none"}.`);
+  }
+  if (order.status !== "pending_payment") {
+    throw new Error(`Order is ${order.status}.`);
+  }
+
+  order.paymentReviewStatus = "confirmed_by_admin";
+  order.paymentMethod = "ton_manual_admin";
+  if (!order.txHash) order.txHash = `admin_confirmed_${order.orderId}`;
+  await order.save();
+
+  const completed = await handleManualEscrowAfterPayment(order, {
+    txHash: order.txHash,
+    adminConfirmed: true,
+    test: false,
+  });
+  if (completed.error) throw new Error(completed.error);
+  return completed;
+}
+
+export async function rejectAdminTonPayment(orderId) {
+  const order = await Order.findOne({ orderId: String(orderId || "").trim() });
+  if (!order) throw new Error("Order not found.");
+  if (order.status === "paid") throw new Error("Paid orders cannot be rejected.");
+  if (order.status === "payment_rejected") return { order, alreadyRejected: true };
+
+  order.status = "payment_rejected";
+  order.paymentReviewStatus = "rejected_by_admin";
+  await order.save();
+  await releaseListingReservations(order);
+
+  const buyerLang = await getUserLanguageOrDefault(order.buyerTelegramId);
+  if (order.buyerTelegramId) {
+    await notifyChat(
+      order.buyerTelegramId,
+      tr(buyerLang, "paymentRejectedBuyer", { orderId: order.orderId }),
+      {},
+      "buyer_payment_rejected"
+    );
+  }
+  return { order };
 }
 
 async function safeSendMessage(chatId, text, options = {}, label = "telegram") {
@@ -1203,6 +1329,26 @@ export function initTelegramBot() {
         const orderId = data.slice("admin_payout:".length);
         await markPayoutSent(orderId);
         await bot.answerCallbackQuery(query.id, { text: tr(lang, "cbPayout") });
+        return;
+      }
+
+      if (data.startsWith("confirm_payment:")) {
+        assertAdminCallback(query);
+        const adminLang = await getUserLanguageOrDefault(String(query.from?.id || query.message?.chat?.id || ""));
+        const orderId = data.slice("confirm_payment:".length);
+        await confirmAdminTonPayment(orderId);
+        await bot.answerCallbackQuery(query.id, { text: tr(adminLang, "cbPaymentConfirmed") });
+        await bot.sendMessage(query.message.chat.id, tr(adminLang, "paymentConfirmedAdmin", { orderId }));
+        return;
+      }
+
+      if (data.startsWith("reject_payment:")) {
+        assertAdminCallback(query);
+        const adminLang = await getUserLanguageOrDefault(String(query.from?.id || query.message?.chat?.id || ""));
+        const orderId = data.slice("reject_payment:".length);
+        await rejectAdminTonPayment(orderId);
+        await bot.answerCallbackQuery(query.id, { text: tr(adminLang, "cbPaymentRejected") });
+        await bot.sendMessage(query.message.chat.id, tr(adminLang, "paymentRejectedAdmin", { orderId }));
         return;
       }
     } catch (e) {

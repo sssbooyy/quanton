@@ -4,9 +4,12 @@ import dotenv from "dotenv";
 import axios from "axios";
 import {
   getTelegramWebhookInfo,
+  confirmAdminTonPayment,
   handleManualEscrowAfterPayment,
   handleTelegramWebhookUpdate,
   initTelegramBot,
+  notifyAdminPaymentClaim,
+  rejectAdminTonPayment,
   sendAdminAlert,
   stopTelegramBot,
 } from "./services/telegramBot.js";
@@ -21,6 +24,7 @@ import {
   CARD_PAYMENT_TEST_MODE,
   CARD_PROVIDER_CLICK_ENABLED,
   CARD_PROVIDER_PAYME_ENABLED,
+  AUTO_TON_VERIFY,
 } from "./config.js";
 import { createCorsMiddleware } from "./middleware/cors.js";
 import { connectMongo, disconnectMongo, isMongoConnected } from "./db/connect.js";
@@ -363,6 +367,11 @@ function publicOrder(order) {
     cardProvider: plain.cardProvider || "",
     paymentUrl: plain.paymentUrl || "",
     cardPaymentStatus: plain.cardPaymentStatus || "none",
+    paymentReviewStatus: plain.paymentReviewStatus || "none",
+    paymentClaimedAt:
+      plain.paymentClaimedAt instanceof Date ? plain.paymentClaimedAt.toISOString() : plain.paymentClaimedAt || null,
+    walletAppInfo: plain.walletAppInfo || "",
+    marketplaceWalletAddress: plain.marketplaceWalletAddress || "",
     status: plain.status,
     txHash: plain.txHash || "",
     payload: plain.payload,
@@ -438,6 +447,28 @@ function assertCardTestAllowed(req, res) {
 
 async function completePaidOrder(order, payment = {}) {
   return handleManualEscrowAfterPayment(order, payment);
+}
+
+async function releaseReservedListingsForOrder(order) {
+  const listingIds = order?.listingIds || [];
+  if (!listingIds.length) return;
+  await Gift.updateMany(
+    { listingId: { $in: listingIds }, listingSource: "manual_url", status: "reserved", escrowStatus: "reserved" },
+    { $set: { status: "approved", escrowStatus: "none" } }
+  );
+  await Gift.updateMany(
+    {
+      listingId: { $in: listingIds },
+      listingSource: "manual_admin_verified",
+      status: "reserved",
+      escrowStatus: "reserved",
+    },
+    { $set: { status: "listed", escrowStatus: "none" } }
+  );
+  await Gift.updateMany(
+    { listingId: { $in: listingIds }, listingSource: "escrow", status: "reserved", escrowStatus: "reserved" },
+    { $set: { status: "approved", escrowStatus: "listed" } }
+  );
 }
 
 app.post("/orders/create", async (req, res, next) => {
@@ -527,6 +558,8 @@ app.post("/orders/create", async (req, res, next) => {
 
     const { buyerTelegramId, buyerUsername } = resolveBuyerFromRequest(req);
     const primaryGift = gifts[0];
+    const tonMarketplaceWallet =
+      paymentMethod === "ton" ? String(tonWallet?.friendlyAddress || "").trim() : "";
     const order = await Order.create({
       orderId,
       buyerTelegramId,
@@ -534,6 +567,7 @@ app.post("/orders/create", async (req, res, next) => {
       sellerTelegramId: primaryGift?.sellerTelegramId || primaryGift?.escrowOwnerTelegramId || "",
       sellerUsername: primaryGift?.sellerUsername || "",
       buyerWalletAddress: String(req.body?.buyerWalletAddress ?? "").trim(),
+      marketplaceWalletAddress: tonMarketplaceWallet,
       listingIds,
       totalTon,
       totalUzs,
@@ -579,8 +613,79 @@ app.post("/orders/create", async (req, res, next) => {
   }
 });
 
+app.post("/orders/:orderId/submit-payment", async (req, res, next) => {
+  try {
+    const orderId = String(req.params.orderId ?? "").trim();
+    if (!orderId) {
+      return res.status(400).json({ error: "orderId is required." });
+    }
+
+    const order = await Order.findOne({ orderId });
+    if (!order) {
+      return res.status(404).json({ error: "Order not found." });
+    }
+    if (order.paymentMethod !== "ton") {
+      return res.status(400).json({ error: "Only TON orders support payment submission.", order: publicOrder(order) });
+    }
+    if (order.status === "paid") {
+      return res.json({ ok: true, order: publicOrder(order), message: "Order is already paid." });
+    }
+    if (order.status === "payment_rejected") {
+      return res.status(409).json({ error: "Payment was rejected for this order.", order: publicOrder(order) });
+    }
+    if (order.status !== "pending_payment") {
+      return res.status(409).json({ error: `Order is ${order.status}.`, order: publicOrder(order) });
+    }
+    if (order.paymentReviewStatus === "waiting_admin_confirmation") {
+      return res.json({
+        ok: true,
+        order: publicOrder(order),
+        message: "Payment already submitted. Waiting for admin confirmation.",
+      });
+    }
+
+    const buyerIdentity = resolveBuyerFromRequest(req);
+    if (buyerIdentity.buyerTelegramId) {
+      order.buyerTelegramId = order.buyerTelegramId || buyerIdentity.buyerTelegramId;
+      order.buyerUsername = order.buyerUsername || buyerIdentity.buyerUsername;
+    }
+    if (req.body?.buyerWalletAddress) {
+      order.buyerWalletAddress = String(req.body.buyerWalletAddress).trim();
+    }
+    const txHash = String(req.body?.txHash ?? "").trim();
+    if (txHash) order.txHash = txHash;
+    order.walletAppInfo = String(req.body?.walletAppInfo ?? "").trim();
+    order.paymentReviewStatus = "waiting_admin_confirmation";
+    order.paymentClaimedAt = new Date();
+    if (!order.marketplaceWalletAddress) {
+      const wallet = validateMarketplaceWallet();
+      if (wallet.friendlyAddress) order.marketplaceWalletAddress = wallet.friendlyAddress;
+    }
+    await order.save();
+
+    const gifts = await Gift.find({ listingId: { $in: order.listingIds } });
+    await notifyAdminPaymentClaim(order, gifts);
+
+    res.json({
+      ok: true,
+      order: publicOrder(order),
+      message: "Payment submitted. Admin will confirm shortly.",
+      autoTonVerify: AUTO_TON_VERIFY,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
 app.post("/orders/verify-payment", async (req, res, next) => {
   try {
+    if (!AUTO_TON_VERIFY) {
+      return res.status(503).json({
+        error: "Automatic TON verification is disabled. Submit payment and wait for admin confirmation.",
+        code: "AUTO_TON_VERIFY_DISABLED",
+      });
+    }
+
     const orderId = String(req.body?.orderId ?? "").trim();
     if (!orderId) {
       return res.status(400).json({ error: "orderId is required." });
@@ -714,18 +819,7 @@ app.post("/payments/test/:orderId/fail", async (req, res, next) => {
     order.status = "failed";
     order.cardPaymentStatus = "failed";
     await order.save();
-    await Gift.updateMany(
-      { listingId: { $in: order.listingIds }, listingSource: "manual_url", status: "reserved", escrowStatus: "reserved" },
-      { $set: { status: "approved", escrowStatus: "none" } }
-    );
-    await Gift.updateMany(
-      { listingId: { $in: order.listingIds }, listingSource: "manual_admin_verified", status: "reserved", escrowStatus: "reserved" },
-      { $set: { status: "listed", escrowStatus: "none" } }
-    );
-    await Gift.updateMany(
-      { listingId: { $in: order.listingIds }, listingSource: "escrow", status: "reserved", escrowStatus: "reserved" },
-      { $set: { status: "approved", escrowStatus: "listed" } }
-    );
+    await releaseReservedListingsForOrder(order);
     res.json({ ok: true, order: publicOrder(order) });
   } catch (e) {
     next(e);

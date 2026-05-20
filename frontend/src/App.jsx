@@ -8,6 +8,7 @@ import {
   getCardPaymentStatus,
   getGifts,
   getTonUzsRate,
+  submitOrderPayment,
   verifyOrderPayment,
 } from "./api";
 import GiftAnimatedHero from "./GiftAnimatedHero.jsx";
@@ -94,7 +95,9 @@ function checkoutStatusText(status) {
     case "wallet_confirmation":
       return "Confirm transaction in your wallet.";
     case "transaction_sent":
-      return "Transaction sent. Verifying payment...";
+      return "Transaction sent. Submitting payment claim...";
+    case "awaiting_admin_confirmation":
+      return "Payment sent. Waiting for admin confirmation.";
     case "verifying_payment":
       return "Verifying payment on TON...";
     case "opening_card_payment":
@@ -501,7 +504,7 @@ export default function App() {
       }
 
       setCheckoutState({ status: "wallet_confirmation", error: "", orderId: order.orderId });
-      await tonConnectUI.sendTransaction({
+      const txResult = await tonConnectUI.sendTransaction({
         validUntil: Math.floor(Date.now() / 1000) + 600,
         messages: [
           {
@@ -513,16 +516,23 @@ export default function App() {
       });
 
       setCheckoutState({ status: "transaction_sent", error: "", orderId: order.orderId });
-      setCheckoutState({ status: "verifying_payment", error: "", orderId: order.orderId });
-      await verifyOrderPayment({
-        orderId: order.orderId,
+      const txHash = String(txResult?.boc || txResult?.hash || "").trim();
+      const walletAppInfo = String(tonConnectUI?.wallet?.device?.appName || tonConnectUI?.wallet?.name || "").trim();
+      await submitOrderPayment(order.orderId, {
         buyerWalletAddress: walletAddress,
+        buyerTelegramId: tgUser?.id ? String(tgUser.id) : "",
+        buyerUsername: tgUser?.username ? String(tgUser.username) : "",
+        telegramUser: tgUser || undefined,
+        txHash,
+        walletAppInfo,
       });
 
-      cart.clear();
-      setCheckoutState({ status: "confirmed", error: "", orderId: order.orderId });
-      setSuccessToast("Payment confirmed. Gift listing updated.");
-      await loadGifts({ showSpinner: false });
+      setCheckoutState({
+        status: "awaiting_admin_confirmation",
+        error: "",
+        orderId: order.orderId,
+      });
+      setSuccessToast(`Payment submitted. Order ${order.orderId}. Admin will confirm shortly.`);
     } catch (error) {
       console.error(error);
       const msg =
@@ -1440,7 +1450,14 @@ function CartDrawer({
   const selectedProvider = paymentMethod?.type === "card" ? paymentMethod.provider : "";
   const selectedCardProvider = selectedProvider ? cardProviders?.[selectedProvider] : null;
   const providerDisabledReason = selectedCardProvider && !selectedCardProvider.enabled ? selectedCardProvider.disabledReason || "Provider not configured" : "";
-  const checkoutBusy = ["creating_order", "wallet_confirmation", "transaction_sent", "verifying_payment", "card_pending"].includes(checkoutState?.status);
+  const checkoutBusy = [
+    "creating_order",
+    "wallet_confirmation",
+    "transaction_sent",
+    "verifying_payment",
+    "awaiting_admin_confirmation",
+    "card_pending",
+  ].includes(checkoutState?.status);
 
   return (
     <div className="cartOverlay" role="presentation">
@@ -1561,6 +1578,9 @@ function CartDrawer({
               <p className={`cartCheckoutStatus mono cartCheckoutStatus--${checkoutState.status}`}>
                 {checkoutState.error || checkoutStatusText(checkoutState.status)}
               </p>
+            ) : null}
+            {checkoutState?.orderId && checkoutState.status === "awaiting_admin_confirmation" ? (
+              <p className="cartCheckoutStatus mono">Order ID: {checkoutState.orderId}</p>
             ) : null}
           </div>
           <div className="cartFooterActions">

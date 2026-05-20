@@ -76,6 +76,11 @@ export async function verifyOrderPayment(payload) {
   return res.data;
 }
 
+export async function submitOrderPayment(orderId, payload) {
+  const res = await client.post(`/orders/${encodeURIComponent(orderId)}/submit-payment`, payload);
+  return res.data;
+}
+
 export async function getOrder(orderId) {
   const res = await client.get(`/orders/${encodeURIComponent(orderId)}`);
   return res.data;

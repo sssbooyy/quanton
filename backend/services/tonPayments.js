@@ -1,10 +1,117 @@
 import axios from "axios";
+import { Address } from "@ton/core";
 import { MARKETPLACE_WALLET_ADDRESS, TON_API_KEY } from "../config.js";
 
 const TONAPI_BASE_URL = "https://tonapi.io/v2";
 
+export function sanitizeTonAddressEnv(raw) {
+  return String(raw ?? "")
+    .trim()
+    .replace(/^['"`]+|['"`]+$/g, "")
+    .replace(/[\r\n\t\u200b\u200c\u200d\ufeff\u00a0]/g, "")
+    .replace(/\s+/g, "");
+}
+
+function addressShapeChecks(address) {
+  const s = String(address || "");
+  return {
+    length: s.length,
+    looksFriendly: Address.isFriendly(s),
+    looksRaw: Address.isRaw(s),
+    looksBase64Url: /^[EUk0]?Q[A-Za-z0-9_-]{46,}$/.test(s),
+    looksHex64: /^[0-9a-fA-F]{64}$/.test(s),
+    hasQuoteChars: /['"`]/.test(s),
+    hasWhitespace: /\s/.test(s),
+    hasControlChars: /[\r\n\t]/.test(s),
+  };
+}
+
+/**
+ * @ton/core 0.63 exposes Address.parse, not parseSafe — guard parse failures here.
+ */
+export function parseTonAddressSafe(source) {
+  const cleaned = sanitizeTonAddressEnv(source);
+  if (!cleaned) return null;
+  if (typeof Address.parseSafe === "function") {
+    return Address.parseSafe(cleaned);
+  }
+  try {
+    return Address.parse(cleaned);
+  } catch {
+    return null;
+  }
+}
+
+export function validateMarketplaceWallet(raw = MARKETPLACE_WALLET_ADDRESS) {
+  const trimmed = sanitizeTonAddressEnv(raw);
+  const shape = addressShapeChecks(trimmed);
+
+  console.log("[ton] MARKETPLACE_WALLET_ADDRESS", {
+    configured: Boolean(raw),
+    trimmed,
+    ...shape,
+    tonApiKeyConfigured: Boolean(TON_API_KEY),
+  });
+
+  if (!trimmed) {
+    console.error("[ton] INVALID_MARKETPLACE_WALLET_ADDRESS", { reason: "empty_after_trim" });
+    return {
+      error: "MARKETPLACE_WALLET_ADDRESS is not configured.",
+      code: "INVALID_MARKETPLACE_WALLET_ADDRESS",
+    };
+  }
+
+  const parsed = parseTonAddressSafe(trimmed);
+  if (!parsed) {
+    console.error("[ton] INVALID_MARKETPLACE_WALLET_ADDRESS", {
+      trimmed,
+      ...shape,
+      hint: "Use a valid EQ/UQ friendly address or 0:<64-hex> raw address without quotes, spaces, or line breaks.",
+    });
+    return {
+      error:
+        "MARKETPLACE_WALLET_ADDRESS is invalid. Remove quotes, spaces, and line breaks from the env value.",
+      code: "INVALID_MARKETPLACE_WALLET_ADDRESS",
+    };
+  }
+
+  let bounceable = true;
+  let testOnly = false;
+  let format = "raw";
+  if (Address.isFriendly(trimmed)) {
+    const friendly = Address.parseFriendly(trimmed);
+    bounceable = friendly.isBounceable;
+    testOnly = friendly.isTestOnly;
+    format = "friendly";
+  }
+
+  const tonapiAddress = Address.isFriendly(trimmed)
+    ? trimmed
+    : parsed.toString({ bounceable: true, testOnly, urlSafe: true });
+
+  console.log("[ton] MARKETPLACE_WALLET_ADDRESS_OK", {
+    format,
+    bounceable,
+    testOnly,
+    workchain: parsed.workChain,
+    raw: parsed.toRawString(),
+    tonapiAddress,
+  });
+
+  return {
+    trimmed,
+    parsed,
+    tonapiAddress,
+    bounceable,
+    testOnly,
+    workchain: parsed.workChain,
+  };
+}
+
 export function normalizeTonAddress(address) {
-  return String(address || "").trim().toLowerCase();
+  const parsed = parseTonAddressSafe(address);
+  if (parsed) return parsed.toRawString().toLowerCase();
+  return sanitizeTonAddressEnv(address).toLowerCase();
 }
 
 export function tonToNanoString(value) {
@@ -78,22 +185,64 @@ function extractComment(msg) {
 }
 
 export async function findMatchingIncomingPayment(order) {
-  if (!MARKETPLACE_WALLET_ADDRESS) {
-    return { error: "MARKETPLACE_WALLET_ADDRESS is not configured." };
+  const wallet = validateMarketplaceWallet();
+  if (wallet.error) {
+    return { error: wallet.error, code: wallet.code };
   }
   if (!TON_API_KEY) {
-    return { error: "TON_API_KEY is not configured." };
+    return { error: "TON_API_KEY is not configured.", code: "TON_API_KEY_MISSING" };
   }
 
-  const url = `${TONAPI_BASE_URL}/blockchain/accounts/${encodeURIComponent(MARKETPLACE_WALLET_ADDRESS)}/transactions`;
-  const res = await axios.get(url, {
-    timeout: 15_000,
-    params: { limit: 50 },
-    headers: { Authorization: `Bearer ${TON_API_KEY}` },
+  const tonapiAddress = wallet.tonapiAddress;
+  const url = `${TONAPI_BASE_URL}/blockchain/accounts/${encodeURIComponent(tonapiAddress)}/transactions`;
+
+  console.log("[ton] TonAPI verification request", {
+    orderId: order?.orderId,
+    tonapiAddress,
+    addressLength: tonapiAddress.length,
+    bounceable: wallet.bounceable,
+    testOnly: wallet.testOnly,
+    workchain: wallet.workchain,
+    urlPath: `/blockchain/accounts/${tonapiAddress}/transactions`,
   });
 
+  let res;
+  try {
+    res = await axios.get(url, {
+      timeout: 15_000,
+      params: { limit: 50 },
+      headers: { Authorization: `Bearer ${TON_API_KEY}` },
+    });
+  } catch (e) {
+    const status = e?.response?.status;
+    const apiBody = e?.response?.data ?? null;
+    console.error("[ton] TonAPI verification request failed", {
+      orderId: order?.orderId,
+      status: status || "",
+      message: e?.message || String(e),
+      apiBody,
+      tonapiAddress,
+    });
+    if (status === 401) {
+      return {
+        error: "TON_API_KEY is invalid or unauthorized.",
+        code: "TON_API_UNAUTHORIZED",
+      };
+    }
+    if (status === 400 || status === 404) {
+      return {
+        error: "TonAPI rejected the marketplace wallet address. Check MARKETPLACE_WALLET_ADDRESS.",
+        code: "TON_API_BAD_ADDRESS",
+      };
+    }
+    return {
+      error: "TonAPI request failed while verifying payment.",
+      code: "TON_API_REQUEST_FAILED",
+    };
+  }
+
   const txs = Array.isArray(res.data?.transactions) ? res.data.transactions : [];
-  const expectedReceiver = normalizeTonAddress(MARKETPLACE_WALLET_ADDRESS);
+  const expectedReceiver = normalizeTonAddress(wallet.parsed);
   const expectedAmount = BigInt(tonToNanoString(order.totalTon));
   const createdUtime = Math.floor(new Date(order.createdAt).getTime() / 1000);
 

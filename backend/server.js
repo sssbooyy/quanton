@@ -26,7 +26,7 @@ import { createCorsMiddleware } from "./middleware/cors.js";
 import { connectMongo, disconnectMongo, isMongoConnected } from "./db/connect.js";
 import { Gift } from "./models/Gift.js";
 import { Order } from "./models/Order.js";
-import { findMatchingIncomingPayment } from "./services/tonPayments.js";
+import { findMatchingIncomingPayment, validateMarketplaceWallet } from "./services/tonPayments.js";
 import {
   assertDebugProvidersAllowed,
   getProvidersDebugResponse,
@@ -444,8 +444,15 @@ app.post("/orders/create", async (req, res, next) => {
   try {
     const paymentMethod = String(req.body?.paymentMethod || "ton").trim().toLowerCase();
     const cardProvider = String(req.body?.cardProvider || "").trim().toLowerCase();
-    if (paymentMethod === "ton" && !MARKETPLACE_WALLET_ADDRESS) {
-      return res.status(503).json({ error: "MARKETPLACE_WALLET_ADDRESS is not configured." });
+    let tonWallet = null;
+    if (paymentMethod === "ton") {
+      tonWallet = validateMarketplaceWallet();
+      if (tonWallet.error) {
+        return res.status(503).json({
+          error: tonWallet.error,
+          code: tonWallet.code || "INVALID_MARKETPLACE_WALLET_ADDRESS",
+        });
+      }
     }
     if (paymentMethod === "card") {
       if (!CARD_PROVIDERS.has(cardProvider)) {
@@ -547,8 +554,8 @@ app.post("/orders/create", async (req, res, next) => {
       ...publicOrder(order),
       comment: payload,
     };
-    if (paymentMethod === "ton") {
-      body.marketplaceWalletAddress = MARKETPLACE_WALLET_ADDRESS;
+    if (paymentMethod === "ton" && tonWallet?.tonapiAddress) {
+      body.marketplaceWalletAddress = tonWallet.tonapiAddress;
     }
     res.status(201).json(body);
   } catch (e) {
@@ -589,7 +596,17 @@ app.post("/orders/verify-payment", async (req, res, next) => {
 
     const payment = await findMatchingIncomingPayment(order);
     if (payment.error) {
-      return res.status(402).json({ error: payment.error, order: publicOrder(order) });
+      const status =
+        payment.code === "INVALID_MARKETPLACE_WALLET_ADDRESS" ||
+        payment.code === "TON_API_KEY_MISSING" ||
+        payment.code === "TON_API_UNAUTHORIZED"
+          ? 503
+          : 402;
+      return res.status(status).json({
+        error: payment.error,
+        code: payment.code || "",
+        order: publicOrder(order),
+      });
     }
 
     const used = await Order.findOne({ txHash: payment.txHash, orderId: { $ne: order.orderId } });

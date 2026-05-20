@@ -55,8 +55,17 @@ export const METADATA_SYNC_SECRET = process.env.METADATA_SYNC_SECRET?.trim() || 
 /** Optional shared secret for POST /admin/clear-listings (dangerous). */
 export const CLEAR_LISTINGS_SECRET = process.env.CLEAR_LISTINGS_SECRET?.trim() || "";
 
+/** Strip quotes, whitespace, and invisible chars from TON addresses in env. */
+function sanitizeTonAddressEnv(v) {
+  return String(v ?? "")
+    .trim()
+    .replace(/^['"`]+|['"`]+$/g, "")
+    .replace(/[\r\n\t\u200b\u200c\u200d\ufeff\u00a0]/g, "")
+    .replace(/\s+/g, "");
+}
+
 /** TON checkout */
-export const MARKETPLACE_WALLET_ADDRESS = process.env.MARKETPLACE_WALLET_ADDRESS?.trim() || "";
+export const MARKETPLACE_WALLET_ADDRESS = sanitizeTonAddressEnv(process.env.MARKETPLACE_WALLET_ADDRESS);
 export const TON_API_KEY = process.env.TON_API_KEY?.trim() || "";
 export const TELEGRAM_BUSINESS_CONNECTION_ID = process.env.TELEGRAM_BUSINESS_CONNECTION_ID?.trim() || "";
 export const TELEGRAM_WEBHOOK_URL = process.env.TELEGRAM_WEBHOOK_URL?.trim() || "";

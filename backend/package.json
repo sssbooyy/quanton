@@ -12,6 +12,7 @@
         "clear-listings": "node scripts/clearListings.js"
     },
     "dependencies": {
+        "@ton/core": "^0.63.1",
         "axios": "^1.16.1",
         "cors": "^2.8.5",
         "dotenv": "^16.4.7",

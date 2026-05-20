@@ -2,6 +2,8 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMining } from "../hooks/useMining.js";
 import MineLeaderboard from "../components/MineLeaderboard.jsx";
+import MineLevelCard from "../components/MineLevelCard.jsx";
+import MineLevelUpModal from "../components/MineLevelUpModal.jsx";
 import MineReferralCard from "../components/MineReferralCard.jsx";
 import { hapticImpact } from "../lib/telegramUser.js";
 
@@ -108,14 +110,14 @@ function MinePlayView({
   upgradeFlash,
   upgradingId,
   referralClaimMsg,
+  levelUp,
+  dismissLevelUp,
   setError,
   refresh,
   tap,
   claimDaily,
   purchaseUpgrade,
 }) {
-  const xpMax = profile?.xpToNextLevel > 0 ? profile.xp + profile.xpToNextLevel : profile?.xp || 1;
-  const xpPct = profile ? Math.min(100, (profile.xp / xpMax) * 100) : 0;
   const regenSec = profile?.regenSeconds ?? (profile?.energyRegenIntervalMs ?? 5000) / 1000;
 
   return (
@@ -135,12 +137,16 @@ function MinePlayView({
         </p>
       ) : null}
 
+      <MineLevelCard profile={profile} />
+
       <section className="mineStatsGrid" aria-label="Mining stats">
         <StatCard label="Shards" value={profile?.shards ?? 0} accent />
         <StatCard label="Per tap" value={profile?.shardsPerTap ?? 1} />
-        <StatCard label="Level" value={profile?.level ?? 1} />
+        <StatCard label="Total XP" value={profile?.xp ?? 0} />
         <StatCard label="Regen" value={`${regenSec}s`} />
       </section>
+
+      <MineLevelUpModal levelUp={levelUp} onClose={dismissLevelUp} />
 
       <section className="mineEnergy" aria-label="Energy">
         <div className="mineEnergy__labels">
@@ -158,12 +164,6 @@ function MinePlayView({
           />
         </div>
         <p className="mineEnergy__hint mono">+1 energy every {regenSec}s (server)</p>
-        <div className="mineXpTrack">
-          <div className="mineXpTrack__fill" style={{ width: `${xpPct}%` }} />
-        </div>
-        <p className="mineEnergy__hint mono">
-          {profile?.xpToNextLevel > 0 ? `${profile.xpToNextLevel} XP to next level` : "Max level for now"}
-        </p>
       </section>
 
       <section className="mineTapZone">

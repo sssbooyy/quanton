@@ -34,6 +34,7 @@ export function useMining() {
   const [referral, setReferral] = useState(null);
   const [referralLoading, setReferralLoading] = useState(false);
   const [referralClaimMsg, setReferralClaimMsg] = useState("");
+  const [levelUp, setLevelUp] = useState(null);
   const [floats, setFloats] = useState([]);
   const tapLock = useRef(false);
   const referralClaimed = useRef(false);
@@ -142,6 +143,20 @@ export function useMining() {
     return () => window.clearInterval(id);
   }, [identityReady, refresh, loadReferral, tryClaimPendingReferral]);
 
+  const handleLevelUpResponse = useCallback((data) => {
+    if (data?.leveledUp) {
+      setLevelUp({
+        newLevel: data.newLevel,
+        levelTitle: data.levelTitle,
+        levelRewardsEarned: data.levelRewardsEarned ?? 0,
+        levelsGained: data.levelsGained ?? [],
+      });
+      hapticNotification("success");
+    }
+  }, []);
+
+  const dismissLevelUp = useCallback(() => setLevelUp(null), []);
+
   const addFloat = useCallback((amount) => {
     const id = `${Date.now()}_${Math.random()}`;
     setFloats((prev) => [...prev.slice(-6), { id, amount }]);
@@ -162,6 +177,7 @@ export function useMining() {
       const data = await postMineTap(miningAuthBody({ tapCount: 1 }), miningAuthHeaders());
       if (data.profile) setProfile(data.profile);
       if (data.shardsEarned) addFloat(data.shardsEarned);
+      handleLevelUpResponse(data);
       console.log("[mining] tap ok", data.shardsEarned);
       return data;
     } catch (e) {
@@ -175,13 +191,14 @@ export function useMining() {
         tapLock.current = false;
       }, 80);
     }
-  }, [addFloat, profile?.energy, tapping]);
+  }, [addFloat, handleLevelUpResponse, profile?.energy, tapping]);
 
   const claimDaily = useCallback(async () => {
     try {
       setError("");
       const data = await postMineDaily(miningAuthBody(), miningAuthHeaders());
       if (data.profile) setProfile(data.profile);
+      handleLevelUpResponse(data);
       hapticNotification("success");
       console.log("[mining] daily claimed", data.reward);
       return data;
@@ -191,7 +208,7 @@ export function useMining() {
       hapticNotification("error");
       return null;
     }
-  }, []);
+  }, [handleLevelUpResponse]);
 
   const purchaseUpgrade = useCallback(async (upgradeId) => {
     if (!upgradeId || upgradingId) return null;
@@ -239,6 +256,8 @@ export function useMining() {
     referralLoading,
     referralClaimMsg,
     loadReferral,
+    levelUp,
+    dismissLevelUp,
     setError,
   };
 }

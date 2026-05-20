@@ -1,6 +1,11 @@
 import { User } from "../models/User.js";
 import { ensureUserReferralCode } from "./miningReferralService.js";
 import {
+  applyXpAndLevelRewards,
+  buildLevelProfileFields,
+  levelFromXp,
+} from "../config/miningLevels.js";
+import {
   BASE_MAX_ENERGY,
   UPGRADE_CATALOG,
   buildUpgradeProfileRow,
@@ -23,8 +28,6 @@ const DAILY_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 const tapRateBuckets = new Map();
 
-const LEVEL_XP_THRESHOLDS = [0, 0, 100, 250, 450, 700, 1000, 1400, 1900, 2500, 3200];
-
 export const MINING_DEFAULTS = {
   shards: 0,
   level: 1,
@@ -45,19 +48,8 @@ const PROFILE_ONLY_KEYS = new Set([
   "photoUrl",
 ]);
 
-function levelFromXp(xp) {
-  let level = 1;
-  for (let i = LEVEL_XP_THRESHOLDS.length - 1; i >= 1; i--) {
-    if (xp >= LEVEL_XP_THRESHOLDS[i]) level = i;
-  }
-  return Math.min(level, LEVEL_XP_THRESHOLDS.length - 1);
-}
-
-function xpToNextLevel(xp, level) {
-  const next = level + 1;
-  if (next >= LEVEL_XP_THRESHOLDS.length) return 0;
-  const need = LEVEL_XP_THRESHOLDS[next];
-  return Math.max(0, need - xp);
+function syncLevelFromXp(user) {
+  user.level = levelFromXp(user.xp);
 }
 
 function applyProfilePatch(user, profilePatch = {}) {
@@ -108,6 +100,7 @@ function ensureMiningFields(user, { isNewUser = false } = {}) {
     }
   }
   recalcMaxEnergy(user);
+  syncLevelFromXp(user);
   return user;
 }
 
@@ -166,16 +159,14 @@ function checkTapRateLimit(telegramId) {
 
 export function miningProfileResponse(user) {
   const upgrades = Object.keys(UPGRADE_CATALOG).map((id) => buildUpgradeProfileRow(user, id));
-  const level = levelFromXp(user.xp);
+  syncLevelFromXp(user);
   const regenIntervalMs = computeRegenIntervalMs(user);
   return {
     telegramId: user.telegramId,
     shards: user.shards,
     energy: user.energy,
     maxEnergy: user.maxEnergy,
-    level,
-    xp: user.xp,
-    xpToNextLevel: xpToNextLevel(user.xp, level),
+    ...buildLevelProfileFields(user),
     miningPower: user.miningPower,
     dailyStreak: user.dailyStreak,
     lastDailyClaim: user.lastDailyClaim || null,
@@ -288,9 +279,8 @@ export async function processMiningTap(telegramId, { tapCount = 1 } = {}) {
   user.energy -= taps;
   user.energyUpdatedAt = new Date();
   user.shards += shardsEarned;
-  user.xp += taps;
   user.totalTaps += taps;
-  user.level = levelFromXp(user.xp);
+  const levelResult = applyXpAndLevelRewards(user, taps);
   await user.save();
 
   console.log("[mining] tap", {
@@ -303,11 +293,14 @@ export async function processMiningTap(telegramId, { tapCount = 1 } = {}) {
     energyBefore,
     energyAfter: user.energy,
     totalTaps: user.totalTaps,
+    leveledUp: levelResult.leveledUp,
+    newLevel: levelResult.newLevel,
   });
 
   return {
     shardsEarned,
     taps,
+    ...levelResult,
     profile: miningProfileResponse(user),
   };
 }
@@ -407,15 +400,20 @@ export async function claimDailyReward(telegramId) {
   user.lastDailyClaim = new Date(now);
   const reward = dailyRewardForStreak(user.dailyStreak);
   user.shards += reward;
-  user.xp += Math.floor(reward / 2);
-  user.level = levelFromXp(user.xp);
+  const levelResult = applyXpAndLevelRewards(user, Math.floor(reward / 2));
   await user.save();
 
-  console.log("[mining] daily claim", { telegramId, streak: user.dailyStreak, reward });
+  console.log("[mining] daily claim", {
+    telegramId,
+    streak: user.dailyStreak,
+    reward,
+    leveledUp: levelResult.leveledUp,
+  });
 
   return {
     reward,
     streak: user.dailyStreak,
+    ...levelResult,
     profile: miningProfileResponse(user),
   };
 }

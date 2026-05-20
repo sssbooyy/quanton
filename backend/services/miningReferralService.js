@@ -13,15 +13,7 @@ import {
   normalizeReferralCode,
 } from "../config/miningReferral.js";
 
-const LEVEL_XP_THRESHOLDS = [0, 0, 100, 250, 450, 700, 1000, 1400, 1900, 2500, 3200];
-
-function levelFromXp(xp) {
-  let level = 1;
-  for (let i = LEVEL_XP_THRESHOLDS.length - 1; i >= 1; i--) {
-    if (xp >= LEVEL_XP_THRESHOLDS[i]) level = i;
-  }
-  return Math.min(level, LEVEL_XP_THRESHOLDS.length - 1);
-}
+import { applyXpAndLevelRewards } from "../config/miningLevels.js";
 
 function generateReferralCodeCandidate() {
   const bytes = crypto.randomBytes(REFERRAL_CODE_LENGTH);
@@ -141,12 +133,10 @@ export async function claimReferralReward(inviteeTelegramId, referralCodeInput, 
 
   invitee.invitedBy = inviter.telegramId;
   invitee.shards = Math.max(0, Number(invitee.shards) || 0) + INVITEE_SHARD_REWARD;
-  invitee.xp = Math.max(0, Number(invitee.xp) || 0) + INVITEE_XP_REWARD;
-  invitee.level = levelFromXp(invitee.xp);
+  applyXpAndLevelRewards(invitee, INVITEE_XP_REWARD);
 
   inviter.shards = Math.max(0, Number(inviter.shards) || 0) + INVITER_SHARD_REWARD;
-  inviter.xp = Math.max(0, Number(inviter.xp) || 0) + INVITER_XP_REWARD;
-  inviter.level = levelFromXp(inviter.xp);
+  applyXpAndLevelRewards(inviter, INVITER_XP_REWARD);
   inviter.referralCount = Math.max(0, Number(inviter.referralCount) || 0) + 1;
   inviter.referralRewardsEarned =
     Math.max(0, Number(inviter.referralRewardsEarned) || 0) + INVITER_SHARD_REWARD;

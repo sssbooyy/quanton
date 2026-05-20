@@ -1,4 +1,5 @@
 import { User } from "../models/User.js";
+import { levelFieldsForLeaderboard, levelFromXp } from "../config/miningLevels.js";
 import { isDemoTelegramId } from "../config/miningReferral.js";
 
 const LEADERBOARD_TYPES = new Set(["shards", "level", "taps", "referrals"]);
@@ -6,7 +7,7 @@ const LEADERBOARD_LIMIT = 100;
 
 const SORT_BY_TYPE = {
   shards: { shards: -1, xp: -1, totalTaps: -1 },
-  level: { level: -1, xp: -1, shards: -1 },
+  level: { xp: -1, level: -1, shards: -1 },
   taps: { totalTaps: -1, shards: -1, xp: -1 },
   referrals: { referralCount: -1, shards: -1, xp: -1 },
 };
@@ -31,7 +32,7 @@ function statForType(user, type) {
     case "shards":
       return user.shards ?? 0;
     case "level":
-      return user.level ?? 1;
+      return levelFromXp(user.xp ?? 0);
     case "taps":
       return user.totalTaps ?? 0;
     case "referrals":
@@ -42,13 +43,14 @@ function statForType(user, type) {
 }
 
 function mapLeaderboardRow(user, rank, type) {
+  const levelInfo = levelFieldsForLeaderboard(user);
   return {
     rank,
     telegramId: user.telegramId,
     username: displayName(user),
     firstName: user.firstName || "",
     photoUrl: user.photoUrl || "",
-    level: user.level ?? 1,
+    ...levelInfo,
     shards: user.shards ?? 0,
     totalTaps: user.totalTaps ?? 0,
     referralCount: user.referralCount ?? 0,
@@ -82,12 +84,16 @@ export async function getMiningLeaderboard(type = "shards", viewerTelegramId = "
       )
       .lean();
     if (viewer) {
-      const sortField = key === "referrals" ? "referralCount" : key === "taps" ? "totalTaps" : key;
-      const viewerVal = viewer[sortField] ?? 0;
-      const ahead = await User.countDocuments({
-        telegramId: { $not: /^demo_/ },
-        [sortField]: { $gt: viewerVal },
-      });
+      const sortField = key === "referrals" ? "referralCount" : key === "taps" ? "totalTaps" : key === "level" ? "xp" : key;
+      const viewerVal =
+        key === "level" ? levelFromXp(viewer.xp ?? 0) : (viewer[sortField] ?? 0);
+      const aheadQuery = { telegramId: { $not: /^demo_/ } };
+      if (key === "level") {
+        aheadQuery.xp = { $gt: viewer.xp ?? 0 };
+      } else {
+        aheadQuery[sortField] = { $gt: viewerVal };
+      }
+      const ahead = await User.countDocuments(aheadQuery);
       viewerRank = ahead + 1;
       viewerEntry = { ...mapLeaderboardRow(viewer, viewerRank, key), isViewer: true };
     }

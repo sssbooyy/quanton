@@ -546,6 +546,207 @@
   color: rgba(148, 163, 184, 0.5);
 }
 
+/* Level card */
+.mineLevelCard {
+  position: relative;
+  margin-bottom: 14px;
+  padding: 16px;
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.85), rgba(30, 27, 75, 0.55));
+  border: 1px solid color-mix(in srgb, var(--level-color, #38bdf8) 40%, transparent);
+  box-shadow: 0 0 28px color-mix(in srgb, var(--level-color, #38bdf8) 18%, transparent);
+  overflow: hidden;
+}
+
+.mineLevelCard__glow {
+  position: absolute;
+  inset: -20% 30% 40% -30%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--level-color, #38bdf8) 25%, transparent), transparent 65%);
+  pointer-events: none;
+}
+
+.mineLevelCard__top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.mineLevelCard__badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  padding: 8px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid color-mix(in srgb, var(--level-color, #38bdf8) 35%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--level-color, #38bdf8) 20%, transparent);
+}
+
+.mineLevelCard__medal {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.mineLevelCard__lvl {
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--level-color, #7dd3fc);
+}
+
+.mineLevelCard__kicker {
+  margin: 0 0 2px;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: rgba(148, 163, 184, 0.75);
+}
+
+.mineLevelCard__title {
+  margin: 0;
+  font-size: 1.2rem;
+  color: var(--level-color, #e0f2fe);
+  text-shadow: 0 0 24px color-mix(in srgb, var(--level-color, #38bdf8) 35%, transparent);
+}
+
+.mineLevelCard__xpLabels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: rgba(226, 232, 240, 0.75);
+  margin-bottom: 6px;
+}
+
+.mineLevelCard__track {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.mineLevelCard__fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--level-color, #38bdf8) 70%, #6366f1),
+    var(--level-color, #38bdf8)
+  );
+  box-shadow: 0 0 12px color-mix(in srgb, var(--level-color, #38bdf8) 50%, transparent);
+}
+
+.mineLevelCard__next {
+  margin: 0;
+  font-size: 10px;
+  color: rgba(148, 163, 184, 0.7);
+}
+
+.mineLevelCard__next strong {
+  color: var(--level-color, #a5b4fc);
+}
+
+.mineLevelCard--tier-elite .mineLevelCard__badge,
+.mineLevelCard--tier-legendary .mineLevelCard__badge {
+  animation: mineLevelPulse 2.5s ease-in-out infinite;
+}
+
+.mineLevelCard--tier-legendary {
+  border-color: rgba(249, 115, 22, 0.55);
+}
+
+@keyframes mineLevelPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 16px color-mix(in srgb, var(--level-color, #38bdf8) 25%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 28px color-mix(in srgb, var(--level-color, #38bdf8) 45%, transparent);
+  }
+}
+
+/* Level-up modal */
+.mineLevelUpBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(2, 6, 23, 0.82);
+  backdrop-filter: blur(8px);
+}
+
+.mineLevelUpModal {
+  position: relative;
+  width: 100%;
+  max-width: 320px;
+  padding: 28px 22px 22px;
+  border-radius: 20px;
+  text-align: center;
+  background: linear-gradient(160deg, rgba(30, 27, 75, 0.95), rgba(15, 23, 42, 0.98));
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  box-shadow: 0 0 48px rgba(56, 189, 248, 0.25);
+}
+
+.mineLevelUpModal__burst {
+  position: absolute;
+  inset: -30%;
+  background: radial-gradient(circle, rgba(250, 204, 21, 0.15), transparent 55%);
+  pointer-events: none;
+}
+
+.mineLevelUpModal__kicker {
+  margin: 0 0 6px;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: #fde68a;
+}
+
+.mineLevelUpModal__title {
+  margin: 0;
+  font-size: 2rem;
+  background: linear-gradient(135deg, #fde68a, #67e8f9);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.mineLevelUpModal__rank {
+  margin: 6px 0 12px;
+  font-size: 1.1rem;
+  color: #c4b5fd;
+}
+
+.mineLevelUpModal__multi {
+  margin: 0 0 8px;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.mineLevelUpModal__reward {
+  margin: 0 0 18px;
+  font-size: 14px;
+  color: #7dd3fc;
+}
+
+.mineLevelUpModal__btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 14px;
+  color: #0f172a;
+  cursor: pointer;
+  background: linear-gradient(135deg, #38bdf8, #a78bfa);
+  box-shadow: 0 6px 24px rgba(56, 189, 248, 0.35);
+}
+
 .mineSuccess {
   padding: 10px 12px;
   margin-bottom: 12px;

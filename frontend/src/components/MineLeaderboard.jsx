@@ -36,7 +36,12 @@ function LeaderboardRow({ entry, type, isViewer }) {
       <Avatar entry={entry} />
       <div className="mineLbRow__meta">
         <span className="mineLbRow__name">{entry.username}</span>
-        <span className="mineLbRow__sub mono">Lv {entry.level ?? 1}</span>
+        <span
+          className="mineLbRow__sub mono"
+          style={{ color: entry.levelColor || undefined }}
+        >
+          Lv {entry.level ?? 1} · {entry.levelTitle || "Miner"}
+        </span>
       </div>
       <span className="mineLbRow__stat mono">
         {formatLeaderboardStat(entry, type)}

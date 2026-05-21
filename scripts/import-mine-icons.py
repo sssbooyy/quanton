@@ -32,14 +32,25 @@ def find_source(key: str) -> Path:
     return matches[0]
 
 
-def key_black(im: Image.Image, threshold: int = 36) -> Image.Image:
+def key_background(im: Image.Image) -> Image.Image:
+    """Remove black backgrounds and dark UI tile boxes baked into assets."""
     px = im.load()
     w, h = im.size
     for y in range(h):
         for x in range(w):
             r, g, b, a = px[x, y]
-            if r <= threshold and g <= threshold and b <= threshold:
+            if a < 8:
+                continue
+            peak = max(r, g, b)
+            low = min(r, g, b)
+            # Near-black backdrop
+            if peak <= 48:
                 px[x, y] = (0, 0, 0, 0)
+                continue
+            # Dark purple/grey icon tiles and frames
+            if peak <= 72 and (r + g + b) <= 140 and (peak - low) <= 28:
+                if b >= r - 8 or peak <= 58:
+                    px[x, y] = (0, 0, 0, 0)
     return im
 
 
@@ -75,8 +86,15 @@ def crop_shards(src: Image.Image) -> Image.Image:
     return src
 
 
+def find_mine_tap_source() -> Path:
+    hero = sorted(ASSETS.glob("image-2848763b*.png"))
+    if hero:
+        return hero[0]
+    return find_source("Mine")
+
+
 def process(src: Image.Image, target: int = 128) -> Image.Image:
-    icon = key_black(src.convert("RGBA"))
+    icon = key_background(src.convert("RGBA"))
     icon = trim(icon)
     mx = max(icon.size)
     if mx > target:
@@ -88,18 +106,40 @@ def process(src: Image.Image, target: int = 128) -> Image.Image:
     return icon
 
 
+SHEET_ONLY = {
+    "multi-tap", "recharge", "rank-badge", "multiplier", "nav-market", "nav-mine",
+    "nav-activity", "nav-profile", "crate-common", "crate-rare", "crate-epic",
+    "crown-gold", "crown-silver", "crown-bronze", "top-badge", "sync", "close",
+    "info", "settings", "online", "offline", "xp", "time", "streak", "reward",
+    "bonus", "protect", "critical", "lucky", "multi-x10", "auto-mining",
+    "badge-rookie", "badge-gift-hunter", "badge-shard-collector", "badge-rare-seeker",
+    "badge-market-raider", "badge-whale-scout", "badge-quanton-elite", "badge-legendary",
+}
+
+
+def reprocess_sheet_icons(target: int = 128) -> None:
+    for path in sorted(OUT.glob("*.png")):
+        if path.stem not in SHEET_ONLY:
+            continue
+        icon = process(Image.open(path))
+        icon.save(path, optimize=True)
+        print(f"reprocessed {path.name} ({icon.size})")
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     for key, outputs in IMPORTS.items():
-        path = find_source(key)
+        path = find_mine_tap_source() if key == "Mine" else find_source(key)
         src = Image.open(path)
         if key == "Shards":
             src = crop_shards(src)
-        icon = process(src)
+        t = 256 if key == "Mine" else 128
+        icon = process(src, target=t)
         for name in outputs:
             out = OUT / f"{name}.png"
             icon.save(out, optimize=True)
             print(f"{path.name} -> {name}.png ({icon.size})")
+    reprocess_sheet_icons()
 
 
 if __name__ == "__main__":

@@ -164,11 +164,10 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border: 1px solid rgba(168, 85, 247, 0.35);
-  background: rgba(0, 0, 0, 0.35);
+  border: none;
+  background: transparent;
   color: var(--mine-muted);
-  border-radius: 10px;
-  padding: 6px 10px;
+  padding: 4px 6px;
   font-size: 10px;
   cursor: pointer;
 }
@@ -273,11 +272,10 @@
   align-items: center;
   gap: 4px;
   min-width: 52px;
-  padding: 8px;
-  border-radius: 14px;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid color-mix(in srgb, var(--level-color, #a855f7) 40%, transparent);
-  box-shadow: 0 0 18px color-mix(in srgb, var(--level-color, #a855f7) 25%, transparent);
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 .mineLevelCard__medal {
@@ -516,21 +514,24 @@
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  width: 48px;
-  padding: 8px 4px;
-  border: 1px solid rgba(168, 85, 247, 0.2);
-  border-radius: 14px;
-  background: rgba(8, 6, 18, 0.75);
-  backdrop-filter: blur(8px);
+  width: 52px;
+  padding: 4px 2px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
   color: var(--mine-muted);
   cursor: pointer;
-  transition: border-color 0.2s, box-shadow 0.2s, color 0.2s;
+  transition: color 0.2s, filter 0.2s;
 }
 
 .mineSideBtn--highlight {
-  border-color: rgba(168, 85, 247, 0.55);
   color: #e9d5ff;
-  box-shadow: 0 0 16px rgba(168, 85, 247, 0.25);
+}
+
+.mineSideBtn--highlight .mineIcon__img {
+  filter: drop-shadow(0 0 14px rgba(168, 85, 247, 0.85))
+    drop-shadow(0 4px 12px rgba(0, 0, 0, 0.45));
 }
 
 .mineSideBtn--disabled {
@@ -830,10 +831,9 @@
   justify-content: center;
   min-width: 52px;
   min-height: 52px;
-  border-radius: 14px;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(168, 85, 247, 0.2);
-  box-shadow: inset 0 0 16px rgba(168, 85, 247, 0.1);
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 .mineUpg__head {
@@ -1075,11 +1075,10 @@
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid color-mix(in srgb, var(--level-color, #a855f7) 45%, transparent);
-  box-shadow: 0 0 20px color-mix(in srgb, var(--level-color, #a855f7) 25%, transparent);
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 .mineProfileBadge__lvl {

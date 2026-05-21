@@ -161,6 +161,9 @@
 }
 
 .mineTopBar__sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: 1px solid rgba(168, 85, 247, 0.35);
   background: rgba(0, 0, 0, 0.35);
   color: var(--mine-muted);
@@ -268,6 +271,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 4px;
   min-width: 52px;
   padding: 8px;
   border-radius: 14px;
@@ -277,7 +281,9 @@
 }
 
 .mineLevelCard__medal {
-  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .mineLevelCard__lvl {
@@ -367,9 +373,79 @@
 }
 
 .mineStatPill__icon {
-  font-size: 16px;
-  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+}
+
+/* Neon game icons */
+.mineIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--mine-icon-size, 40px);
+  height: var(--mine-icon-size, 40px);
+  flex-shrink: 0;
+}
+
+.mineIcon__img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.55));
+}
+
+.mineIcon--glow-purple .mineIcon__img {
+  filter: drop-shadow(0 0 10px rgba(168, 85, 247, 0.55))
+    drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+}
+
+.mineIcon--glow-green .mineIcon__img {
+  filter: drop-shadow(0 0 10px rgba(34, 197, 94, 0.5))
+    drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+}
+
+.mineIcon--glow-gold .mineIcon__img {
+  filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.55))
+    drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+}
+
+.mineIcon--glow-cyan .mineIcon__img {
+  filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.5))
+    drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+}
+
+.mineIcon--pulse {
+  animation: mineIconPulse 2.4s ease-in-out infinite;
+}
+
+.mineIcon--active .mineIcon__img {
+  transform: scale(1.05);
+}
+
+@keyframes mineIconPulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.4));
+  }
+  50% {
+    filter: drop-shadow(0 0 16px rgba(168, 85, 247, 0.75));
+  }
+}
+
+.mineIcon--lg {
+  --mine-icon-size: 56px;
+}
+
+.mineIcon--xl {
+  --mine-icon-size: 120px;
+}
+
+.mineIcon--hero {
+  --mine-icon-size: 88px;
 }
 
 .mineStatPill__meta {
@@ -463,8 +539,10 @@
 }
 
 .mineSideBtn__icon {
-  font-size: 18px;
-  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
 }
 
 .mineSideBtn__label {
@@ -584,11 +662,20 @@
 
 .mineCrystal__gem {
   position: relative;
-  width: 100px;
-  height: 110px;
+  width: min(140px, 38vw);
+  height: min(140px, 38vw);
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.mineCrystal__gemImg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 0 22px rgba(168, 85, 247, 0.65))
+    drop-shadow(0 8px 20px rgba(0, 0, 0, 0.45));
+  pointer-events: none;
 }
 
 .mineCrystal__core {
@@ -740,7 +827,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 26px;
+  min-width: 52px;
+  min-height: 52px;
   border-radius: 14px;
   background: rgba(0, 0, 0, 0.35);
   border: 1px solid rgba(168, 85, 247, 0.2);
@@ -985,6 +1073,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 6px;
   padding: 10px 12px;
   border-radius: 14px;
   background: rgba(0, 0, 0, 0.4);
@@ -1024,6 +1113,10 @@
 }
 
 .mineProfileStat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
   padding: 12px;
   border-radius: 14px;
   text-align: center;
@@ -1046,6 +1139,17 @@
 .mineProfileInvite {
   padding: 16px;
   border-radius: 18px;
+}
+
+.mineProfileInvite__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.mineProfileInvite__head h3 {
+  margin: 0;
 }
 
 .mineProfileInvite__kicker {
@@ -1142,6 +1246,18 @@
   inset: -25%;
   background: radial-gradient(circle, rgba(217, 70, 239, 0.2), transparent 55%);
   pointer-events: none;
+}
+
+.mineLevelUpModal__icon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.mineLbCrown {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-right: 4px;
 }
 
 .mineLevelUpModal__kicker {

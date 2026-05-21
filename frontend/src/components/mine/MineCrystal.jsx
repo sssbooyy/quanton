@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
+import { mineIcons } from "../../lib/mineIcons.js";
 
 export default function MineCrystal({ profile, tapping, floats, onTap }) {
   const energy = profile?.energy ?? 0;
@@ -37,10 +38,23 @@ export default function MineCrystal({ profile, tapping, floats, onTap }) {
         aria-label="Tap to mine shards"
       >
         <span className="mineCrystal__gem" aria-hidden="true">
-          <span className="mineCrystal__facet mineCrystal__facet--1" />
-          <span className="mineCrystal__facet mineCrystal__facet--2" />
-          <span className="mineCrystal__facet mineCrystal__facet--3" />
-          <span className="mineCrystal__core" />
+          <motion.img
+            src={mineIcons.mineTap}
+            alt=""
+            className="mineCrystal__gemImg"
+            draggable={false}
+            loading="eager"
+            animate={
+              tapping
+                ? { scale: [1, 1.06, 1], rotate: [0, -2, 2, 0] }
+                : { scale: [1, 1.02, 1] }
+            }
+            transition={
+              tapping
+                ? { duration: 0.35 }
+                : { duration: 2.8, repeat: Infinity, ease: "easeInOut" }
+            }
+          />
         </span>
         <span className="mineCrystal__cta">TAP TO MINE</span>
         <span className="mineCrystal__hint mono">

@@ -1,4 +1,6 @@
 import { motion } from "framer-motion";
+import MineIcon from "./MineIcon.jsx";
+import { sideDockIcon } from "../../lib/mineIcons.js";
 
 export default function MineSideDock({ side, actions }) {
   return (
@@ -14,7 +16,13 @@ export default function MineSideDock({ side, actions }) {
           title={action.label}
         >
           <span className="mineSideBtn__icon" aria-hidden="true">
-            {action.icon}
+            <MineIcon
+              src={sideDockIcon(action.id)}
+              size={36}
+              glow="purple"
+              pulse={action.highlight}
+              active={!action.disabled && action.highlight}
+            />
           </span>
           <span className="mineSideBtn__label">{action.label}</span>
           {action.badge ? <span className="mineSideBtn__badge">{action.badge}</span> : null}

@@ -1,5 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { hapticNotification } from "../lib/telegramUser.js";
+import MineIcon from "./mine/MineIcon.jsx";
+import { mineIcons } from "../lib/mineIcons.js";
 
 export default function MineLevelUpModal({ levelUp, onClose }) {
   if (!levelUp) return null;
@@ -31,6 +33,9 @@ export default function MineLevelUpModal({ levelUp, onClose }) {
           aria-labelledby="level-up-title"
         >
           <div className="mineLevelUpModal__burst" aria-hidden="true" />
+          <div className="mineLevelUpModal__icon">
+            <MineIcon src={mineIcons.levelUp} size={72} glow="purple" pulse lazy={false} />
+          </div>
           <p className="mineLevelUpModal__kicker mono">LEVEL UP</p>
           <h2 id="level-up-title" className="mineLevelUpModal__title">
             Level {top.level}

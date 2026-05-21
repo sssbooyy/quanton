@@ -1,21 +1,12 @@
 import { motion } from "framer-motion";
-
-const TIER_MEDAL = {
-  rookie: "⛏️",
-  hunter: "🎁",
-  collector: "💎",
-  seeker: "🔮",
-  raider: "⚔️",
-  whale: "🐋",
-  elite: "✦",
-  legendary: "👑",
-};
+import MineIcon from "./mine/MineIcon.jsx";
+import { tierToBadge } from "../lib/mineIcons.js";
 
 export default function MineLevelCard({ profile }) {
   if (!profile) return null;
 
   const tier = profile.levelTier || "rookie";
-  const medal = TIER_MEDAL[tier] || "⛏️";
+  const badgeSrc = tierToBadge(tier);
   const pct = profile.progressPercent ?? 0;
   const color = profile.levelColor || "#38bdf8";
 
@@ -31,7 +22,9 @@ export default function MineLevelCard({ profile }) {
       <div className="mineLevelCard__glow" aria-hidden="true" />
       <div className="mineLevelCard__top">
         <div className="mineLevelCard__badge" aria-hidden="true">
-          <span className="mineLevelCard__medal">{medal}</span>
+          <span className="mineLevelCard__medal">
+            <MineIcon src={badgeSrc} size={56} glow="purple" pulse className="mineIcon--hero" />
+          </span>
           <span className="mineLevelCard__lvl mono">Lv {profile.level ?? 1}</span>
         </div>
         <div className="mineLevelCard__titles">

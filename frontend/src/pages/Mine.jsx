@@ -9,6 +9,8 @@ import MineLeaderboard from "../components/MineLeaderboard.jsx";
 import MineLevelCard from "../components/MineLevelCard.jsx";
 import MineLevelUpModal from "../components/MineLevelUpModal.jsx";
 import { hapticImpact } from "../lib/telegramUser.js";
+import MineIcon from "../components/mine/MineIcon.jsx";
+import { mineIcons } from "../lib/mineIcons.js";
 
 const UPGRADE_ORDER = ["multi_tap", "turbo_miner", "bigger_battery", "faster_recharge"];
 
@@ -18,11 +20,11 @@ function sortUpgrades(upgrades = []) {
   );
 }
 
-function StatPill({ icon, label, value, progress }) {
+function StatPill({ iconSrc, iconGlow, label, value, progress }) {
   return (
     <div className="mineStatPill glass">
       <span className="mineStatPill__icon" aria-hidden="true">
-        {icon}
+        <MineIcon src={iconSrc} size={32} glow={iconGlow} />
       </span>
       <div className="mineStatPill__meta">
         <span className="mineStatPill__label">{label}</span>
@@ -86,7 +88,6 @@ function MinePlayView({
   const leftActions = [
     {
       id: "daily",
-      icon: "🎁",
       label: "Daily",
       badge: profile?.canClaimDaily ? "!" : null,
       disabled: !profile?.canClaimDaily,
@@ -98,7 +99,6 @@ function MinePlayView({
     },
     {
       id: "missions",
-      icon: "📋",
       label: "Missions",
       disabled: true,
       onClick: () => hapticImpact("light"),
@@ -108,7 +108,6 @@ function MinePlayView({
   const rightActions = [
     {
       id: "invite",
-      icon: "🤝",
       label: "Invite",
       onClick: () => {
         hapticImpact("light");
@@ -117,21 +116,18 @@ function MinePlayView({
     },
     {
       id: "boost",
-      icon: "🚀",
       label: "Boost",
       disabled: true,
       onClick: () => hapticImpact("light"),
     },
     {
       id: "crates",
-      icon: "📦",
       label: "Crates",
       disabled: true,
       onClick: () => hapticImpact("light"),
     },
     {
       id: "leaders",
-      icon: "🏆",
       label: "Leaders",
       highlight: true,
       onClick: () => {
@@ -163,13 +159,14 @@ function MinePlayView({
 
       <div className="mineStatStrip">
         <StatPill
-          icon="⚡"
+          iconSrc={mineIcons.energy}
+          iconGlow="green"
           label="Energy"
           value={`${profile?.energy ?? 0}/${profile?.maxEnergy ?? 0}`}
           progress={energyPct}
         />
-        <StatPill icon="💎" label="Per tap" value={profile?.shardsPerTap ?? 1} />
-        <StatPill icon="👆" label="Speed" value={`${profile?.maxTapsPerSecond ?? 10}/s`} />
+        <StatPill iconSrc={mineIcons.shards} iconGlow="purple" label="Per tap" value={profile?.shardsPerTap ?? 1} />
+        <StatPill iconSrc={mineIcons.multiTap} iconGlow="purple" label="Speed" value={`${profile?.maxTapsPerSecond ?? 10}/s`} />
       </div>
 
       <section className="mineArena" aria-label="Mining">
@@ -235,6 +232,7 @@ export default function Mine() {
           <h1 className="mineTopBar__title">Shard Mining</h1>
         </div>
         <button type="button" className="mineTopBar__sync mono" onClick={() => mining.refresh()}>
+          <MineIcon src={mineIcons.sync} size={18} glow="purple" lazy={false} />
           Sync
         </button>
       </header>

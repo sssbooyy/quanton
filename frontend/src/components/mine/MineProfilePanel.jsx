@@ -1,6 +1,8 @@
 import { motion } from "framer-motion";
 import { getTelegramUser } from "../../lib/telegramUser.js";
 import { hapticImpact, hapticNotification } from "../../lib/telegramUser.js";
+import MineIcon from "./MineIcon.jsx";
+import { mineIcons, tierToBadge } from "../../lib/mineIcons.js";
 
 function displayUsername() {
   const tg = getTelegramUser();
@@ -54,6 +56,12 @@ export default function MineProfilePanel({ profile, referral, loading, onCopy })
           className="mineProfileBadge"
           style={{ "--level-color": profile?.levelColor || "#a855f7" }}
         >
+          <MineIcon
+            src={tierToBadge(profile?.levelTier || "rookie")}
+            size={64}
+            glow="purple"
+            pulse
+          />
           <span className="mineProfileBadge__lvl mono">Lv {profile?.level ?? 1}</span>
           <span className="mineProfileBadge__rank">{profile?.levelTitle || "Miner"}</span>
         </div>
@@ -65,18 +73,22 @@ export default function MineProfilePanel({ profile, referral, loading, onCopy })
 
       <div className="mineProfileGrid">
         <div className="mineProfileStat glass">
+          <MineIcon src={mineIcons.shards} size={28} glow="purple" />
           <span className="mineProfileStat__val mono">{(profile?.shards ?? 0).toLocaleString()}</span>
           <span className="mineProfileStat__label">Total shards</span>
         </div>
         <div className="mineProfileStat glass">
+          <MineIcon src={mineIcons.multiTap} size={28} glow="purple" />
           <span className="mineProfileStat__val mono">{(profile?.totalTaps ?? 0).toLocaleString()}</span>
           <span className="mineProfileStat__label">Total taps</span>
         </div>
         <div className="mineProfileStat glass">
+          <MineIcon src={mineIcons.turboMiner} size={28} glow="gold" />
           <span className="mineProfileStat__val mono">{upgradeLevels}</span>
           <span className="mineProfileStat__label">Upgrade levels</span>
         </div>
         <div className="mineProfileStat glass">
+          <MineIcon src={mineIcons.invite} size={28} glow="cyan" />
           <span className="mineProfileStat__val mono">{referral?.referralCount ?? 0}</span>
           <span className="mineProfileStat__label">Friends invited</span>
         </div>
@@ -84,7 +96,10 @@ export default function MineProfilePanel({ profile, referral, loading, onCopy })
 
       <div className="mineProfileInvite glass">
         <p className="mineProfileInvite__kicker mono">REFERRAL</p>
-        <h3>Invite Friends</h3>
+        <div className="mineProfileInvite__head">
+          <MineIcon src={mineIcons.invite} size={40} glow="cyan" pulse />
+          <h3>Invite Friends</h3>
+        </div>
         <p className="mineProfileInvite__sub">
           Earn +{referral?.inviterReward?.shards ?? 500} shards per friend. They get a starter bonus too.
         </p>

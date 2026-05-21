@@ -4,11 +4,17 @@ import {
   leaderboardStatLabel,
   useMiningLeaderboard,
 } from "../hooks/useMiningLeaderboard.js";
+import MineIcon from "./mine/MineIcon.jsx";
+import { crownIcon } from "../lib/mineIcons.js";
 
 function CrownIcon({ badge }) {
-  if (!badge) return null;
-  const label = badge === "gold" ? "👑" : badge === "silver" ? "🥈" : "🥉";
-  return <span className={`mineLbCrown mineLbCrown--${badge}`} aria-hidden="true">{label}</span>;
+  const src = crownIcon(badge);
+  if (!src) return null;
+  return (
+    <span className={`mineLbCrown mineLbCrown--${badge}`} aria-hidden="true">
+      <MineIcon src={src} size={22} glow={badge === "gold" ? "gold" : badge === "silver" ? "cyan" : "purple"} />
+    </span>
+  );
 }
 
 function Avatar({ entry }) {

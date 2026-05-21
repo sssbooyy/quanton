@@ -1,11 +1,6 @@
 import { motion } from "framer-motion";
-
-const UPGRADE_ICONS = {
-  multi_tap: "👆",
-  turbo_miner: "⚡",
-  bigger_battery: "🔋",
-  faster_recharge: "⏱️",
-};
+import MineIcon from "./MineIcon.jsx";
+import { mineIcons, upgradeToIcon } from "../../lib/mineIcons.js";
 
 export default function MineUpgradeCard({ upgrade, shards, onBuy, purchasing, flashSuccess }) {
   const lvl = upgrade?.level ?? 0;
@@ -16,7 +11,13 @@ export default function MineUpgradeCard({ upgrade, shards, onBuy, purchasing, fl
   const busy = purchasing === upgrade?.id;
   const showGlow = canAfford && !busy;
   const justBought = flashSuccess && flashSuccess.upgradeId === upgrade?.id;
-  const icon = UPGRADE_ICONS[upgrade?.id] || "✦";
+  const iconSrc = upgradeToIcon(upgrade?.id);
+  const iconGlow =
+    upgrade?.id === "bigger_battery"
+      ? "green"
+      : upgrade?.id === "faster_recharge"
+        ? "gold"
+        : "purple";
 
   return (
     <motion.article
@@ -26,7 +27,7 @@ export default function MineUpgradeCard({ upgrade, shards, onBuy, purchasing, fl
       animate={justBought ? { scale: [1, 1.02, 1] } : { scale: 1 }}
     >
       <div className="mineUpg__icon" aria-hidden="true">
-        {icon}
+        <MineIcon src={iconSrc} size={44} glow={iconGlow} pulse={showGlow} />
       </div>
       <div className="mineUpg__body">
         <div className="mineUpg__head">
@@ -46,7 +47,10 @@ export default function MineUpgradeCard({ upgrade, shards, onBuy, purchasing, fl
           {isMaxed ? (
             <span className="mineUpg__maxed mono">MAXED</span>
           ) : (
-            <span className="mineUpg__cost mono">{cost?.toLocaleString()} ◆</span>
+            <span className="mineUpg__cost mono">
+              {cost?.toLocaleString()}{" "}
+              <MineIcon src={mineIcons.shards} size={14} glow="purple" />
+            </span>
           )}
           <button
             type="button"

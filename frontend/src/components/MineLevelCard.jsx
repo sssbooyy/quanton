@@ -9,6 +9,7 @@ export default function MineLevelCard({ profile }) {
   const badgeSrc = tierToBadge(tier);
   const pct = profile.progressPercent ?? 0;
   const color = profile.levelColor || "#38bdf8";
+  const level = profile.level ?? 1;
 
   return (
     <motion.section
@@ -20,42 +21,47 @@ export default function MineLevelCard({ profile }) {
       aria-label="Level progress"
     >
       <div className="mineLevelCard__glow" aria-hidden="true" />
-      <div className="mineLevelCard__top">
+
+      <div className="mineLevelCard__row">
         <div className="mineLevelCard__badge" aria-hidden="true">
-          <span className="mineLevelCard__medal">
-            <MineIcon src={badgeSrc} size={72} glow="purple" pulse className="mineIcon--hero" />
-          </span>
-          <span className="mineLevelCard__lvl mono">Lv {profile.level ?? 1}</span>
+          <MineIcon src={badgeSrc} size={64} glow="purple" pulse className="mineIcon--hero" />
         </div>
-        <div className="mineLevelCard__titles">
-          <p className="mineLevelCard__kicker mono">RANK</p>
-          <h2 className="mineLevelCard__title">{profile.levelTitle || "Rookie Miner"}</h2>
+
+        <div className="mineLevelCard__main">
+          <p className="mineLevelCard__level mono">Level {level}</p>
+          <p className="mineLevelCard__title">{profile.levelTitle || "Rookie Miner"}</p>
+          <div className="mineLevelCard__track" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+            <motion.div
+              className="mineLevelCard__fill"
+              initial={false}
+              animate={{ width: `${pct}%` }}
+              transition={{ type: "spring", stiffness: 120, damping: 22 }}
+            />
+          </div>
+          <p className="mineLevelCard__xp mono">
+            {profile.currentLevelXp ?? 0} / {profile.nextLevelXp ?? 100} XP
+          </p>
+        </div>
+
+        <div className="mineLevelCard__aside">
+          {profile.nextRank ? (
+            <>
+              <div className="mineLevelCard__nextBlock">
+                <span className="mineLevelCard__nextLabel mono">Next rank</span>
+                <span className="mineLevelCard__nextTitle">{profile.nextRank.nextRankTitle}</span>
+                <span className="mineLevelCard__nextLvl mono">
+                  at Level {profile.nextRank.nextRankAtLevel}
+                </span>
+              </div>
+              <span className="mineLevelCard__chevron" aria-hidden="true">
+                ›
+              </span>
+            </>
+          ) : (
+            <span className="mineLevelCard__maxed mono">Legendary</span>
+          )}
         </div>
       </div>
-
-      <div className="mineLevelCard__xpLabels">
-        <span className="mono">
-          {profile.currentLevelXp ?? 0} / {profile.nextLevelXp ?? 100} XP
-        </span>
-        <span className="mono">{pct}%</span>
-      </div>
-      <div className="mineLevelCard__track">
-        <motion.div
-          className="mineLevelCard__fill"
-          initial={false}
-          animate={{ width: `${pct}%` }}
-          transition={{ type: "spring", stiffness: 120, damping: 22 }}
-        />
-      </div>
-
-      {profile.nextRank ? (
-        <p className="mineLevelCard__next mono">
-          Next rank: <strong>{profile.nextRank.nextRankTitle}</strong> at Level{" "}
-          {profile.nextRank.nextRankAtLevel}
-        </p>
-      ) : (
-        <p className="mineLevelCard__next mono">Max rank achieved — Legendary status</p>
-      )}
     </motion.section>
   );
 }

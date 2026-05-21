@@ -489,7 +489,7 @@
   align-items: center;
   gap: 4px;
   margin-bottom: 8px;
-  min-height: 240px;
+  min-height: 300px;
 }
 
 .mineArenaHint {
@@ -575,7 +575,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 220px;
+  min-height: 280px;
 }
 
 .mineCrystalShards {
@@ -603,8 +603,8 @@
 
 .mineCrystalAura {
   position: absolute;
-  width: min(200px, 55vw);
-  height: min(200px, 55vw);
+  width: min(280px, 72vw);
+  height: min(280px, 72vw);
   border-radius: 50%;
   background: radial-gradient(circle, rgba(168, 85, 247, 0.35) 0%, transparent 68%);
   animation: mineAura 2.8s ease-in-out infinite;
@@ -613,8 +613,8 @@
 
 .mineCrystalRings {
   position: absolute;
-  width: min(190px, 52vw);
-  height: min(190px, 52vw);
+  width: min(265px, 68vw);
+  height: min(265px, 68vw);
   border-radius: 50%;
   border: 1px dashed rgba(168, 85, 247, 0.25);
   animation: mineSpin 14s linear infinite;
@@ -647,8 +647,8 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  width: min(168px, 46vw);
-  height: min(168px, 46vw);
+  width: min(240px, 62vw);
+  height: min(240px, 62vw);
   border: none;
   background: transparent;
   cursor: pointer;
@@ -662,8 +662,8 @@
 
 .mineCrystal__gem {
   position: relative;
-  width: min(168px, 44vw);
-  height: min(168px, 44vw);
+  width: min(240px, 62vw);
+  height: min(240px, 62vw);
   display: flex;
   align-items: center;
   justify-content: center;

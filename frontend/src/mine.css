@@ -796,9 +796,9 @@
 
 .mineUpg {
   display: grid;
-  grid-template-columns: 48px 1fr;
-  gap: 12px;
-  padding: 12px;
+  grid-template-columns: 88px 1fr;
+  gap: 14px;
+  padding: 14px 14px 14px 12px;
   border-radius: 16px;
   background: linear-gradient(135deg, rgba(18, 10, 36, 0.8), rgba(8, 8, 16, 0.9));
   border: 1px solid rgba(168, 85, 247, 0.15);
@@ -829,11 +829,27 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 52px;
-  min-height: 52px;
-  background: transparent;
-  border: none;
-  box-shadow: none;
+  width: 80px;
+  height: 80px;
+  min-width: 80px;
+  min-height: 80px;
+  border-radius: 20px;
+  background: radial-gradient(
+    circle at 50% 42%,
+    rgba(124, 58, 237, 0.22),
+    rgba(12, 8, 24, 0.55) 68%
+  );
+  border: 1px solid rgba(168, 85, 247, 0.32);
+  box-shadow:
+    0 0 24px rgba(124, 58, 237, 0.2),
+    inset 0 0 20px rgba(168, 85, 247, 0.08);
+}
+
+.mineUpg--affordable .mineUpg__icon {
+  border-color: rgba(192, 132, 252, 0.55);
+  box-shadow:
+    0 0 32px rgba(168, 85, 247, 0.35),
+    inset 0 0 24px rgba(168, 85, 247, 0.12);
 }
 
 .mineUpg__head {

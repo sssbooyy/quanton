@@ -27,7 +27,7 @@ export default function MineUpgradeCard({ upgrade, shards, onBuy, purchasing, fl
       animate={justBought ? { scale: [1, 1.02, 1] } : { scale: 1 }}
     >
       <div className="mineUpg__icon" aria-hidden="true">
-        <MineIcon src={iconSrc} size={44} glow={iconGlow} pulse={showGlow} />
+        <MineIcon src={iconSrc} size={64} glow={iconGlow} pulse={showGlow} />
       </div>
       <div className="mineUpg__body">
         <div className="mineUpg__head">

@@ -58,7 +58,7 @@ export default function MineProfilePanel({ profile, referral, loading, onCopy })
         >
           <MineIcon
             src={tierToBadge(profile?.levelTier || "rookie")}
-            size={64}
+            size={72}
             glow="purple"
             pulse
           />

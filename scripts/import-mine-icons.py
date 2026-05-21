@@ -21,10 +21,13 @@ IMPORTS = {
     "Boost": ["boost"],
     "Crates": ["crates"],
     "Rank_Crown": ["rank-crown", "leaders"],
-    "SpeedBoost": ["speed-boost", "turbo-miner"],
+    "SpeedBoost": ["speed-boost"],
     "Faster_recharge": ["recharge"],
     "Multi_tap": ["multi-tap"],
-    "speed": ["speed-boost", "turbo-miner"],
+    "speed": ["speed-boost"],
+    "Turbo_miner": ["turbo-miner"],
+    "RookieMiner": ["badge-rookie"],
+    "Gift_hunter": ["badge-gift-hunter"],
 }
 
 
@@ -141,8 +144,10 @@ def main() -> None:
         src = Image.open(path)
         if key == "Shards":
             src = crop_shards(src)
-        elif key in ("Faster_recharge", "Multi_tap", "speed"):
+        elif key in ("Faster_recharge", "Multi_tap", "speed", "Turbo_miner"):
             src = crop_above_label(src, 0.72 if key != "Faster_recharge" else 0.78)
+        elif key in ("RookieMiner", "Gift_hunter"):
+            src = crop_above_label(src, 0.66)
         t = 256 if key == "Mine" else 128
         icon = process(src, target=t)
         for name in outputs:

@@ -23,7 +23,7 @@ export default function MineLevelCard({ profile }) {
       <div className="mineLevelCard__top">
         <div className="mineLevelCard__badge" aria-hidden="true">
           <span className="mineLevelCard__medal">
-            <MineIcon src={badgeSrc} size={56} glow="purple" pulse className="mineIcon--hero" />
+            <MineIcon src={badgeSrc} size={72} glow="purple" pulse className="mineIcon--hero" />
           </span>
           <span className="mineLevelCard__lvl mono">Lv {profile.level ?? 1}</span>
         </div>

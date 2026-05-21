@@ -7,12 +7,14 @@ import {
 import MineIcon from "./mine/MineIcon.jsx";
 import { crownIcon } from "../lib/mineIcons.js";
 
-function CrownIcon({ badge }) {
+function CrownIcon({ badge, rank }) {
   const src = crownIcon(badge);
   if (!src) return null;
+  const glow = badge === "gold" ? "gold" : badge === "silver" ? "cyan" : "purple";
+  const size = rank <= 3 ? 30 : 22;
   return (
     <span className={`mineLbCrown mineLbCrown--${badge}`} aria-hidden="true">
-      <MineIcon src={src} size={22} glow={badge === "gold" ? "gold" : badge === "silver" ? "cyan" : "purple"} />
+      <MineIcon src={src} size={size} glow={glow} />
     </span>
   );
 }
@@ -36,7 +38,7 @@ function LeaderboardRow({ entry, type, isViewer }) {
       transition={{ type: "spring", stiffness: 320, damping: 28 }}
     >
       <span className="mineLbRow__rank mono">
-        <CrownIcon badge={entry.badge} />
+        <CrownIcon badge={entry.badge} rank={entry.rank} />
         #{entry.rank}
       </span>
       <Avatar entry={entry} />

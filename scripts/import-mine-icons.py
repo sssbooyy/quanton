@@ -28,6 +28,9 @@ IMPORTS = {
     "Turbo_miner": ["turbo-miner"],
     "RookieMiner": ["badge-rookie"],
     "Gift_hunter": ["badge-gift-hunter"],
+    "1st": ["crown-gold"],
+    "2nd": ["crown-silver"],
+    "3rd": ["crown-bronze"],
 }
 
 
@@ -148,6 +151,8 @@ def main() -> None:
             src = crop_above_label(src, 0.72 if key != "Faster_recharge" else 0.78)
         elif key in ("RookieMiner", "Gift_hunter"):
             src = crop_above_label(src, 0.66)
+        elif key in ("1st", "2nd", "3rd"):
+            src = crop_above_label(src, 0.72)
         t = 256 if key == "Mine" else 128
         icon = process(src, target=t)
         for name in outputs:

@@ -240,27 +240,42 @@
   color: #e9d5ff;
 }
 
-/* Level card — horizontal profile strip */
+/* Level card — horizontal HUD strip (no frame) */
 .mineLevelCard {
   position: relative;
-  margin-bottom: 10px;
-  padding: 10px 12px;
-  border-radius: 16px;
-  background: linear-gradient(145deg, rgba(20, 12, 40, 0.85), rgba(8, 8, 18, 0.92));
-  border: 1px solid color-mix(in srgb, var(--level-color, #a855f7) 45%, transparent);
-  box-shadow: 0 0 32px color-mix(in srgb, var(--level-color, #a855f7) 15%, transparent);
-  overflow: hidden;
+  margin-bottom: 4px;
+  padding: 10px 4px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.mineLevelCard::after {
+  content: "";
+  display: block;
+  margin-top: 10px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(168, 85, 247, 0.22) 20%,
+    rgba(168, 85, 247, 0.22) 80%,
+    transparent 100%
+  );
 }
 
 .mineLevelCard__glow {
   position: absolute;
-  inset: -20% 10% -20% -10%;
+  inset: -12% 0 -12% -8%;
   background: radial-gradient(
-    ellipse 70% 80% at 18% 50%,
-    color-mix(in srgb, var(--level-color, #a855f7) 28%, transparent),
-    transparent 70%
+    ellipse 55% 90% at 22% 50%,
+    color-mix(in srgb, var(--level-color, #a855f7) 18%, transparent),
+    transparent 72%
   );
   pointer-events: none;
+  filter: blur(2px);
 }
 
 .mineLevelCard__row {
@@ -401,27 +416,73 @@
   }
 }
 
-/* Stat strip */
+/* Stat strip — HUD overlays (no card frames) */
 .mineStatStrip {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: 0;
   margin-bottom: 12px;
+  padding: 6px 0;
+  border-top: 1px solid rgba(168, 85, 247, 0.1);
+  border-bottom: 1px solid rgba(168, 85, 247, 0.1);
+  background: linear-gradient(
+    180deg,
+    rgba(124, 58, 237, 0.04) 0%,
+    transparent 45%,
+    transparent 55%,
+    rgba(124, 58, 237, 0.03) 100%
+  );
 }
 
 .mineStatPill {
+  position: relative;
   display: flex;
   gap: 8px;
-  padding: 10px 8px;
-  border-radius: 14px;
+  padding: 8px 10px;
   min-width: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.mineStatPill:not(:first-child)::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 18%;
+  bottom: 18%;
+  width: 1px;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgba(168, 85, 247, 0.2) 50%,
+    transparent
+  );
 }
 
 .mineStatPill__icon {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+.mineStatPill__icon::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.14), transparent 68%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.mineStatPill__icon .mineIcon {
+  position: relative;
+  z-index: 1;
 }
 
 /* Neon game icons */

@@ -22,7 +22,7 @@ function sortUpgrades(upgrades = []) {
 
 function StatPill({ iconSrc, iconGlow, label, value, progress }) {
   return (
-    <div className="mineStatPill glass">
+    <div className="mineStatPill">
       <span className="mineStatPill__icon" aria-hidden="true">
         <MineIcon src={iconSrc} size={32} glow={iconGlow} />
       </span>

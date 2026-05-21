@@ -22,7 +22,15 @@ IMPORTS = {
     "Crates": ["crates"],
     "Rank_Crown": ["rank-crown", "leaders"],
     "SpeedBoost": ["speed-boost", "turbo-miner"],
+    "Faster_recharge": ["recharge"],
+    "Multi_tap": ["multi-tap"],
+    "speed": ["speed-boost", "turbo-miner"],
 }
+
+
+def crop_above_label(src: Image.Image, bottom_ratio: float = 0.78) -> Image.Image:
+    w, h = src.size
+    return src.crop((int(w * 0.05), 0, int(w * 0.95), int(h * bottom_ratio)))
 
 
 def find_source(key: str) -> Path:
@@ -107,7 +115,7 @@ def process(src: Image.Image, target: int = 128) -> Image.Image:
 
 
 SHEET_ONLY = {
-    "multi-tap", "recharge", "rank-badge", "multiplier", "nav-market", "nav-mine",
+    "rank-badge", "multiplier", "nav-market", "nav-mine",
     "nav-activity", "nav-profile", "crate-common", "crate-rare", "crate-epic",
     "crown-gold", "crown-silver", "crown-bronze", "top-badge", "sync", "close",
     "info", "settings", "online", "offline", "xp", "time", "streak", "reward",
@@ -133,6 +141,8 @@ def main() -> None:
         src = Image.open(path)
         if key == "Shards":
             src = crop_shards(src)
+        elif key in ("Faster_recharge", "Multi_tap", "speed"):
+            src = crop_above_label(src, 0.72 if key != "Faster_recharge" else 0.78)
         t = 256 if key == "Mine" else 128
         icon = process(src, target=t)
         for name in outputs:

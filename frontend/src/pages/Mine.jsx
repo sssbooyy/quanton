@@ -166,7 +166,7 @@ function MinePlayView({
           progress={energyPct}
         />
         <StatPill iconSrc={mineIcons.shards} iconGlow="purple" label="Per tap" value={profile?.shardsPerTap ?? 1} />
-        <StatPill iconSrc={mineIcons.multiTap} iconGlow="purple" label="Speed" value={`${profile?.maxTapsPerSecond ?? 10}/s`} />
+        <StatPill iconSrc={mineIcons.speedBoost} iconGlow="gold" label="Speed" value={`${profile?.maxTapsPerSecond ?? 10}/s`} />
       </div>
 
       <section className="mineArena" aria-label="Mining">

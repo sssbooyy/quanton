@@ -192,7 +192,7 @@
 .sapphire-dashboard__scroll {
   display: flex;
   flex-direction: column;
-  gap: var(--sapphire-space-md);
+  gap: var(--sapphire-space-sm);
   padding: 0 var(--sapphire-space-md) var(--sapphire-space-xl);
 }
 
@@ -294,35 +294,85 @@
 
 .sapphire-overview__chart {
   border-radius: var(--sapphire-radius-md);
-  border: 1px dashed rgba(118, 199, 255, 0.2);
-  background: rgba(0, 0, 0, 0.25);
-  min-height: 72px;
-  padding: var(--sapphire-space-sm);
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: 6px;
+  border: 1px solid rgba(74, 184, 255, 0.16);
+  background:
+    linear-gradient(180deg, rgba(4, 8, 16, 0.55), rgba(5, 7, 10, 0.85)),
+    radial-gradient(ellipse 80% 60% at 50% 100%, rgba(30, 136, 255, 0.1), transparent 70%);
+  min-height: 88px;
+  padding: var(--sapphire-space-sm) var(--sapphire-space-sm) 6px;
+  overflow: hidden;
+  position: relative;
 }
 
 .sapphire-overview__chartLabel {
+  display: block;
   font-size: 9px;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--sapphire-text-muted);
+  margin-bottom: 4px;
 }
 
-.sapphire-overview__chartBars {
-  display: flex;
-  align-items: flex-end;
-  gap: 4px;
-  height: 40px;
+.sapphire-overview__chartSvg {
+  display: block;
+  width: 100%;
+  height: 64px;
 }
 
-.sapphire-overview__chartBar {
-  flex: 1;
-  border-radius: 3px 3px 0 0;
-  background: linear-gradient(180deg, rgba(74, 184, 255, 0.35), rgba(30, 136, 255, 0.08));
-  min-height: 8px;
+.sapphire-overview__chartLine {
+  stroke-dasharray: 420;
+  stroke-dashoffset: 420;
+  animation: sapphireChartDraw 2.8s ease-out forwards;
+}
+
+.sapphire-overview__chartArea {
+  opacity: 0;
+  animation: sapphireChartFade 1.2s ease-out 0.6s forwards;
+}
+
+.sapphire-overview__chartPoint {
+  opacity: 0;
+  animation: sapphireChartPointIn 0.5s ease-out forwards;
+  animation-delay: calc(0.35s + var(--point-i, 0) * 0.12s);
+}
+
+.sapphire-overview__chartDot {
+  filter: drop-shadow(0 0 4px rgba(118, 199, 255, 0.9));
+  animation: sapphireChartDotPulse 3s ease-in-out infinite;
+  animation-delay: calc(var(--point-i, 0) * 0.25s);
+}
+
+@keyframes sapphireChartDraw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes sapphireChartFade {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes sapphireChartPointIn {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes sapphireChartDotPulse {
+  0%,
+  100% {
+    opacity: 0.75;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 /* TODO: number counters for overview metrics */
@@ -417,6 +467,64 @@
   }
 }
 
+@keyframes sapphireCorePulse {
+  0%,
+  100% {
+    opacity: 0.75;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes sapphireCoreRing {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.12);
+  }
+}
+
+@keyframes sapphireRefractionShift {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+@keyframes sapphireGlassSheen {
+  0% {
+    transform: translateX(-120%) skewX(-12deg);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.55;
+  }
+  100% {
+    transform: translateX(220%) skewX(-12deg);
+    opacity: 0;
+  }
+}
+
+@keyframes sapphireInnerGlow {
+  0%,
+  100% {
+    opacity: 0.42;
+  }
+  50% {
+    opacity: 0.72;
+  }
+}
+
 @keyframes sapphireBtnGlow {
   0%,
   100% {
@@ -433,70 +541,93 @@
 }
 
 .sapphire-reactor {
-  padding: var(--sapphire-space-md);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: var(--sapphire-space-sm);
+  align-items: stretch;
+  gap: 0;
   text-align: center;
   overflow: hidden;
-  background:
-    radial-gradient(ellipse 80% 55% at 50% 0%, rgba(30, 136, 255, 0.08), transparent 70%),
-    var(--sapphire-glass);
+  margin: 0 calc(-1 * var(--sapphire-space-md));
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
 }
 
-.sapphire-reactor__head {
+.sapphire-reactor--hero {
+  margin-bottom: var(--sapphire-space-xs);
+}
+
+.sapphire-reactor__head--overlay {
+  position: absolute;
+  top: 8px;
+  left: 0;
+  right: 0;
+  z-index: 4;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  width: 100%;
+  gap: 1px;
+  align-items: center;
+  pointer-events: none;
+  padding: 0 var(--sapphire-space-sm);
 }
 
 .sapphire-reactor__shards {
-  font-size: 1.45rem;
+  font-size: 1.25rem;
   font-weight: 800;
   letter-spacing: 0.02em;
   background: linear-gradient(180deg, #ffffff, var(--sapphire-secondary));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 0 12px rgba(30, 136, 255, 0.35));
 }
 
 .sapphire-reactor__stage {
   position: relative;
   width: 100%;
-  max-width: 320px;
-  height: min(220px, 48vw);
-  min-height: 180px;
+  height: clamp(300px, 78vw, 420px);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 2px 0;
+  margin: 0;
   overflow: hidden;
-  border-radius: var(--sapphire-radius-lg);
+  border-radius: 0 0 var(--sapphire-radius-lg) var(--sapphire-radius-lg);
   background:
-    radial-gradient(ellipse 70% 55% at 50% 72%, rgba(30, 136, 255, 0.14), transparent 68%),
-    linear-gradient(180deg, rgba(4, 8, 16, 0.6), rgba(5, 7, 10, 0.92));
-  border: 1px solid rgba(30, 136, 255, 0.14);
+    radial-gradient(ellipse 90% 65% at 50% 58%, rgba(30, 136, 255, 0.2), transparent 68%),
+    radial-gradient(ellipse 55% 35% at 50% 95%, rgba(30, 136, 255, 0.12), transparent 70%),
+    linear-gradient(180deg, rgba(2, 4, 10, 0.95), rgba(5, 7, 10, 1));
+  border: none;
+  border-bottom: 1px solid rgba(30, 136, 255, 0.18);
+  box-shadow:
+    inset 0 -24px 48px rgba(30, 136, 255, 0.06),
+    0 12px 40px rgba(0, 0, 0, 0.45);
 }
 
 .sapphire-reactor__beam {
   position: absolute;
-  top: -8%;
+  top: -4%;
   left: 50%;
-  width: 28%;
-  height: 88%;
+  width: 34%;
+  height: 92%;
   transform: translateX(-50%);
   background: linear-gradient(
     180deg,
-    rgba(118, 199, 255, 0.45) 0%,
-    rgba(30, 136, 255, 0.18) 35%,
-    rgba(30, 136, 255, 0.04) 70%,
+    rgba(118, 199, 255, 0.55) 0%,
+    rgba(30, 136, 255, 0.22) 38%,
+    rgba(30, 136, 255, 0.05) 72%,
     transparent 100%
   );
-  filter: blur(8px);
+  filter: blur(10px);
   pointer-events: none;
   animation: sapphireBeamPulse 4.5s ease-in-out infinite;
+}
+
+.sapphire-reactor__beam--narrow {
+  width: 12%;
+  opacity: 0.65;
+  filter: blur(4px);
 }
 
 .sapphire-reactor__rings {
@@ -516,25 +647,25 @@
 }
 
 .sapphire-reactor__ring--1 {
-  width: 72%;
-  height: 28%;
-  bottom: 14%;
+  width: 88%;
+  height: 22%;
+  bottom: 8%;
   border-style: dashed;
   animation: sapphireRingSpin 22s linear infinite;
 }
 
 .sapphire-reactor__ring--2 {
-  width: 58%;
-  height: 22%;
-  bottom: 18%;
+  width: 72%;
+  height: 18%;
+  bottom: 10%;
   border-color: rgba(118, 199, 255, 0.14);
   animation: sapphireRingSpinReverse 16s linear infinite;
 }
 
 .sapphire-reactor__ring--3 {
-  width: 44%;
-  height: 16%;
-  bottom: 22%;
+  width: 56%;
+  height: 13%;
+  bottom: 12%;
   border-color: rgba(30, 136, 255, 0.22);
   opacity: 0.7;
   animation: sapphireRingSpin 28s linear infinite;
@@ -566,13 +697,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: min(130px, 34vw);
-  height: min(168px, 44vw);
+  width: min(325px, 92vw);
+  height: min(420px, 112vw);
+  max-height: 92%;
+  margin-top: 6%;
 }
 
 .sapphire-reactor__crystalBtn:disabled {
   cursor: not-allowed;
-  opacity: 0.55;
+  opacity: 0.5;
 }
 
 .sapphire-reactor__crystalWrap {
@@ -591,27 +724,79 @@
 
 .sapphire-reactor__crystalAura {
   position: absolute;
-  width: 120%;
-  height: 85%;
-  top: 8%;
+  width: 130%;
+  height: 90%;
+  top: 4%;
   left: 50%;
   transform: translateX(-50%);
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(30, 136, 255, 0.38), transparent 68%);
-  filter: blur(14px);
+  background: radial-gradient(circle, rgba(30, 136, 255, 0.45), transparent 68%);
+  filter: blur(18px);
   animation: sapphireBreath 3.8s ease-in-out infinite;
+}
+
+.sapphire-reactor__crystalAura--inner {
+  width: 55%;
+  height: 38%;
+  top: 22%;
+  background: radial-gradient(circle, rgba(118, 199, 255, 0.55), transparent 72%);
+  filter: blur(12px);
+  animation: sapphireInnerGlow 2.8s ease-in-out infinite;
 }
 
 .sapphire-reactor__crystalHalo {
   position: absolute;
-  width: 105%;
-  height: 105%;
+  width: 108%;
+  height: 108%;
   border-radius: 50%;
-  border: 1px solid rgba(118, 199, 255, 0.22);
+  border: 1px solid rgba(118, 199, 255, 0.28);
   box-shadow:
-    inset 0 0 24px rgba(30, 136, 255, 0.12),
-    0 0 28px rgba(30, 136, 255, 0.18);
+    inset 0 0 32px rgba(30, 136, 255, 0.14),
+    0 0 36px rgba(30, 136, 255, 0.22);
   pointer-events: none;
+}
+
+.sapphire-reactor__glassSheen {
+  position: absolute;
+  inset: 8% 12%;
+  overflow: hidden;
+  pointer-events: none;
+  clip-path: polygon(50% 0%, 92% 26%, 78% 100%, 22% 100%, 8% 26%);
+}
+
+.sapphire-reactor__glassSheen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.28) 48%,
+    rgba(118, 199, 255, 0.12) 52%,
+    transparent 65%
+  );
+  animation: sapphireGlassSheen 5.5s ease-in-out infinite;
+}
+
+.sapphire-reactor__innerGlow {
+  animation: sapphireInnerGlow 3.2s ease-in-out infinite;
+}
+
+.sapphire-reactor__refractionLayer {
+  animation: sapphireRefractionShift 4s ease-in-out infinite;
+}
+
+.sapphire-reactor__energyCore {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sapphireCorePulse 2.2s ease-in-out infinite;
+  filter: drop-shadow(0 0 6px rgba(118, 199, 255, 0.95));
+}
+
+.sapphire-reactor__energyCoreRing {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sapphireCoreRing 2.2s ease-in-out infinite;
 }
 
 .sapphire-reactor__crystalSvg {
@@ -620,14 +805,30 @@
   width: 100%;
   height: auto;
   max-height: 100%;
-  filter: drop-shadow(0 0 14px rgba(74, 184, 255, 0.55))
-    drop-shadow(0 8px 20px rgba(0, 0, 0, 0.45));
+  filter: drop-shadow(0 0 20px rgba(74, 184, 255, 0.6))
+    drop-shadow(0 0 40px rgba(30, 136, 255, 0.28))
+    drop-shadow(0 12px 28px rgba(0, 0, 0, 0.5));
 }
 
 .sapphire-reactor__stage--active .sapphire-reactor__crystalSvg {
-  filter: drop-shadow(0 0 22px rgba(118, 199, 255, 0.75))
-    drop-shadow(0 0 36px rgba(30, 136, 255, 0.35))
-    drop-shadow(0 8px 20px rgba(0, 0, 0, 0.45));
+  filter: drop-shadow(0 0 28px rgba(118, 199, 255, 0.85))
+    drop-shadow(0 0 52px rgba(30, 136, 255, 0.42))
+    drop-shadow(0 12px 28px rgba(0, 0, 0, 0.5));
+}
+
+.sapphire-reactor__controls {
+  padding: var(--sapphire-space-sm) var(--sapphire-space-md) var(--sapphire-space-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background:
+    linear-gradient(180deg, rgba(5, 7, 10, 0.4), rgba(5, 7, 10, 0.95)),
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(30, 136, 255, 0.08), transparent 70%);
+  border: 1px solid rgba(30, 136, 255, 0.12);
+  border-top: none;
+  border-radius: 0 0 var(--sapphire-radius-lg) var(--sapphire-radius-lg);
+  margin: 0 var(--sapphire-space-md);
 }
 
 .sapphire-reactor__burstParticle {
@@ -669,18 +870,19 @@
 }
 
 .sapphire-reactor__mineBtn {
-  min-width: min(260px, 86vw);
-  padding: 13px 22px;
+  min-width: min(280px, 92vw);
+  padding: 12px 20px;
   border-radius: var(--sapphire-radius-md);
-  border: 1px solid var(--sapphire-border-strong);
-  background: linear-gradient(135deg, rgba(30, 136, 255, 0.42), rgba(11, 61, 122, 0.35));
+  border: 1px solid rgba(74, 184, 255, 0.45);
+  background: linear-gradient(135deg, rgba(30, 136, 255, 0.38), rgba(6, 40, 73, 0.55));
   color: var(--sapphire-text);
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 800;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   cursor: pointer;
   transition: transform 0.12s ease, opacity 0.12s ease;
+  backdrop-filter: blur(12px);
 }
 
 .sapphire-reactor__mineBtn:disabled {
@@ -700,9 +902,9 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: var(--sapphire-space-sm);
+  gap: 6px;
   width: 100%;
-  margin-top: 2px;
+  margin-top: 0;
 }
 
 .sapphire-reactor__status {
@@ -735,8 +937,26 @@
   .sapphire-reactor__crystalAura,
   .sapphire-reactor__beam,
   .sapphire-reactor__ring,
-  .sapphire-reactor__ambientParticle {
+  .sapphire-reactor__ambientParticle,
+  .sapphire-reactor__innerGlow,
+  .sapphire-reactor__refractionLayer,
+  .sapphire-reactor__energyCore,
+  .sapphire-reactor__energyCoreRing,
+  .sapphire-reactor__glassSheen::after,
+  .sapphire-overview__chartLine,
+  .sapphire-overview__chartArea,
+  .sapphire-overview__chartPoint,
+  .sapphire-overview__chartDot {
     animation: none;
+  }
+
+  .sapphire-overview__chartLine {
+    stroke-dashoffset: 0;
+  }
+
+  .sapphire-overview__chartArea,
+  .sapphire-overview__chartPoint {
+    opacity: 1;
   }
 
   .sapphire-reactor__stage--active .sapphire-reactor__crystalWrap {
@@ -769,6 +989,32 @@
   flex-direction: column;
   gap: 4px;
   min-height: 68px;
+  background: rgba(6, 10, 18, 0.52);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(74, 184, 255, 0.22);
+  border-radius: var(--sapphire-radius-md);
+  box-shadow:
+    0 0 0 1px rgba(118, 199, 255, 0.06) inset,
+    0 8px 24px rgba(0, 0, 0, 0.28),
+    0 0 20px rgba(30, 136, 255, 0.08);
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+
+.sapphire-statCard:hover {
+  border-color: rgba(118, 199, 255, 0.32);
+  box-shadow:
+    0 0 0 1px rgba(118, 199, 255, 0.1) inset,
+    0 8px 28px rgba(0, 0, 0, 0.32),
+    0 0 28px rgba(30, 136, 255, 0.14);
+}
+
+.sapphire-statCard .sapphire-value {
+  font-size: 1.05rem;
+  background: linear-gradient(180deg, #ffffff, var(--sapphire-secondary));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .sapphire-statCard__track {

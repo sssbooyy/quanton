@@ -67,8 +67,6 @@ export default function Mine() {
       <MineLevelUpModal levelUp={mining.levelUp} onClose={mining.dismissLevelUp} />
 
       <div className="sapphire-dashboard__scroll">
-        <MiningOverviewCard profile={mining.profile} loading={mining.loading} />
-
         <MiningReactor
           profile={mining.profile}
           tapping={mining.tapping}
@@ -80,6 +78,8 @@ export default function Mine() {
         />
 
         <MiningStatsRow profile={mining.profile} energyPct={mining.energyPct} />
+
+        <MiningOverviewCard profile={mining.profile} loading={mining.loading} />
 
         <LevelProgressCard profile={mining.profile} />
 

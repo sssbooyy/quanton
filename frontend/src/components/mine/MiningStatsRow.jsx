@@ -2,7 +2,7 @@ import { sapphireDisplay, sapphireNumber } from "../../lib/sapphireFormat.js";
 
 function StatCard({ label, value, progress }) {
   return (
-    <article className="sapphire-statCard sapphire-glass">
+    <article className="sapphire-statCard">
       <span className="sapphire-label">{label}</span>
       <span className="sapphire-value sapphire-mono">{value}</span>
       {progress != null ? (

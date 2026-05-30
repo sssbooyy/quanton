@@ -4,20 +4,6 @@ import {
   leaderboardStatLabel,
   useMiningLeaderboard,
 } from "../hooks/useMiningLeaderboard.js";
-import MineIcon from "./mine/MineIcon.jsx";
-import { crownIcon } from "../lib/mineIcons.js";
-
-function CrownIcon({ badge, rank }) {
-  const src = crownIcon(badge);
-  if (!src) return null;
-  const glow = badge === "gold" ? "gold" : badge === "silver" ? "cyan" : "purple";
-  const size = rank <= 3 ? 30 : 22;
-  return (
-    <span className={`mineLbCrown mineLbCrown--${badge}`} aria-hidden="true">
-      <MineIcon src={src} size={size} glow={glow} />
-    </span>
-  );
-}
 
 function Avatar({ entry }) {
   const initial = (entry.firstName || entry.username || "?").charAt(0).toUpperCase();
@@ -37,10 +23,7 @@ function LeaderboardRow({ entry, type, isViewer }) {
       animate={{ opacity: 1, x: 0 }}
       transition={{ type: "spring", stiffness: 320, damping: 28 }}
     >
-      <span className="mineLbRow__rank mono">
-        <CrownIcon badge={entry.badge} rank={entry.rank} />
-        #{entry.rank}
-      </span>
+      <span className="mineLbRow__rank mono">#{entry.rank}</span>
       <Avatar entry={entry} />
       <div className="mineLbRow__meta">
         <span className="mineLbRow__name">{entry.username}</span>

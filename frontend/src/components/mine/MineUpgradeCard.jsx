@@ -1,8 +1,13 @@
 import { motion } from "framer-motion";
-import MineIcon from "./MineIcon.jsx";
-import { mineIcons, upgradeToIcon } from "../../lib/mineIcons.js";
 
-export default function MineUpgradeCard({ upgrade, shards, onBuy, purchasing, flashSuccess }) {
+const UPGRADE_LABELS = {
+  multi_tap: "MT",
+  turbo_miner: "TM",
+  bigger_battery: "BB",
+  faster_recharge: "FR",
+};
+
+export default function MineUpgradeCard({ upgrade, onBuy, purchasing, flashSuccess }) {
   const lvl = upgrade?.level ?? 0;
   const max = upgrade?.maxLevel ?? 50;
   const cost = upgrade?.nextCost;
@@ -11,23 +16,17 @@ export default function MineUpgradeCard({ upgrade, shards, onBuy, purchasing, fl
   const busy = purchasing === upgrade?.id;
   const showGlow = canAfford && !busy;
   const justBought = flashSuccess && flashSuccess.upgradeId === upgrade?.id;
-  const iconSrc = upgradeToIcon(upgrade?.id);
-  const iconGlow =
-    upgrade?.id === "bigger_battery"
-      ? "green"
-      : upgrade?.id === "faster_recharge"
-        ? "gold"
-        : "purple";
+  const abbr = UPGRADE_LABELS[upgrade?.id] || "UP";
 
   return (
     <motion.article
-      className={`mineUpg ${showGlow ? "mineUpg--affordable" : ""} ${justBought ? "mineUpg--success" : ""}`}
+      className={`mineUpg glass ${showGlow ? "mineUpg--affordable" : ""} ${justBought ? "mineUpg--success" : ""}`}
       layout
       whileHover={{ y: -2 }}
       animate={justBought ? { scale: [1, 1.02, 1] } : { scale: 1 }}
     >
-      <div className="mineUpg__icon" aria-hidden="true">
-        <MineIcon src={iconSrc} size={64} glow={iconGlow} pulse={showGlow} />
+      <div className="mineUpg__icon mono" aria-hidden="true">
+        {abbr}
       </div>
       <div className="mineUpg__body">
         <div className="mineUpg__head">
@@ -47,10 +46,7 @@ export default function MineUpgradeCard({ upgrade, shards, onBuy, purchasing, fl
           {isMaxed ? (
             <span className="mineUpg__maxed mono">MAXED</span>
           ) : (
-            <span className="mineUpg__cost mono">
-              {cost?.toLocaleString()}{" "}
-              <MineIcon src={mineIcons.shards} size={14} glow="purple" />
-            </span>
+            <span className="mineUpg__cost mono">{cost?.toLocaleString()} shards</span>
           )}
           <button
             type="button"

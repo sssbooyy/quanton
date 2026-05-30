@@ -1,30 +1,25 @@
 import { motion } from "framer-motion";
-import MineIcon from "./mine/MineIcon.jsx";
-import { tierToBadge } from "../lib/mineIcons.js";
 
 export default function MineLevelCard({ profile }) {
   if (!profile) return null;
 
   const tier = profile.levelTier || "rookie";
-  const badgeSrc = tierToBadge(tier);
   const pct = profile.progressPercent ?? 0;
   const color = profile.levelColor || "#38bdf8";
   const level = profile.level ?? 1;
 
   return (
     <motion.section
-      className={`mineLevelCard mineLevelCard--tier-${tier}`}
+      className={`mineLevelCard glass mineLevelCard--tier-${tier}`}
       style={{ "--level-color": color }}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35 }}
       aria-label="Level progress"
     >
-      <div className="mineLevelCard__glow" aria-hidden="true" />
-
       <div className="mineLevelCard__row">
-        <div className="mineLevelCard__badge" aria-hidden="true">
-          <MineIcon src={badgeSrc} size={64} glow="purple" pulse className="mineIcon--hero" />
+        <div className="mineLevelCard__badge mono" aria-hidden="true">
+          {tier.slice(0, 2).toUpperCase()}
         </div>
 
         <div className="mineLevelCard__main">

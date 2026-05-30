@@ -9,8 +9,6 @@ import MineLeaderboard from "../components/MineLeaderboard.jsx";
 import MineLevelCard from "../components/MineLevelCard.jsx";
 import MineLevelUpModal from "../components/MineLevelUpModal.jsx";
 import { hapticImpact } from "../lib/telegramUser.js";
-import MineIcon from "../components/mine/MineIcon.jsx";
-import { mineIcons } from "../lib/mineIcons.js";
 
 const UPGRADE_ORDER = ["multi_tap", "turbo_miner", "bigger_battery", "faster_recharge"];
 
@@ -20,12 +18,9 @@ function sortUpgrades(upgrades = []) {
   );
 }
 
-function StatPill({ iconSrc, iconGlow, label, value, progress }) {
+function StatPill({ label, value, progress }) {
   return (
-    <div className="mineStatPill">
-      <span className="mineStatPill__icon" aria-hidden="true">
-        <MineIcon src={iconSrc} size={32} glow={iconGlow} />
-      </span>
+    <div className="mineStatPill glass">
       <div className="mineStatPill__meta">
         <span className="mineStatPill__label">{label}</span>
         <motion.span
@@ -159,14 +154,12 @@ function MinePlayView({
 
       <div className="mineStatStrip">
         <StatPill
-          iconSrc={mineIcons.energy}
-          iconGlow="green"
           label="Energy"
           value={`${profile?.energy ?? 0}/${profile?.maxEnergy ?? 0}`}
           progress={energyPct}
         />
-        <StatPill iconSrc={mineIcons.shards} iconGlow="purple" label="Per tap" value={profile?.shardsPerTap ?? 1} />
-        <StatPill iconSrc={mineIcons.speedBoost} iconGlow="gold" label="Speed" value={`${profile?.maxTapsPerSecond ?? 10}/s`} />
+        <StatPill label="Per tap" value={profile?.shardsPerTap ?? 1} />
+        <StatPill label="Speed" value={`${profile?.maxTapsPerSecond ?? 10}/s`} />
       </div>
 
       <section className="mineArena" aria-label="Mining">
@@ -195,7 +188,6 @@ function MinePlayView({
             <MineUpgradeCard
               key={u.id}
               upgrade={u}
-              shards={profile?.shards ?? 0}
               onBuy={(id) => {
                 hapticImpact("light");
                 purchaseUpgrade(id);
@@ -220,19 +212,12 @@ export default function Mine() {
 
   return (
     <main className="minePage">
-      <div className="mineBg" aria-hidden="true">
-        <div className="mineBg__grid" />
-        <div className="mineBg__glow mineBg__glow--tl" />
-        <div className="mineBg__glow mineBg__glow--br" />
-      </div>
-
       <header className="mineTopBar glass">
         <div>
           <p className="mineTopBar__kicker mono">QUANTON</p>
           <h1 className="mineTopBar__title">Shard Mining</h1>
         </div>
         <button type="button" className="mineTopBar__sync mono" onClick={() => mining.refresh()}>
-          <MineIcon src={mineIcons.sync} size={18} glow="purple" lazy={false} />
           Sync
         </button>
       </header>

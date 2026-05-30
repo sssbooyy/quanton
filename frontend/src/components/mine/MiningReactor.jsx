@@ -1,18 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { sapphireDisplay, sapphireNumber } from "../../lib/sapphireFormat.js";
-import SapphireCrystalGem from "./SapphireCrystalGem.jsx";
+import crystalImg from "../../assets/sapphire-crystal.png";
 
-const AMBIENT_PARTICLES = [
-  { id: "a1", left: "12%", delay: "0s", size: 3 },
-  { id: "a2", left: "78%", delay: "1.1s", size: 2 },
-  { id: "a3", left: "38%", delay: "2.3s", size: 2 },
-  { id: "a4", left: "62%", delay: "0.6s", size: 3 },
-  { id: "a5", left: "24%", delay: "3.2s", size: 2 },
-  { id: "a6", left: "88%", delay: "1.7s", size: 2 },
-  { id: "a7", left: "48%", delay: "2.8s", size: 2 },
-  { id: "a8", left: "68%", delay: "3.9s", size: 3 },
-  { id: "a9", left: "18%", delay: "4.4s", size: 2 },
-  { id: "a10", left: "54%", delay: "1.4s", size: 2 },
+const FLOATING_SHARDS = [
+  { id: "s1", left: "6%", top: "18%", delay: "0s", size: 12, rotate: -18, dur: "7s" },
+  { id: "s2", left: "88%", top: "24%", delay: "1.4s", size: 10, rotate: 22, dur: "8.5s" },
+  { id: "s3", left: "14%", top: "42%", delay: "2.2s", size: 8, rotate: -8, dur: "6.5s" },
+  { id: "s4", left: "82%", top: "38%", delay: "0.8s", size: 11, rotate: 14, dur: "9s" },
+  { id: "s5", left: "22%", top: "62%", delay: "3.1s", size: 9, rotate: -24, dur: "7.8s" },
+  { id: "s6", left: "76%", top: "58%", delay: "1.9s", size: 10, rotate: 10, dur: "8.2s" },
+  { id: "s7", left: "4%", top: "72%", delay: "2.6s", size: 7, rotate: 16, dur: "6.8s" },
+  { id: "s8", left: "92%", top: "68%", delay: "0.5s", size: 9, rotate: -12, dur: "7.4s" },
+  { id: "s9", left: "32%", top: "12%", delay: "3.8s", size: 8, rotate: 6, dur: "9.5s" },
+  { id: "s10", left: "68%", top: "14%", delay: "2.4s", size: 7, rotate: -20, dur: "8.8s" },
 ];
 
 export default function MiningReactor({
@@ -34,10 +34,10 @@ export default function MiningReactor({
     pulseTimerRef.current = window.setTimeout(() => setIsPulsing(false), 450);
 
     const burstId = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-    const particles = Array.from({ length: 9 }, (_, i) => ({
+    const particles = Array.from({ length: 7 }, (_, i) => ({
       id: `${burstId}-${i}`,
-      left: 18 + ((i * 11) % 64),
-      delay: `${i * 35}ms`,
+      left: 32 + ((i * 9 + (i % 3) * 5) % 36),
+      delay: `${i * 45}ms`,
     }));
     setBursts((prev) => [...prev.slice(-1), { id: burstId, particles }]);
     window.clearTimeout(burstTimerRef.current);
@@ -73,30 +73,6 @@ export default function MiningReactor({
       <div
         className={`sapphire-reactor__stage ${active ? "sapphire-reactor__stage--active" : ""} ${disabled ? "sapphire-reactor__stage--disabled" : ""}`}
       >
-        <div className="sapphire-reactor__beam" aria-hidden="true" />
-        <div className="sapphire-reactor__beam sapphire-reactor__beam--narrow" aria-hidden="true" />
-
-        <div className="sapphire-reactor__rings" aria-hidden="true">
-          <span className="sapphire-reactor__ring sapphire-reactor__ring--1" />
-          <span className="sapphire-reactor__ring sapphire-reactor__ring--2" />
-          <span className="sapphire-reactor__ring sapphire-reactor__ring--3" />
-        </div>
-
-        <div className="sapphire-reactor__ambient" aria-hidden="true">
-          {AMBIENT_PARTICLES.map((p) => (
-            <span
-              key={p.id}
-              className="sapphire-reactor__ambientParticle"
-              style={{
-                left: p.left,
-                animationDelay: p.delay,
-                width: p.size,
-                height: p.size,
-              }}
-            />
-          ))}
-        </div>
-
         <div className="sapphire-reactor__head sapphire-reactor__head--overlay">
           <span className="sapphire-label">Total Shards</span>
           <span className="sapphire-reactor__shards sapphire-mono">{sapphireNumber(profile?.shards)}</span>
@@ -110,13 +86,40 @@ export default function MiningReactor({
           style={{ touchAction: "manipulation" }}
           aria-label="Tap crystal to mine shards"
         >
-          <div className="sapphire-reactor__crystalWrap">
-            <div className="sapphire-reactor__crystalAura sapphire-reactor__crystalAura--far" aria-hidden="true" />
-            <div className="sapphire-reactor__crystalAura sapphire-reactor__crystalAura--mid" aria-hidden="true" />
-            <div className="sapphire-reactor__crystalAura sapphire-reactor__crystalAura--near" aria-hidden="true" />
-            <div className="sapphire-reactor__crystalAura sapphire-reactor__crystalAura--inner" aria-hidden="true" />
-            <div className="sapphire-reactor__crystalHalo" aria-hidden="true" />
-            <SapphireCrystalGem />
+          <div className="sapphire-reactor__crystalStack">
+            <div className="sapphire-reactor__crystalRings" aria-hidden="true">
+              <span className="sapphire-reactor__ring sapphire-reactor__ring--1" />
+              <span className="sapphire-reactor__ring sapphire-reactor__ring--2" />
+              <span className="sapphire-reactor__ring sapphire-reactor__ring--3" />
+            </div>
+
+            <div className="sapphire-reactor__shardField" aria-hidden="true">
+              {FLOATING_SHARDS.map((s) => (
+                <span
+                  key={s.id}
+                  className="sapphire-reactor__shard"
+                  style={{
+                    left: s.left,
+                    top: s.top,
+                    width: s.size,
+                    height: s.size,
+                    animationDelay: s.delay,
+                    animationDuration: s.dur,
+                    "--shard-rotate": `${s.rotate}deg`,
+                  }}
+                />
+              ))}
+            </div>
+
+            <div className={`sapphire-reactor__crystalLive ${active ? "sapphire-reactor__crystalLive--tap" : ""}`}>
+              <img
+                className="sapphire-reactor__crystalImg"
+                src={crystalImg}
+                alt=""
+                draggable={false}
+              />
+              <div className="sapphire-reactor__shineSweep" aria-hidden="true" />
+            </div>
 
             {bursts.map((burst) =>
               burst.particles.map((p) => (
@@ -168,8 +171,6 @@ export default function MiningReactor({
           </div>
         </div>
       </div>
-
-      {/* TODO: boost timer · auto mine mode · sound effects · WebGL crystal */}
     </section>
   );
 }

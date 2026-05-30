@@ -329,68 +329,358 @@
 
 /* ——— Mining Reactor ——— */
 
+@keyframes sapphireBreath {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes sapphireRingSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes sapphireRingSpinReverse {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes sapphireBeamPulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.65;
+  }
+}
+
+@keyframes sapphireAmbientDrift {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.6);
+  }
+  15% {
+    opacity: 0.85;
+  }
+  85% {
+    opacity: 0.35;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-72px) scale(1);
+  }
+}
+
+@keyframes sapphireBurstUp {
+  0% {
+    opacity: 0.95;
+    transform: translate(-50%, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -52px) scale(0.35);
+  }
+}
+
+@keyframes sapphireFloatUp {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 6px) scale(0.75);
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, calc(-48px - var(--float-index, 0) * 10px)) scale(1);
+  }
+}
+
+@keyframes sapphireTapPulse {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes sapphireBtnGlow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(74, 184, 255, 0.35),
+      0 6px 24px rgba(30, 136, 255, 0.2);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(118, 199, 255, 0.55),
+      0 0 32px rgba(30, 136, 255, 0.45),
+      0 8px 28px rgba(30, 136, 255, 0.3);
+  }
+}
+
 .sapphire-reactor {
-  padding: var(--sapphire-space-lg) var(--sapphire-space-md);
+  padding: var(--sapphire-space-md);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--sapphire-space-md);
+  gap: var(--sapphire-space-sm);
   text-align: center;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 80% 55% at 50% 0%, rgba(30, 136, 255, 0.08), transparent 70%),
+    var(--sapphire-glass);
 }
 
-.sapphire-reactor__crystal {
+.sapphire-reactor__head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}
+
+.sapphire-reactor__shards {
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  background: linear-gradient(180deg, #ffffff, var(--sapphire-secondary));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.sapphire-reactor__stage {
   position: relative;
-  width: min(200px, 52vw);
-  height: min(200px, 52vw);
-  border-radius: 50%;
-  border: 1px dashed rgba(118, 199, 255, 0.28);
-  background:
-    radial-gradient(circle at 50% 38%, rgba(30, 136, 255, 0.18), transparent 62%),
-    rgba(0, 0, 0, 0.35);
+  width: 100%;
+  max-width: 320px;
+  height: min(220px, 48vw);
+  min-height: 180px;
   display: flex;
   align-items: center;
   justify-content: center;
+  margin: 2px 0;
+  overflow: hidden;
+  border-radius: var(--sapphire-radius-lg);
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 72%, rgba(30, 136, 255, 0.14), transparent 68%),
+    linear-gradient(180deg, rgba(4, 8, 16, 0.6), rgba(5, 7, 10, 0.92));
+  border: 1px solid rgba(30, 136, 255, 0.14);
 }
 
-.sapphire-reactor__crystalInner {
-  width: 42%;
-  height: 52%;
-  border-radius: 8px;
-  border: 1px solid rgba(74, 184, 255, 0.35);
-  background: linear-gradient(160deg, rgba(118, 199, 255, 0.15), rgba(30, 136, 255, 0.05));
-  clip-path: polygon(50% 0%, 92% 28%, 78% 100%, 22% 100%, 8% 28%);
+.sapphire-reactor__beam {
+  position: absolute;
+  top: -8%;
+  left: 50%;
+  width: 28%;
+  height: 88%;
+  transform: translateX(-50%);
+  background: linear-gradient(
+    180deg,
+    rgba(118, 199, 255, 0.45) 0%,
+    rgba(30, 136, 255, 0.18) 35%,
+    rgba(30, 136, 255, 0.04) 70%,
+    transparent 100%
+  );
+  filter: blur(8px);
+  pointer-events: none;
+  animation: sapphireBeamPulse 4.5s ease-in-out infinite;
 }
 
-/* TODO: crystal glow */
-/* TODO: floating particles */
+.sapphire-reactor__rings {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.sapphire-reactor__ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(74, 184, 255, 0.18);
+  box-shadow: 0 0 12px rgba(30, 136, 255, 0.08);
+}
+
+.sapphire-reactor__ring--1 {
+  width: 72%;
+  height: 28%;
+  bottom: 14%;
+  border-style: dashed;
+  animation: sapphireRingSpin 22s linear infinite;
+}
+
+.sapphire-reactor__ring--2 {
+  width: 58%;
+  height: 22%;
+  bottom: 18%;
+  border-color: rgba(118, 199, 255, 0.14);
+  animation: sapphireRingSpinReverse 16s linear infinite;
+}
+
+.sapphire-reactor__ring--3 {
+  width: 44%;
+  height: 16%;
+  bottom: 22%;
+  border-color: rgba(30, 136, 255, 0.22);
+  opacity: 0.7;
+  animation: sapphireRingSpin 28s linear infinite;
+}
+
+.sapphire-reactor__ambient {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.sapphire-reactor__ambientParticle {
+  position: absolute;
+  bottom: 28%;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--sapphire-glow), rgba(30, 136, 255, 0.2));
+  box-shadow: 0 0 6px rgba(118, 199, 255, 0.55);
+  animation: sapphireAmbientDrift 5.5s ease-in-out infinite;
+}
+
+.sapphire-reactor__crystalBtn {
+  position: relative;
+  z-index: 2;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: min(130px, 34vw);
+  height: min(168px, 44vw);
+}
+
+.sapphire-reactor__crystalBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.sapphire-reactor__crystalWrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: sapphireBreath 3.8s ease-in-out infinite;
+}
+
+.sapphire-reactor__stage--active .sapphire-reactor__crystalWrap {
+  animation: sapphireTapPulse 0.42s ease-out, sapphireBreath 3.8s ease-in-out infinite;
+}
+
+.sapphire-reactor__crystalAura {
+  position: absolute;
+  width: 120%;
+  height: 85%;
+  top: 8%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(30, 136, 255, 0.38), transparent 68%);
+  filter: blur(14px);
+  animation: sapphireBreath 3.8s ease-in-out infinite;
+}
+
+.sapphire-reactor__crystalHalo {
+  position: absolute;
+  width: 105%;
+  height: 105%;
+  border-radius: 50%;
+  border: 1px solid rgba(118, 199, 255, 0.22);
+  box-shadow:
+    inset 0 0 24px rgba(30, 136, 255, 0.12),
+    0 0 28px rgba(30, 136, 255, 0.18);
+  pointer-events: none;
+}
+
+.sapphire-reactor__crystalSvg {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: auto;
+  max-height: 100%;
+  filter: drop-shadow(0 0 14px rgba(74, 184, 255, 0.55))
+    drop-shadow(0 8px 20px rgba(0, 0, 0, 0.45));
+}
+
+.sapphire-reactor__stage--active .sapphire-reactor__crystalSvg {
+  filter: drop-shadow(0 0 22px rgba(118, 199, 255, 0.75))
+    drop-shadow(0 0 36px rgba(30, 136, 255, 0.35))
+    drop-shadow(0 8px 20px rgba(0, 0, 0, 0.45));
+}
+
+.sapphire-reactor__burstParticle {
+  position: absolute;
+  bottom: 42%;
+  width: 4px;
+  height: 4px;
+  border-radius: 1px;
+  background: linear-gradient(135deg, #ffffff, var(--sapphire-secondary));
+  box-shadow: 0 0 8px rgba(118, 199, 255, 0.8);
+  transform: translateX(-50%);
+  pointer-events: none;
+  animation: sapphireBurstUp 0.75s ease-out forwards;
+}
 
 .sapphire-reactor__float {
   position: absolute;
-  top: 38%;
+  top: 32%;
   left: 50%;
-  transform: translateX(-50%);
-  font-size: 1.1rem;
+  z-index: 3;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--sapphire-glow);
+  text-shadow: 0 0 12px rgba(118, 199, 255, 0.85);
   pointer-events: none;
+  animation: sapphireFloatUp 0.85s ease-out forwards;
 }
 
 .sapphire-reactor__float--cost {
   color: #fca5a5;
+  text-shadow: 0 0 10px rgba(248, 113, 113, 0.65);
+}
+
+.sapphire-reactor__rate {
+  margin: 0;
+  font-size: 10px;
+  color: var(--sapphire-text-muted);
+  min-height: 14px;
 }
 
 .sapphire-reactor__mineBtn {
-  min-width: min(240px, 78vw);
-  padding: 14px 24px;
+  min-width: min(260px, 86vw);
+  padding: 13px 22px;
   border-radius: var(--sapphire-radius-md);
   border: 1px solid var(--sapphire-border-strong);
-  background: linear-gradient(135deg, rgba(30, 136, 255, 0.35), rgba(30, 136, 255, 0.12));
+  background: linear-gradient(135deg, rgba(30, 136, 255, 0.42), rgba(11, 61, 122, 0.35));
   color: var(--sapphire-text);
-  font-size: 0.95rem;
+  font-size: 0.82rem;
   font-weight: 800;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   cursor: pointer;
+  transition: transform 0.12s ease, opacity 0.12s ease;
 }
 
 .sapphire-reactor__mineBtn:disabled {
@@ -399,13 +689,11 @@
 }
 
 .sapphire-reactor__mineBtn--active {
-  box-shadow: 0 0 24px rgba(30, 136, 255, 0.35);
+  animation: sapphireBtnGlow 0.45s ease-out;
 }
 
-.sapphire-reactor__hint {
-  margin: 0;
-  font-size: 10px;
-  color: var(--sapphire-text-muted);
+.sapphire-reactor__mineBtn:not(:disabled):active {
+  transform: scale(0.98);
 }
 
 .sapphire-reactor__statusRow {
@@ -414,12 +702,13 @@
   justify-content: center;
   gap: var(--sapphire-space-sm);
   width: 100%;
+  margin-top: 2px;
 }
 
 .sapphire-reactor__status {
   flex: 1 1 120px;
   max-width: 160px;
-  padding: 8px 10px;
+  padding: 7px 10px;
   border-radius: var(--sapphire-radius-sm);
   border: 1px solid rgba(118, 199, 255, 0.12);
   background: rgba(0, 0, 0, 0.28);
@@ -439,6 +728,25 @@
   font-size: 11px;
   font-weight: 600;
   color: var(--sapphire-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sapphire-reactor__crystalWrap,
+  .sapphire-reactor__crystalAura,
+  .sapphire-reactor__beam,
+  .sapphire-reactor__ring,
+  .sapphire-reactor__ambientParticle {
+    animation: none;
+  }
+
+  .sapphire-reactor__stage--active .sapphire-reactor__crystalWrap {
+    animation: none;
+  }
+
+  .sapphire-reactor__mineBtn--active {
+    animation: none;
+    box-shadow: 0 0 20px rgba(30, 136, 255, 0.35);
+  }
 }
 
 /* ——— Stats row ——— */

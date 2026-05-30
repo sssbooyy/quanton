@@ -657,7 +657,7 @@
   margin: 0;
   overflow: hidden;
   border-radius: 0;
-  background: #05070a;
+  background: radial-gradient(ellipse 72% 58% at 50% 42%, rgba(30, 136, 255, 0.06) 0%, #05070a 62%);
   border: none;
   border-bottom: 1px solid rgba(30, 136, 255, 0.08);
   box-shadow: none;
@@ -682,6 +682,45 @@
   background: transparent;
 }
 
+.sapphire-crystal3d::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  width: 68%;
+  height: 52%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(118, 199, 255, 0.14) 0%,
+    rgba(30, 136, 255, 0.06) 38%,
+    transparent 72%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.sapphire-crystal3d::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 6%;
+  width: 78%;
+  height: 22%;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(74, 184, 255, 0.18) 0%,
+    rgba(30, 136, 255, 0.05) 45%,
+    transparent 72%
+  );
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(6px);
+}
+
 .sapphire-crystal3d--disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -693,6 +732,8 @@
 }
 
 .sapphire-crystal3d__canvas {
+  position: relative;
+  z-index: 1;
   width: 100% !important;
   height: 100% !important;
   display: block;

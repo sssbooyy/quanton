@@ -1,8 +1,8 @@
 import { hapticImpact } from "../lib/telegramUser.js";
 
 const TABS = [
-  { id: "market", label: "Market", icon: "market" },
   { id: "mine", label: "Mine", icon: "mine" },
+  { id: "market", label: "Market", icon: "market" },
   { id: "activity", label: "Activity", icon: "activity" },
   { id: "profile", label: "Profile", icon: "profile" },
 ];

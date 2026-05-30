@@ -197,7 +197,7 @@ export default function App() {
     }
   });
   const [tonUzsRateLoading, setTonUzsRateLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("market");
+  const [activeTab, setActiveTab] = useState("mine");
 
   const tk = useMemo(() => (key) => t(lang, key), [lang]);
 

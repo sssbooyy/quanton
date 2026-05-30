@@ -393,13 +393,13 @@
 
 @keyframes sapphireRingSpin {
   to {
-    transform: rotate(360deg);
+    transform: perspective(420px) rotateX(70deg) rotateZ(360deg);
   }
 }
 
 @keyframes sapphireRingSpinReverse {
   to {
-    transform: rotate(-360deg);
+    transform: perspective(420px) rotateX(70deg) rotateZ(-360deg);
   }
 }
 
@@ -470,58 +470,82 @@
 @keyframes sapphireCorePulse {
   0%,
   100% {
-    opacity: 0.75;
-    transform: scale(0.92);
+    opacity: 1;
+    transform: scale(0.94);
   }
   50% {
     opacity: 1;
-    transform: scale(1.08);
+    transform: scale(1.1);
+  }
+}
+
+@keyframes sapphireCoreHaloPulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.88);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.18);
   }
 }
 
 @keyframes sapphireCoreRing {
   0%,
   100% {
-    opacity: 0.35;
+    opacity: 0.55;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.14);
+  }
+}
+
+@keyframes sapphireCoreHot {
+  0%,
+  100% {
+    opacity: 0.88;
     transform: scale(0.95);
   }
   50% {
-    opacity: 0.75;
-    transform: scale(1.12);
+    opacity: 1;
+    transform: scale(1.05);
   }
 }
 
-@keyframes sapphireRefractionShift {
+@keyframes sapphireReflectionSweep {
   0%,
-  100% {
-    opacity: 0.45;
-  }
-  50% {
-    opacity: 0.85;
-  }
-}
-
-@keyframes sapphireGlassSheen {
-  0% {
-    transform: translateX(-120%) skewX(-12deg);
+  6% {
+    transform: translateX(0);
     opacity: 0;
   }
-  20% {
+  12% {
     opacity: 0.55;
   }
+  48% {
+    transform: translateX(200px);
+    opacity: 0.75;
+  }
+  88% {
+    opacity: 0;
+  }
   100% {
-    transform: translateX(220%) skewX(-12deg);
+    transform: translateX(260px);
     opacity: 0;
   }
 }
 
-@keyframes sapphireInnerGlow {
+@keyframes sapphireAuraBreath {
   0%,
   100% {
-    opacity: 0.42;
+    opacity: 0.75;
+    transform: translateX(-50%) scale(0.94);
   }
   50% {
-    opacity: 0.72;
+    opacity: 1;
+    transform: translateX(-50%) scale(1.06);
   }
 }
 
@@ -642,32 +666,42 @@
 .sapphire-reactor__ring {
   position: absolute;
   border-radius: 50%;
-  border: 1px solid rgba(74, 184, 255, 0.18);
-  box-shadow: 0 0 12px rgba(30, 136, 255, 0.08);
+  border: 1.5px solid rgba(74, 184, 255, 0.42);
+  background: radial-gradient(ellipse at 50% 50%, rgba(30, 136, 255, 0.14) 0%, transparent 72%);
+  box-shadow:
+    0 0 20px rgba(30, 136, 255, 0.35),
+    0 0 40px rgba(30, 136, 255, 0.18),
+    inset 0 0 16px rgba(118, 199, 255, 0.15);
+  filter: blur(0.35px) drop-shadow(0 0 14px rgba(74, 184, 255, 0.45));
+  transform: perspective(420px) rotateX(70deg);
+  transform-origin: center center;
 }
 
 .sapphire-reactor__ring--1 {
-  width: 88%;
-  height: 22%;
-  bottom: 8%;
-  border-style: dashed;
+  width: 92%;
+  height: 24%;
+  bottom: 6%;
+  border-color: rgba(118, 199, 255, 0.55);
   animation: sapphireRingSpin 22s linear infinite;
 }
 
 .sapphire-reactor__ring--2 {
-  width: 72%;
-  height: 18%;
-  bottom: 10%;
-  border-color: rgba(118, 199, 255, 0.14);
+  width: 76%;
+  height: 19%;
+  bottom: 8%;
+  border-color: rgba(74, 184, 255, 0.48);
   animation: sapphireRingSpinReverse 16s linear infinite;
 }
 
 .sapphire-reactor__ring--3 {
-  width: 56%;
-  height: 13%;
-  bottom: 12%;
-  border-color: rgba(30, 136, 255, 0.22);
-  opacity: 0.7;
+  width: 60%;
+  height: 14%;
+  bottom: 10%;
+  border-color: rgba(30, 136, 255, 0.62);
+  box-shadow:
+    0 0 28px rgba(118, 199, 255, 0.4),
+    0 0 56px rgba(30, 136, 255, 0.22),
+    inset 0 0 20px rgba(118, 199, 255, 0.2);
   animation: sapphireRingSpin 28s linear infinite;
 }
 
@@ -715,88 +749,103 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: sapphireBreath 3.8s ease-in-out infinite;
 }
 
 .sapphire-reactor__stage--active .sapphire-reactor__crystalWrap {
-  animation: sapphireTapPulse 0.42s ease-out, sapphireBreath 3.8s ease-in-out infinite;
+  animation: sapphireTapPulse 0.42s ease-out;
 }
 
 .sapphire-reactor__crystalAura {
   position: absolute;
-  width: 130%;
-  height: 90%;
-  top: 4%;
   left: 50%;
   transform: translateX(-50%);
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(30, 136, 255, 0.45), transparent 68%);
-  filter: blur(18px);
-  animation: sapphireBreath 3.8s ease-in-out infinite;
+  pointer-events: none;
+  animation: sapphireAuraBreath 4.5s ease-in-out infinite;
+}
+
+.sapphire-reactor__crystalAura--far {
+  width: 185%;
+  height: 125%;
+  top: -2%;
+  background: radial-gradient(circle, rgba(30, 136, 255, 0.72) 0%, rgba(30, 136, 255, 0.28) 38%, transparent 68%);
+  filter: blur(42px);
+  opacity: 0.9;
+}
+
+.sapphire-reactor__crystalAura--mid {
+  width: 155%;
+  height: 105%;
+  top: 2%;
+  background: radial-gradient(circle, rgba(74, 184, 255, 0.62) 0%, rgba(30, 136, 255, 0.22) 42%, transparent 70%);
+  filter: blur(28px);
+  animation-delay: 0.4s;
+}
+
+.sapphire-reactor__crystalAura--near {
+  width: 125%;
+  height: 88%;
+  top: 6%;
+  background: radial-gradient(circle, rgba(118, 199, 255, 0.55) 0%, rgba(74, 184, 255, 0.18) 45%, transparent 72%);
+  filter: blur(16px);
+  animation-delay: 0.8s;
 }
 
 .sapphire-reactor__crystalAura--inner {
-  width: 55%;
-  height: 38%;
+  width: 58%;
+  height: 42%;
   top: 22%;
-  background: radial-gradient(circle, rgba(118, 199, 255, 0.55), transparent 72%);
-  filter: blur(12px);
-  animation: sapphireInnerGlow 2.8s ease-in-out infinite;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.42) 0%, rgba(118, 199, 255, 0.45) 35%, transparent 75%);
+  filter: blur(10px);
+  animation-delay: 1.2s;
 }
 
 .sapphire-reactor__crystalHalo {
   position: absolute;
-  width: 108%;
-  height: 108%;
+  width: 112%;
+  height: 112%;
   border-radius: 50%;
-  border: 1px solid rgba(118, 199, 255, 0.28);
+  border: 1px solid rgba(118, 199, 255, 0.42);
   box-shadow:
-    inset 0 0 32px rgba(30, 136, 255, 0.14),
-    0 0 36px rgba(30, 136, 255, 0.22);
+    inset 0 0 48px rgba(30, 136, 255, 0.22),
+    0 0 56px rgba(30, 136, 255, 0.38),
+    0 0 96px rgba(30, 136, 255, 0.18);
   pointer-events: none;
 }
 
-.sapphire-reactor__glassSheen {
-  position: absolute;
-  inset: 8% 12%;
-  overflow: hidden;
-  pointer-events: none;
-  clip-path: polygon(50% 0%, 92% 26%, 78% 100%, 22% 100%, 8% 26%);
+.sapphire-reactor__reflectionSweep {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sapphireReflectionSweep 6s ease-in-out infinite;
 }
 
-.sapphire-reactor__glassSheen::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    105deg,
-    transparent 35%,
-    rgba(255, 255, 255, 0.28) 48%,
-    rgba(118, 199, 255, 0.12) 52%,
-    transparent 65%
-  );
-  animation: sapphireGlassSheen 5.5s ease-in-out infinite;
+.sapphire-reactor__coreGroup {
+  transform-box: fill-box;
+  transform-origin: center;
 }
 
-.sapphire-reactor__innerGlow {
-  animation: sapphireInnerGlow 3.2s ease-in-out infinite;
-}
-
-.sapphire-reactor__refractionLayer {
-  animation: sapphireRefractionShift 4s ease-in-out infinite;
+.sapphire-reactor__energyCoreHalo {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sapphireCoreHaloPulse 4.5s ease-in-out infinite;
 }
 
 .sapphire-reactor__energyCore {
   transform-box: fill-box;
   transform-origin: center;
-  animation: sapphireCorePulse 2.2s ease-in-out infinite;
-  filter: drop-shadow(0 0 6px rgba(118, 199, 255, 0.95));
+  animation: sapphireCorePulse 4.5s ease-in-out infinite;
+}
+
+.sapphire-reactor__energyCoreHot {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sapphireCoreHot 4.5s ease-in-out infinite;
 }
 
 .sapphire-reactor__energyCoreRing {
   transform-box: fill-box;
   transform-origin: center;
-  animation: sapphireCoreRing 2.2s ease-in-out infinite;
+  animation: sapphireCoreRing 4.5s ease-in-out infinite;
 }
 
 .sapphire-reactor__crystalSvg {
@@ -805,15 +854,18 @@
   width: 100%;
   height: auto;
   max-height: 100%;
-  filter: drop-shadow(0 0 20px rgba(74, 184, 255, 0.6))
-    drop-shadow(0 0 40px rgba(30, 136, 255, 0.28))
-    drop-shadow(0 12px 28px rgba(0, 0, 0, 0.5));
+  opacity: 1;
+  filter:
+    drop-shadow(0 0 24px rgba(74, 184, 255, 0.85))
+    drop-shadow(0 0 52px rgba(30, 136, 255, 0.42))
+    drop-shadow(0 18px 36px rgba(0, 0, 0, 0.7));
 }
 
 .sapphire-reactor__stage--active .sapphire-reactor__crystalSvg {
-  filter: drop-shadow(0 0 28px rgba(118, 199, 255, 0.85))
-    drop-shadow(0 0 52px rgba(30, 136, 255, 0.42))
-    drop-shadow(0 12px 28px rgba(0, 0, 0, 0.5));
+  filter:
+    drop-shadow(0 0 36px rgba(118, 199, 255, 0.95))
+    drop-shadow(0 0 72px rgba(30, 136, 255, 0.55))
+    drop-shadow(0 18px 36px rgba(0, 0, 0, 0.7));
 }
 
 .sapphire-reactor__controls {
@@ -933,16 +985,15 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sapphire-reactor__crystalWrap,
   .sapphire-reactor__crystalAura,
   .sapphire-reactor__beam,
   .sapphire-reactor__ring,
   .sapphire-reactor__ambientParticle,
-  .sapphire-reactor__innerGlow,
-  .sapphire-reactor__refractionLayer,
   .sapphire-reactor__energyCore,
+  .sapphire-reactor__energyCoreHot,
   .sapphire-reactor__energyCoreRing,
-  .sapphire-reactor__glassSheen::after,
+  .sapphire-reactor__energyCoreHalo,
+  .sapphire-reactor__reflectionSweep,
   .sapphire-overview__chartLine,
   .sapphire-overview__chartArea,
   .sapphire-overview__chartPoint,

@@ -43,6 +43,7 @@ export default defineConfig(() => ({
     target: "es2020",
     outDir: "dist",
     assetsDir: "assets",
+    assetsInclude: ["**/*.glb"],
     emptyOutDir: true,
     sourcemap: false,
     minify: "esbuild",

@@ -1,12 +1,13 @@
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Component, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import SapphireCrystalGem from "./SapphireCrystalGem.jsx";
+import sapphireCrystalGlb from "../../assets/models/sapphire-crystal.glb?url";
 
-const SEGMENTS = 16;
 const CYAN = "#76c7ff";
 const SAPPHIRE = "#1e88ff";
-const DEEP = "#0a3060";
+const TARGET_HEIGHT = 2.15;
 
 const SHARD_ORBITS = [
   { radius: 1.05, y: 0.55, speed: 0.26, phase: 0, scale: 0.11 },
@@ -29,131 +30,60 @@ const RING_CONFIG = [
   { radius: 0.34, opacity: 0.16, speed: 0.09 },
 ];
 
-/** Tall faceted sapphire profile — top apex, crown, girdle, pavilion, bottom apex */
-const CRYSTAL_RINGS = [
-  { y: 0.74, r: 0.18 },
-  { y: 0.42, r: 0.42 },
-  { y: 0.02, r: 0.58 },
-  { y: -0.42, r: 0.38 },
-  { y: -0.78, r: 0.15 },
-];
+useGLTF.preload(sapphireCrystalGlb);
 
-const TOP_APEX_Y = 1.16;
-const BOTTOM_APEX_Y = -1.14;
-
-function ringVertices(y, radius, segments) {
-  return Array.from({ length: segments }, (_, i) => {
-    const a = (i / segments) * Math.PI * 2;
-    return new THREE.Vector3(Math.sin(a) * radius, y, Math.cos(a) * radius);
+function makeSapphireMaterial(source) {
+  const src = Array.isArray(source) ? source[0] : source;
+  return new THREE.MeshPhysicalMaterial({
+    color: new THREE.Color(SAPPHIRE),
+    emissive: new THREE.Color("#4ab8ff"),
+    emissiveIntensity: 0.14,
+    transmission: 0.62,
+    roughness: 0.05,
+    metalness: 0.02,
+    clearcoat: 1,
+    clearcoatRoughness: 0.04,
+    ior: 1.8,
+    thickness: 2.2,
+    envMapIntensity: 1.6,
+    transparent: true,
+    side: THREE.DoubleSide,
+    map: src?.map ?? null,
+    normalMap: src?.normalMap ?? null,
+    aoMap: src?.aoMap ?? null,
   });
 }
 
-function pushTriangle(a, b, c, positions, indices) {
-  const base = positions.length / 3;
-  positions.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
-  indices.push(base, base + 1, base + 2);
-}
+function prepareCrystalModel(scene) {
+  const model = scene.clone(true);
 
-function createSapphireCrystalGeometry(segments = SEGMENTS) {
-  const topApex = new THREE.Vector3(0, TOP_APEX_Y, 0);
-  const bottomApex = new THREE.Vector3(0, BOTTOM_APEX_Y, 0);
-  const rings = CRYSTAL_RINGS.map(({ y, r }) => ringVertices(y, r, segments));
+  model.traverse((child) => {
+    if (!child.isMesh) return;
+    child.castShadow = false;
+    child.receiveShadow = false;
 
-  const positions = [];
-  const indices = [];
-
-  for (let i = 0; i < segments; i++) {
-    const j = (i + 1) % segments;
-    pushTriangle(topApex, rings[0][i], rings[0][j], positions, indices);
-  }
-
-  for (let r = 0; r < rings.length - 1; r++) {
-    for (let i = 0; i < segments; i++) {
-      const j = (i + 1) % segments;
-      pushTriangle(rings[r][i], rings[r + 1][i], rings[r][j], positions, indices);
-      pushTriangle(rings[r][j], rings[r + 1][i], rings[r + 1][j], positions, indices);
+    if (Array.isArray(child.material)) {
+      child.material = child.material.map((mat) => {
+        const next = makeSapphireMaterial(mat);
+        mat?.dispose?.();
+        return next;
+      });
+    } else {
+      const next = makeSapphireMaterial(child.material);
+      child.material?.dispose?.();
+      child.material = next;
     }
-  }
+  });
 
-  const last = rings.length - 1;
-  for (let i = 0; i < segments; i++) {
-    const j = (i + 1) % segments;
-    pushTriangle(rings[last][i], bottomApex, rings[last][j], positions, indices);
-  }
+  const box = new THREE.Box3().setFromObject(model);
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  model.position.sub(center);
 
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setIndex(indices);
-  geometry.computeVertexNormals();
-  return geometry;
-}
+  const maxDim = Math.max(size.x, size.y, size.z) || 1;
+  model.scale.setScalar(TARGET_HEIGHT / maxDim);
 
-function createFacetHighlightGeometry(segments = SEGMENTS) {
-  const topApex = new THREE.Vector3(0, TOP_APEX_Y, 0);
-  const rings = CRYSTAL_RINGS.map(({ y, r }) => ringVertices(y, r, segments));
-  const positions = [];
-  const offset = 0.012;
-
-  function addHighlightTriangle(a, b, c) {
-    const normal = new THREE.Vector3()
-      .crossVectors(b.clone().sub(a), c.clone().sub(a))
-      .normalize();
-    if (normal.x + normal.y * 0.6 + normal.z * 0.4 < 0.15) return;
-
-    const centroid = new THREE.Vector3()
-      .add(a)
-      .add(b)
-      .add(c)
-      .multiplyScalar(1 / 3);
-    const shrink = 0.68;
-    const lift = normal.clone().multiplyScalar(offset);
-    const p1 = a.clone().lerp(centroid, 1 - shrink).add(lift);
-    const p2 = b.clone().lerp(centroid, 1 - shrink).add(lift);
-    const p3 = c.clone().lerp(centroid, 1 - shrink).add(lift);
-
-    positions.push(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z, p3.x, p3.y, p3.z);
-  }
-
-  for (let i = 0; i < segments; i++) {
-    const j = (i + 1) % segments;
-    addHighlightTriangle(topApex, rings[0][i], rings[0][j]);
-  }
-
-  for (let r = 0; r < 2; r++) {
-    for (let i = 0; i < segments; i++) {
-      const j = (i + 1) % segments;
-      addHighlightTriangle(rings[r][i], rings[r + 1][i], rings[r][j]);
-      addHighlightTriangle(rings[r][j], rings[r + 1][i], rings[r + 1][j]);
-    }
-  }
-
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  return geometry;
-}
-
-function createFacetEdgeLines(segments = SEGMENTS) {
-  const topApex = new THREE.Vector3(0, TOP_APEX_Y, 0);
-  const rings = CRYSTAL_RINGS.map(({ y, r }) => ringVertices(y, r, segments));
-  const positions = [];
-  const pushEdge = (a, b) => {
-    positions.push(a.x, a.y, a.z, b.x, b.y, b.z);
-  };
-
-  for (let i = 0; i < segments; i += 2) {
-    const j = (i + 1) % segments;
-    pushEdge(topApex, rings[0][i]);
-    pushEdge(rings[0][i], rings[1][i]);
-    pushEdge(rings[1][i], rings[2][i]);
-  }
-
-  for (let i = 1; i < segments; i += 2) {
-    pushEdge(rings[2][i], rings[3][i]);
-  }
-
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  return geometry;
+  return model;
 }
 
 function makeEnvFaceCanvas(bright) {
@@ -190,14 +120,7 @@ function SapphireEnvironment() {
   const { gl, scene } = useThree();
 
   useEffect(() => {
-    const faces = [
-      makeEnvFaceCanvas(true),
-      makeEnvFaceCanvas(false),
-      makeEnvFaceCanvas(true),
-      makeEnvFaceCanvas(false),
-      makeEnvFaceCanvas(true),
-      makeEnvFaceCanvas(false),
-    ];
+    const faces = Array.from({ length: 6 }, (_, i) => makeEnvFaceCanvas(i % 2 === 0));
     const cube = new THREE.CubeTexture(faces);
     cube.needsUpdate = true;
     const pmrem = new THREE.PMREMGenerator(gl);
@@ -215,38 +138,6 @@ function SapphireEnvironment() {
 
   return null;
 }
-
-const shellMaterialProps = {
-  color: SAPPHIRE,
-  emissive: "#4ab8ff",
-  emissiveIntensity: 0.18,
-  transmission: 0.6,
-  roughness: 0.05,
-  metalness: 0.02,
-  clearcoat: 1,
-  clearcoatRoughness: 0.04,
-  ior: 1.8,
-  thickness: 2.5,
-  envMapIntensity: 2,
-  transparent: true,
-  side: THREE.DoubleSide,
-};
-
-const innerMaterialProps = {
-  color: DEEP,
-  emissive: "#1568cc",
-  emissiveIntensity: 0.35,
-  transmission: 0.35,
-  roughness: 0.08,
-  metalness: 0.03,
-  clearcoat: 0.85,
-  clearcoatRoughness: 0.06,
-  ior: 1.72,
-  thickness: 1.6,
-  envMapIntensity: 1.2,
-  transparent: true,
-  opacity: 0.88,
-};
 
 function GlowCore({ pulsing }) {
   const mesh = useRef(null);
@@ -290,10 +181,12 @@ function GlowCore({ pulsing }) {
   );
 }
 
-function CrystalGem({ geometry, innerGeometry, highlightGeometry, edgeGeometry, pulsing }) {
+function GlbCrystal({ pulsing }) {
   const group = useRef(null);
   const pulseScale = useRef(1);
   const targetScale = useRef(1);
+  const { scene } = useGLTF(sapphireCrystalGlb);
+  const model = useMemo(() => prepareCrystalModel(scene), [scene]);
 
   useEffect(() => {
     if (pulsing) targetScale.current = 1.06;
@@ -317,29 +210,7 @@ function CrystalGem({ geometry, innerGeometry, highlightGeometry, edgeGeometry, 
 
   return (
     <group ref={group}>
-      <mesh geometry={geometry} castShadow={false} receiveShadow={false}>
-        <meshPhysicalMaterial {...shellMaterialProps} />
-      </mesh>
-
-      <mesh geometry={innerGeometry} scale={0.86}>
-        <meshPhysicalMaterial {...innerMaterialProps} />
-      </mesh>
-
-      <mesh geometry={highlightGeometry}>
-        <meshBasicMaterial
-          color="#ffffff"
-          transparent
-          opacity={0.22}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-
-      <lineSegments geometry={edgeGeometry}>
-        <lineBasicMaterial color="#b8e8ff" transparent opacity={0.55} blending={THREE.AdditiveBlending} />
-      </lineSegments>
-
+      <primitive object={model} />
       <GlowCore pulsing={pulsing} />
     </group>
   );
@@ -382,8 +253,15 @@ function EnergyRings() {
   );
 }
 
-function FloatingShards({ shardGeometry }) {
+function FloatingShards() {
   const group = useRef(null);
+  const shardGeometry = useMemo(() => {
+    const geo = new THREE.OctahedronGeometry(0.45, 0);
+    geo.scale(0.85, 1.35, 0.85);
+    return geo;
+  }, []);
+
+  useEffect(() => () => shardGeometry.dispose(), [shardGeometry]);
 
   useFrame((state) => {
     if (!group.current) return;
@@ -435,35 +313,13 @@ function SceneLights() {
 }
 
 function CrystalScene({ pulsing }) {
-  const geometry = useMemo(() => createSapphireCrystalGeometry(SEGMENTS), []);
-  const innerGeometry = useMemo(() => createSapphireCrystalGeometry(SEGMENTS), []);
-  const highlightGeometry = useMemo(() => createFacetHighlightGeometry(SEGMENTS), []);
-  const edgeGeometry = useMemo(() => createFacetEdgeLines(SEGMENTS), []);
-  const shardGeometry = useMemo(() => createSapphireCrystalGeometry(8), []);
-
-  useEffect(() => {
-    return () => {
-      geometry.dispose();
-      innerGeometry.dispose();
-      highlightGeometry.dispose();
-      edgeGeometry.dispose();
-      shardGeometry.dispose();
-    };
-  }, [geometry, innerGeometry, highlightGeometry, edgeGeometry, shardGeometry]);
-
   return (
     <>
       <SapphireEnvironment />
       <SceneLights />
-      <CrystalGem
-        geometry={geometry}
-        innerGeometry={innerGeometry}
-        highlightGeometry={highlightGeometry}
-        edgeGeometry={edgeGeometry}
-        pulsing={pulsing}
-      />
+      <GlbCrystal pulsing={pulsing} />
       <EnergyRings />
-      <FloatingShards shardGeometry={shardGeometry} />
+      <FloatingShards />
     </>
   );
 }
@@ -476,12 +332,61 @@ function SvgFallback({ pulsing }) {
   );
 }
 
-export default function SapphireCrystal3D({ onTap, disabled = false, pulsing = false }) {
-  const webgl = useWebGLSupport();
+class GlbErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch() {
+    this.props.onError?.();
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
+
+function CrystalCanvas({ pulsing }) {
   const dpr = useMemo(() => {
     if (typeof window === "undefined") return 1;
     return window.devicePixelRatio > 2 ? 1.5 : Math.min(window.devicePixelRatio, 2);
   }, []);
+
+  return (
+    <Canvas
+      className="sapphire-crystal3d__canvas"
+      dpr={dpr}
+      frameloop="always"
+      gl={{
+        alpha: true,
+        antialias: true,
+        powerPreference: "high-performance",
+        stencil: false,
+        depth: true,
+      }}
+      camera={{ position: [0, 0.08, 3.85], fov: 38, near: 0.1, far: 20 }}
+      onCreated={({ gl }) => {
+        gl.setClearColor(0x000000, 0);
+        gl.toneMapping = THREE.ACESFilmicToneMapping;
+        gl.toneMappingExposure = 1.12;
+      }}
+    >
+      <CrystalScene pulsing={pulsing} />
+    </Canvas>
+  );
+}
+
+export default function SapphireCrystal3D({ onTap, disabled = false, pulsing = false }) {
+  const webgl = useWebGLSupport();
+  const [glbFailed, setGlbFailed] = useState(false);
 
   function handlePointerDown(e) {
     e.preventDefault();
@@ -493,18 +398,7 @@ export default function SapphireCrystal3D({ onTap, disabled = false, pulsing = f
     return <div className="sapphire-crystal3d sapphire-crystal3d--loading" aria-hidden="true" />;
   }
 
-  if (!webgl) {
-    return (
-      <div
-        className={`sapphire-crystal3d ${disabled ? "sapphire-crystal3d--disabled" : ""}`}
-        onPointerDown={handlePointerDown}
-        style={{ touchAction: "manipulation" }}
-        role="presentation"
-      >
-        <SvgFallback pulsing={pulsing} />
-      </div>
-    );
-  }
+  const useFallback = !webgl || glbFailed;
 
   return (
     <div
@@ -513,28 +407,15 @@ export default function SapphireCrystal3D({ onTap, disabled = false, pulsing = f
       style={{ touchAction: "manipulation" }}
       role="presentation"
     >
-      <Suspense fallback={<SvgFallback pulsing={pulsing} />}>
-        <Canvas
-          className="sapphire-crystal3d__canvas"
-          dpr={dpr}
-          frameloop="always"
-          gl={{
-            alpha: true,
-            antialias: true,
-            powerPreference: "high-performance",
-            stencil: false,
-            depth: true,
-          }}
-          camera={{ position: [0, 0.08, 3.85], fov: 38, near: 0.1, far: 20 }}
-          onCreated={({ gl }) => {
-            gl.setClearColor(0x000000, 0);
-            gl.toneMapping = THREE.ACESFilmicToneMapping;
-            gl.toneMappingExposure = 1.12;
-          }}
-        >
-          <CrystalScene pulsing={pulsing} />
-        </Canvas>
-      </Suspense>
+      {useFallback ? (
+        <SvgFallback pulsing={pulsing} />
+      ) : (
+        <GlbErrorBoundary onError={() => setGlbFailed(true)} fallback={<SvgFallback pulsing={pulsing} />}>
+          <Suspense fallback={<SvgFallback pulsing={pulsing} />}>
+            <CrystalCanvas pulsing={pulsing} />
+          </Suspense>
+        </GlbErrorBoundary>
+      )}
     </div>
   );
 }

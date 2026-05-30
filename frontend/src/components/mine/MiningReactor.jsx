@@ -1,17 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { sapphireDisplay, sapphireNumber } from "../../lib/sapphireFormat.js";
-import crystalImg from "../../assets/sapphire-crystal.png";
-
-const FLOATING_SHARDS = [
-  { id: "s1", left: "8%", top: "20%", delay: "0s", size: 10, rotate: -18, dur: "7s" },
-  { id: "s2", left: "86%", top: "26%", delay: "1.4s", size: 8, rotate: 22, dur: "8.5s" },
-  { id: "s3", left: "16%", top: "44%", delay: "2.2s", size: 7, rotate: -8, dur: "6.5s" },
-  { id: "s4", left: "80%", top: "40%", delay: "0.8s", size: 9, rotate: 14, dur: "9s" },
-  { id: "s5", left: "24%", top: "64%", delay: "3.1s", size: 7, rotate: -24, dur: "7.8s" },
-  { id: "s6", left: "74%", top: "60%", delay: "1.9s", size: 8, rotate: 10, dur: "8.2s" },
-  { id: "s7", left: "6%", top: "74%", delay: "2.6s", size: 6, rotate: 16, dur: "6.8s" },
-  { id: "s8", left: "90%", top: "70%", delay: "0.5s", size: 7, rotate: -12, dur: "7.4s" },
-];
+import SapphireCrystal3D from "./SapphireCrystal3D.jsx";
 
 export default function MiningReactor({
   profile,
@@ -76,72 +65,29 @@ export default function MiningReactor({
       <div
         className={`sapphire-reactor__stage ${active ? "sapphire-reactor__stage--active" : ""} ${disabled ? "sapphire-reactor__stage--disabled" : ""}`}
       >
-        <button
-          type="button"
-          className="sapphire-reactor__crystalBtn"
-          disabled={disabled}
-          onPointerDown={handleMineTap}
-          style={{ touchAction: "manipulation" }}
-          aria-label="Tap crystal to mine shards"
-        >
-          <div className="sapphire-reactor__crystalStack">
-            <div className="sapphire-reactor__crystalRings" aria-hidden="true">
-              <span className="sapphire-reactor__ring sapphire-reactor__ring--1" />
-              <span className="sapphire-reactor__ring sapphire-reactor__ring--2" />
-              <span className="sapphire-reactor__ring sapphire-reactor__ring--3" />
-            </div>
+        <div className="sapphire-reactor__crystalStack">
+          <SapphireCrystal3D onTap={handleMineTap} disabled={disabled} pulsing={active} />
 
-            <div className="sapphire-reactor__shardField" aria-hidden="true">
-              {FLOATING_SHARDS.map((s) => (
-                <span
-                  key={s.id}
-                  className="sapphire-reactor__shard"
-                  style={{
-                    left: s.left,
-                    top: s.top,
-                    width: s.size,
-                    height: s.size,
-                    animationDelay: s.delay,
-                    animationDuration: s.dur,
-                    "--shard-rotate": `${s.rotate}deg`,
-                  }}
-                />
-              ))}
-            </div>
-
-            <div className={`sapphire-reactor__crystalLive ${active ? "sapphire-reactor__crystalLive--tap" : ""}`}>
-              <div className="sapphire-reactor__crystalMask">
-                <img
-                  className="sapphire-reactor__crystalImg"
-                  src={crystalImg}
-                  alt=""
-                  draggable={false}
-                />
-                <div className="sapphire-reactor__shineSweep" aria-hidden="true" />
-              </div>
-            </div>
-
-            {bursts.map((burst) =>
-              burst.particles.map((p) => (
-                <span
-                  key={p.id}
-                  className="sapphire-reactor__burstParticle"
-                  style={{ left: `${p.left}%`, animationDelay: p.delay }}
-                />
-              ))
-            )}
-
-            {floats.map((f, i) => (
+          {bursts.map((burst) =>
+            burst.particles.map((p) => (
               <span
-                key={f.id}
-                className={`sapphire-reactor__float sapphire-mono ${f.amount < 0 ? "sapphire-reactor__float--cost" : ""}`}
-                style={{ "--float-index": i }}
-              >
-                {f.amount > 0 ? `+${f.amount}` : f.amount}
-              </span>
-            ))}
-          </div>
-        </button>
+                key={p.id}
+                className="sapphire-reactor__burstParticle"
+                style={{ left: `${p.left}%`, animationDelay: p.delay }}
+              />
+            ))
+          )}
+
+          {floats.map((f, i) => (
+            <span
+              key={f.id}
+              className={`sapphire-reactor__float sapphire-mono ${f.amount < 0 ? "sapphire-reactor__float--cost" : ""}`}
+              style={{ "--float-index": i }}
+            >
+              {f.amount > 0 ? `+${f.amount}` : f.amount}
+            </span>
+          ))}
+        </div>
       </div>
 
       <div className="sapphire-reactor__controls">

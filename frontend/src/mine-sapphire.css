@@ -663,210 +663,62 @@
   box-shadow: none;
 }
 
-.sapphire-reactor__crystalBtn {
-  position: relative;
-  z-index: 2;
-  border: none;
-  background: transparent;
-  padding: 0;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: min(260px, 72vw);
-  height: min(280px, 68vw);
-  max-height: 94%;
-  margin: 0;
-}
-
-.sapphire-reactor__crystalBtn:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
 .sapphire-reactor__crystalStack {
   position: relative;
-  width: 100%;
-  height: 100%;
+  width: min(280px, 78vw);
+  height: min(300px, 72vw);
+  max-height: 94%;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.sapphire-reactor__crystalStack::before {
-  content: "";
-  position: absolute;
-  top: 8%;
-  left: 50%;
-  width: 12%;
-  height: 72%;
-  transform: translateX(-50%);
-  background: linear-gradient(
-    180deg,
-    rgba(118, 199, 255, 0.28) 0%,
-    rgba(30, 136, 255, 0.12) 40%,
-    transparent 100%
-  );
-  filter: blur(8px);
-  pointer-events: none;
-  z-index: 0;
-  animation: sapphireBeamPulse 4.5s ease-in-out infinite;
-}
-
-.sapphire-reactor__crystalRings {
-  position: absolute;
-  left: 50%;
-  bottom: 4%;
-  width: 100%;
-  height: 28%;
-  transform: translateX(-50%);
-  pointer-events: none;
-  z-index: 1;
-}
-
-.sapphire-reactor__ring {
-  position: absolute;
-  left: 50%;
-  border-radius: 50%;
-  border: 1px solid rgba(74, 184, 255, 0.28);
-  background: transparent;
-  box-shadow: 0 0 12px rgba(30, 136, 255, 0.15);
-  filter: blur(0.2px);
-  transform: translateX(-50%) perspective(420px) rotateX(70deg);
-  transform-origin: center center;
-}
-
-.sapphire-reactor__crystalRings .sapphire-reactor__ring--1 {
-  width: 92%;
-  height: 100%;
-  bottom: 0;
-  animation: sapphireRingSpin 22s linear infinite;
-}
-
-.sapphire-reactor__crystalRings .sapphire-reactor__ring--2 {
-  width: 74%;
-  height: 78%;
-  bottom: 8%;
-  border-color: rgba(74, 184, 255, 0.22);
-  animation: sapphireRingSpinReverse 16s linear infinite;
-}
-
-.sapphire-reactor__crystalRings .sapphire-reactor__ring--3 {
-  width: 56%;
-  height: 58%;
-  bottom: 16%;
-  border-color: rgba(118, 199, 255, 0.32);
-  box-shadow: 0 0 16px rgba(30, 136, 255, 0.12);
-  animation: sapphireRingSpin 28s linear infinite;
-}
-
-.sapphire-reactor__shardField {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 2;
-  overflow: hidden;
-}
-
-.sapphire-reactor__shard {
-  position: absolute;
-  clip-path: polygon(50% 0%, 92% 28%, 78% 100%, 22% 100%, 8% 28%);
-  background: linear-gradient(160deg, rgba(118, 199, 255, 0.85), rgba(30, 136, 255, 0.45));
-  box-shadow: 0 0 8px rgba(118, 199, 255, 0.7);
-  animation: sapphireShardDrift 8s ease-in-out infinite;
-  opacity: 0.6;
-}
-
-.sapphire-reactor__crystalLive {
+.sapphire-crystal3d {
   position: relative;
-  z-index: 3;
+  z-index: 2;
   width: 100%;
   height: 100%;
+  cursor: pointer;
+  background: transparent;
+}
+
+.sapphire-crystal3d--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.sapphire-crystal3d--loading {
+  min-height: 200px;
+}
+
+.sapphire-crystal3d__canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+  touch-action: manipulation;
+}
+
+.sapphire-crystal3d__fallback {
+  width: 68%;
+  height: 82%;
+  margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
   animation: sapphireCrystalIdle 5.5s ease-in-out infinite;
-  background: transparent;
 }
 
-.sapphire-reactor__crystalLive--tap {
+.sapphire-crystal3d__fallback--tap {
   animation: sapphireCrystalTap 0.45s ease-out;
 }
 
-.sapphire-reactor__crystalMask {
-  position: relative;
-  width: 82%;
-  height: 92%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  background: transparent;
-  -webkit-mask-image: radial-gradient(
-    ellipse 70% 74% at 50% 44%,
-    #000 38%,
-    rgba(0, 0, 0, 0.85) 58%,
-    transparent 76%
-  );
-  mask-image: radial-gradient(
-    ellipse 70% 74% at 50% 44%,
-    #000 38%,
-    rgba(0, 0, 0, 0.85) 58%,
-    transparent 76%
-  );
-}
-
-.sapphire-reactor__crystalImg {
-  width: 112%;
-  height: 112%;
-  max-width: none;
-  object-fit: contain;
-  user-select: none;
-  -webkit-user-drag: none;
-  mix-blend-mode: screen;
-  background: transparent;
+.sapphire-crystal3d__fallback .sapphire-reactor__crystalSvg {
+  width: 100%;
+  height: auto;
   filter:
     drop-shadow(0 0 18px rgba(74, 184, 255, 0.5))
     drop-shadow(0 0 32px rgba(30, 136, 255, 0.22));
-}
-
-.sapphire-reactor__stage--active .sapphire-reactor__crystalImg {
-  filter:
-    drop-shadow(0 0 24px rgba(118, 199, 255, 0.65))
-    drop-shadow(0 0 40px rgba(30, 136, 255, 0.32));
-}
-
-.sapphire-reactor__shineSweep {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-  z-index: 4;
-  -webkit-mask-image: radial-gradient(
-    ellipse 65% 70% at 50% 44%,
-    #000 35%,
-    transparent 72%
-  );
-  mask-image: radial-gradient(
-    ellipse 65% 70% at 50% 44%,
-    #000 35%,
-    transparent 72%
-  );
-}
-
-.sapphire-reactor__shineSweep::after {
-  content: "";
-  position: absolute;
-  inset: -30% -80%;
-  background: linear-gradient(
-    105deg,
-    transparent 38%,
-    rgba(255, 255, 255, 0.28) 48%,
-    rgba(118, 199, 255, 0.22) 52%,
-    transparent 62%
-  );
-  mix-blend-mode: screen;
-  animation: sapphireShineSweep 6s ease-in-out infinite;
 }
 
 .sapphire-reactor__burstParticle {
@@ -985,11 +837,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sapphire-reactor__crystalStack::before,
-  .sapphire-reactor__ring,
-  .sapphire-reactor__shard,
-  .sapphire-reactor__crystalLive,
-  .sapphire-reactor__shineSweep::after,
+  .sapphire-crystal3d__fallback,
   .sapphire-overview__chartLine,
   .sapphire-overview__chartArea,
   .sapphire-overview__chartPoint,
@@ -997,19 +845,8 @@
     animation: none;
   }
 
-  .sapphire-reactor__crystalLive--tap {
+  .sapphire-crystal3d__fallback--tap {
     animation: none;
-  }
-
-  .sapphire-reactor__crystalImg {
-    mix-blend-mode: screen;
-    filter:
-      drop-shadow(0 0 18px rgba(74, 184, 255, 0.5))
-      drop-shadow(0 0 32px rgba(30, 136, 255, 0.22));
-  }
-
-  .sapphire-reactor__crystalStack::before {
-    opacity: 0.45;
   }
 
   .sapphire-overview__chartLine {

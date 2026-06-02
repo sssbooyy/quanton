@@ -197,6 +197,7 @@ export default function App() {
   });
   const [tonUzsRateLoading, setTonUzsRateLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("market");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   const tk = useMemo(() => (key) => t(lang, key), [lang]);
 
@@ -567,6 +568,23 @@ export default function App() {
     return sortGiftList(list, sortKey);
   }, [gifts, preset, listingStatusFilter, advFilters, searchQuery, sortKey]);
 
+  const marketStats = useMemo(() => {
+    const totalListings = gifts.length;
+    const liveListings = gifts.filter((gift) => giftIsBuyable(gift)).length;
+    const prices = gifts
+      .map((gift) => Number(gift.priceTon))
+      .filter((value) => Number.isFinite(value) && value > 0);
+    const floorPrice = prices.length ? Math.min(...prices) : 0;
+    const now = Date.now();
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    const recentlyListed = gifts.filter((gift) => {
+      const ts = new Date(gift?.createdAt || gift?.updatedAt || 0).getTime();
+      return Number.isFinite(ts) && ts > 0 && now - ts <= oneDayMs;
+    }).length;
+    const trendUp = liveListings >= Math.max(1, Math.round(totalListings * 0.55));
+    return { totalListings, liveListings, floorPrice, recentlyListed, trendUp };
+  }, [gifts]);
+
   function resetBrowseFilters() {
     setPreset("all");
     setSearchQuery("");
@@ -590,10 +608,18 @@ export default function App() {
       )}
 
       {activeTab === "activity" ? (
-        <TabPlaceholder title="Activity" subtitle="Your orders and marketplace activity will appear here." />
+        <TabPlaceholder
+          title="Activity coming soon"
+          subtitle="Listings, sales, and price changes will appear here."
+          variant="activity"
+        />
       ) : null}
       {activeTab === "profile" ? (
-        <TabPlaceholder title="Profile" subtitle="Wallet, stats, and cosmetics coming soon." />
+        <TabPlaceholder
+          title="Profile"
+          subtitle="Wallet, seller stats, purchase history, and listings are coming soon."
+          variant="profile"
+        />
       ) : null}
 
       {activeTab === "market" ? (
@@ -610,7 +636,7 @@ export default function App() {
             draggable={false}
           />
           <div className="brandLockup">
-            <span className="brandQuanton">Quanton</span>
+            <span className="brandQuanton">Quanton Marketplace</span>
           </div>
         </div>
         <div className="topbarRight">
@@ -676,21 +702,43 @@ export default function App() {
       </header>
 
       <main className="app app--terminal">
-        <div className="feedHead">
-          <div className="feedHead__row feedHead__row--collection">
-            <div className="feedHead__identity">
-              <p className="feedHead__tagline">{tk("feedTagline")}</p>
-              <h1 className="feedHead__title">Quanton Marketplace</h1>
+        <section className="marketSummaryCard" aria-label="Market summary">
+          <div className="marketSummaryHead">
+            <div>
+              <p className="marketSummaryKicker">{tk("feedTagline")}</p>
+              <h1 className="marketSummaryTitle">Marketplace</h1>
             </div>
-            <span className="feedHead__live">
+            <span className="marketSummaryLive">
               <span className="liveDot liveDot--subtle" aria-hidden="true" />
-              {tk("livePill")}
+              Live
             </span>
           </div>
-        </div>
+          <div className="marketSummaryGrid">
+            <div className="marketSummaryMetric">
+              <span className="marketSummaryMetric__label">Total listings</span>
+              <strong className="marketSummaryMetric__value mono">{marketStats.totalListings}</strong>
+            </div>
+            <div className="marketSummaryMetric">
+              <span className="marketSummaryMetric__label">Floor price</span>
+              <strong className="marketSummaryMetric__value mono">{displayPrice(marketStats.floorPrice)}</strong>
+            </div>
+            <div className="marketSummaryMetric">
+              <span className="marketSummaryMetric__label">Live listings</span>
+              <strong className="marketSummaryMetric__value mono">{marketStats.liveListings}</strong>
+            </div>
+            <div className="marketSummaryMetric">
+              <span className="marketSummaryMetric__label">Recently listed</span>
+              <strong className="marketSummaryMetric__value mono">{marketStats.recentlyListed}</strong>
+            </div>
+          </div>
+          <div className="marketTrend">
+            <span className={`marketTrendDot ${marketStats.trendUp ? "marketTrendDot--up" : "marketTrendDot--flat"}`} />
+            <span className="mono">{marketStats.trendUp ? "Trend: steady upward interest" : "Trend: market consolidating"}</span>
+          </div>
+        </section>
 
         <div className="marketBrowseBar">
-          <div className="marketSearchRow">
+          <div className="marketSearchRow marketSearchRow--enhanced">
             <input
               type="search"
               className="marketSearchInput mono"
@@ -701,6 +749,14 @@ export default function App() {
               autoComplete="off"
               aria-label={tk("searchPlaceholder")}
             />
+            <button
+              type="button"
+              className="marketFilterTrigger"
+              aria-expanded={filterSheetOpen}
+              onClick={() => setFilterSheetOpen((prev) => !prev)}
+            >
+              Filters
+            </button>
           </div>
 
           <div className="marketPresets" role="group" aria-label={tk("tabFilterAria")}>
@@ -722,7 +778,11 @@ export default function App() {
             </button>
           </div>
 
-          <details className="marketFiltersDetails">
+          <details
+            className={`marketFiltersDetails ${filterSheetOpen ? "open" : ""}`}
+            open={filterSheetOpen}
+            onToggle={(e) => setFilterSheetOpen(e.currentTarget.open)}
+          >
             <summary className="marketFiltersSummary">{tk("filterPanelTitle")}</summary>
             <div className="marketFiltersGrid">
               <label className="marketField">
@@ -845,6 +905,7 @@ export default function App() {
                 lang={lang}
                 tk={tk}
                 displayPrice={displayPrice}
+                tonUzsRate={tonUzsRate}
                 inCart={cart.has(gift.id)}
                 onAddToCart={() => {
                   cart.add(gift);
@@ -1037,7 +1098,7 @@ function giftCardTitleLines(gift) {
   return { primary: coll || "—", secondary: model || "" };
 }
 
-function GiftCard({ gift, lang, tk, displayPrice, onOpen, onAddToCart, inCart }) {
+function GiftCard({ gift, lang, tk, displayPrice, tonUzsRate, onOpen, onAddToCart, inCart }) {
   const [imgLoaded, setImgLoaded] = useState(false);
   const mainRaster = useGiftMainRasterImage(gift);
   const { primary: cardTitle, secondary: modelLine } = giftCardTitleLines(gift);
@@ -1073,6 +1134,16 @@ function GiftCard({ gift, lang, tk, displayPrice, onOpen, onAddToCart, inCart })
 
   const statusLabel = listingStatusLabel(lang, gift.status);
   const isBuyable = giftIsBuyable(gift);
+  const tonPrice = Number(gift?.priceTon);
+  const uzsEq =
+    Number.isFinite(tonPrice) && tonPrice > 0 && Number.isFinite(tonUzsRate) && tonUzsRate > 0
+      ? formatUzsPrice(tonPrice * tonUzsRate)
+      : "";
+  const floorTon = Number(gift?.realFloorTon) > 0 ? Number(gift.realFloorTon) : Number(gift?.floorTon);
+  const floorGapPct =
+    Number.isFinite(floorTon) && floorTon > 0 && Number.isFinite(tonPrice) && tonPrice > 0
+      ? Math.round(((floorTon - tonPrice) / floorTon) * 100)
+      : null;
 
   return (
     <article className="nftCardCell">
@@ -1131,13 +1202,21 @@ function GiftCard({ gift, lang, tk, displayPrice, onOpen, onAddToCart, inCart })
 
         <div className="nftCardMeta nftCardMeta--simple">
           <h3 className="nftCardTitle">{cardTitle}</h3>
-          {modelLine ? <p className="nftCardSubline mono">{modelLine}</p> : null}
+          <p className="nftCardSubline mono">
+            {modelLine || gift.collection || "Collection"} {gift?.giftNumber ? `• #${gift.giftNumber}` : ""}
+          </p>
           <div className="nftCardPriceRow">
             <span className="nftCardPricePill" aria-hidden="true">
               <span className="nftCardPricePillValue">{displayPrice(gift.priceTon)}</span>
             </span>
+            <span className="nftCardPriceSub mono">{uzsEq}</span>
             {statusLabel ? (
               <span className={nftStatusCardClass(gift.status)}>{statusLabel}</span>
+            ) : null}
+            {floorGapPct !== null ? (
+              <span className={`nftCardFloorGap mono ${floorGapPct >= 0 ? "nftCardFloorGap--below" : "nftCardFloorGap--above"}`}>
+                {floorGapPct >= 0 ? `${floorGapPct}% below floor` : `${Math.abs(floorGapPct)}% above floor`}
+              </span>
             ) : null}
           </div>
         </div>

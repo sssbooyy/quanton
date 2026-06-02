@@ -5,6 +5,7 @@ import { searchQuantonListings } from "./marketplaces/quantonAdapter.js";
 import { searchPortalsListings } from "./marketplaces/portalsAdapter.js";
 import { searchTonnelListings } from "./marketplaces/tonnelAdapter.js";
 import { searchMrktListings } from "./marketplaces/mrktAdapter.js";
+import { searchSatelliteListings } from "./marketplaces/satelliteAdapter.js";
 
 const SORTS = new Set(["price_asc", "price_desc", "rarity", "newest"]);
 
@@ -13,6 +14,7 @@ const SOURCE_ADAPTERS = {
   portals: searchPortalsListings,
   tonnel: searchTonnelListings,
   mrkt: searchMrktListings,
+  satellite: searchSatelliteListings,
 };
 
 function normalizeQuery(input = {}) {

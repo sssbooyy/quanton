@@ -140,7 +140,7 @@ export const AI_UPSCALER_MAX_RETRIES =
 export const DEBUG_PROVIDERS_SECRET = process.env.DEBUG_PROVIDERS_SECRET?.trim() || "";
 
 export const MARKETPLACE_SOURCES = String(
-  process.env.MARKETPLACE_SOURCES || "quanton,portals,tonnel,mrkt"
+  process.env.MARKETPLACE_SOURCES || "quanton,satellite"
 )
   .split(",")
   .map((x) => x.trim().toLowerCase())

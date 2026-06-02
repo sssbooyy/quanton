@@ -139,6 +139,17 @@ export const AI_UPSCALER_MAX_RETRIES =
 /** Optional shared secret for GET /debug/providers in production (header X-Debug-Providers-Secret). */
 export const DEBUG_PROVIDERS_SECRET = process.env.DEBUG_PROVIDERS_SECRET?.trim() || "";
 
+export const MARKETPLACE_SOURCES = String(
+  process.env.MARKETPLACE_SOURCES || "quanton,portals,tonnel,mrkt"
+)
+  .split(",")
+  .map((x) => x.trim().toLowerCase())
+  .filter(Boolean);
+
+const _aggCache = Number.parseInt(process.env.AGGREGATOR_CACHE_SECONDS, 10);
+export const AGGREGATOR_CACHE_SECONDS =
+  Number.isFinite(_aggCache) && _aggCache >= 30 && _aggCache <= 300 ? _aggCache : 60;
+
 /**
  * CORS: comma-separated origins (scheme + host, no path).
  * Set CORS_ORIGINS=https://your-app.vercel.app,https://preview.vercel.app

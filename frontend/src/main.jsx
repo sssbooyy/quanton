@@ -10,7 +10,6 @@ import {
 import App from "./App.jsx";
 import "./styles.css";
 import "./nft-market.css";
-import "./mine-sapphire.css";
 
 if (import.meta.env.PROD && !hasExplicitApiUrlFromEnv()) {
   console.info(

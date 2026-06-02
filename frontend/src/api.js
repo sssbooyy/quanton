@@ -27,10 +27,6 @@ client.interceptors.response.use(
       code: err.code,
       responseData: data,
     };
-    if (path.includes("/mine")) {
-      logPayload.requestHeaders = err.config?.headers;
-      logPayload.requestParams = err.config?.params;
-    }
     console.error("[api]", method, full, logPayload);
     return Promise.reject(err);
   }
@@ -93,58 +89,5 @@ export async function getOrder(orderId) {
 
 export async function getTonUzsRate() {
   const res = await client.get("/rates/ton-uzs");
-  return res.data;
-}
-
-function mineRequestConfig(headers = {}, body = {}) {
-  const telegramId = String(
-    headers["X-Telegram-User-Id"] || body?.telegramId || body?.telegramUser?.id || ""
-  ).trim();
-  return {
-    headers,
-    params: telegramId ? { telegramId } : {},
-  };
-}
-
-export async function getMineProfile(headers = {}) {
-  const res = await client.get("/mine/profile", mineRequestConfig(headers));
-  return res.data;
-}
-
-export async function postMineTap(body, headers = {}) {
-  const { headers: h, params } = mineRequestConfig(headers, body);
-  const res = await client.post("/mine/tap", body, { headers: h, params });
-  return res.data;
-}
-
-export async function postMineDaily(body, headers = {}) {
-  const { headers: h, params } = mineRequestConfig(headers, body);
-  const res = await client.post("/mine/daily", body, { headers: h, params });
-  return res.data;
-}
-
-export async function postMineUpgrade(body, headers = {}) {
-  const { headers: h, params } = mineRequestConfig(headers, body);
-  const res = await client.post("/mine/upgrade", body, { headers: h, params });
-  return res.data;
-}
-
-export async function getMineLeaderboard(type, headers = {}) {
-  const { headers: h, params } = mineRequestConfig(headers);
-  const res = await client.get("/mine/leaderboard", {
-    headers: h,
-    params: { ...params, type },
-  });
-  return res.data;
-}
-
-export async function getMineReferral(headers = {}) {
-  const res = await client.get("/mine/referral", mineRequestConfig(headers));
-  return res.data;
-}
-
-export async function postMineClaimReferral(body, headers = {}) {
-  const { headers: h, params } = mineRequestConfig(headers, body);
-  const res = await client.post("/mine/claim-referral", body, { headers: h, params });
   return res.data;
 }

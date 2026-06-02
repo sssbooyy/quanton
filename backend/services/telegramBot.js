@@ -1066,15 +1066,8 @@ export function initTelegramBot() {
     }
   }
 
-  bot.onText(/\/start(?:\s+(.+))?/, async (msg, match) => {
+  bot.onText(/\/start(?:\s+(.+))?/, async (msg) => {
     const selected = await getUserLanguage(String(msg.from?.id || msg.chat.id || ""));
-    const startPayload = String(match?.[1] || "").trim();
-    if (startPayload.toLowerCase().startsWith("ref_")) {
-      console.log("[mining] bot /start referral payload", {
-        telegramId: String(msg.from?.id || ""),
-        payload: startPayload.slice(0, 24),
-      });
-    }
     if (!selected) {
       await bot.sendMessage(msg.chat.id, BOT_I18N.en.languagePrompt, { reply_markup: languageKeyboard() }).catch((e) => {
         console.error("[telegram] sendMessage failed:", e?.message || e);

@@ -1,20 +1,12 @@
 import { hapticImpact } from "../lib/telegramUser.js";
 
 const TABS = [
-  { id: "mine", label: "Mine", icon: "mine" },
   { id: "market", label: "Market", icon: "market" },
   { id: "activity", label: "Activity", icon: "activity" },
   { id: "profile", label: "Profile", icon: "profile" },
 ];
 
 function NavIcon({ type }) {
-  if (type === "mine") {
-    return (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7-6.3-4.6L6 21l2.3-7-6-4.6h7.6L12 2z" fill="currentColor" opacity="0.9" />
-      </svg>
-    );
-  }
   if (type === "activity") {
     return (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">

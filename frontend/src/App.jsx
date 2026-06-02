@@ -52,7 +52,6 @@ import {
   resolveCollectibleHeroPresentation,
 } from "@shared/giftHeroResolve.js";
 import BottomNav from "./components/BottomNav.jsx";
-import Mine from "./pages/Mine.jsx";
 import TabPlaceholder from "./pages/TabPlaceholder.jsx";
 import { resolveGiftCollectibleVisualLayers } from "@shared/giftCollectibleLayers.js";
 import {
@@ -197,7 +196,7 @@ export default function App() {
     }
   });
   const [tonUzsRateLoading, setTonUzsRateLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("mine");
+  const [activeTab, setActiveTab] = useState("market");
 
   const tk = useMemo(() => (key) => t(lang, key), [lang]);
 
@@ -590,7 +589,6 @@ export default function App() {
         </div>
       )}
 
-      {activeTab === "mine" ? <Mine /> : null}
       {activeTab === "activity" ? (
         <TabPlaceholder title="Activity" subtitle="Your orders and marketplace activity will appear here." />
       ) : null}

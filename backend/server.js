@@ -49,8 +49,6 @@ import {
   syncBusinessGifts,
   verifyGiftHeldByBusinessAccount,
 } from "./services/telegramGiftEscrow.js";
-import mineRoutes from "./routes/mineRoutes.js";
-
 dotenv.config();
 
 const app = express();
@@ -63,7 +61,6 @@ app.disable("x-powered-by");
 
 app.use(createCorsMiddleware());
 app.use(express.json({ limit: "512kb" }));
-app.use("/mine", mineRoutes);
 
 /** Batch/single metadata refresh: require secret in production; dev allows open calls when unset. */
 function assertMetadataJobAllowed(req, res) {

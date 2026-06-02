@@ -568,23 +568,6 @@ export default function App() {
     return sortGiftList(list, sortKey);
   }, [gifts, preset, listingStatusFilter, advFilters, searchQuery, sortKey]);
 
-  const marketStats = useMemo(() => {
-    const totalListings = gifts.length;
-    const liveListings = gifts.filter((gift) => giftIsBuyable(gift)).length;
-    const prices = gifts
-      .map((gift) => Number(gift.priceTon))
-      .filter((value) => Number.isFinite(value) && value > 0);
-    const floorPrice = prices.length ? Math.min(...prices) : 0;
-    const now = Date.now();
-    const oneDayMs = 24 * 60 * 60 * 1000;
-    const recentlyListed = gifts.filter((gift) => {
-      const ts = new Date(gift?.createdAt || gift?.updatedAt || 0).getTime();
-      return Number.isFinite(ts) && ts > 0 && now - ts <= oneDayMs;
-    }).length;
-    const trendUp = liveListings >= Math.max(1, Math.round(totalListings * 0.55));
-    return { totalListings, liveListings, floorPrice, recentlyListed, trendUp };
-  }, [gifts]);
-
   function resetBrowseFilters() {
     setPreset("all");
     setSearchQuery("");
@@ -702,41 +685,6 @@ export default function App() {
       </header>
 
       <main className="app app--terminal">
-        <section className="marketSummaryCard" aria-label="Market summary">
-          <div className="marketSummaryHead">
-            <div>
-              <p className="marketSummaryKicker">{tk("feedTagline")}</p>
-              <h1 className="marketSummaryTitle">Marketplace</h1>
-            </div>
-            <span className="marketSummaryLive">
-              <span className="liveDot liveDot--subtle" aria-hidden="true" />
-              Live
-            </span>
-          </div>
-          <div className="marketSummaryGrid">
-            <div className="marketSummaryMetric">
-              <span className="marketSummaryMetric__label">Total listings</span>
-              <strong className="marketSummaryMetric__value mono">{marketStats.totalListings}</strong>
-            </div>
-            <div className="marketSummaryMetric">
-              <span className="marketSummaryMetric__label">Floor price</span>
-              <strong className="marketSummaryMetric__value mono">{displayPrice(marketStats.floorPrice)}</strong>
-            </div>
-            <div className="marketSummaryMetric">
-              <span className="marketSummaryMetric__label">Live listings</span>
-              <strong className="marketSummaryMetric__value mono">{marketStats.liveListings}</strong>
-            </div>
-            <div className="marketSummaryMetric">
-              <span className="marketSummaryMetric__label">Recently listed</span>
-              <strong className="marketSummaryMetric__value mono">{marketStats.recentlyListed}</strong>
-            </div>
-          </div>
-          <div className="marketTrend">
-            <span className={`marketTrendDot ${marketStats.trendUp ? "marketTrendDot--up" : "marketTrendDot--flat"}`} />
-            <span className="mono">{marketStats.trendUp ? "Trend: steady upward interest" : "Trend: market consolidating"}</span>
-          </div>
-        </section>
-
         <div className="marketBrowseBar">
           <div className="marketSearchRow marketSearchRow--enhanced">
             <input

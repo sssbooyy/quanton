@@ -8,11 +8,6 @@ import { User } from "../models/User.js";
 import { resolveGiftMetadata, applyResolvedMetadataToGiftDocument } from "./metadataProvider.js";
 import { finalizeResolvedFloorMetadata } from "./floorProvider.js";
 import { scheduleGiftImageUpscale, syncUpscaleMetadataFields } from "./imageUpscaler.js";
-import {
-  getBestDealsAcrossSources,
-  getFloorSummary,
-  searchAggregator,
-} from "./giftAggregator.js";
 
 /**
  * Telegram Mini Apps
@@ -82,10 +77,6 @@ const BOT_I18N = {
       "/price - set price by listing id",
       "/received - buyer confirms receipt by order id",
       "/dispute - buyer reports an issue by order id",
-      "/search - search gifts across marketplaces",
-      "/find - alias of /search",
-      "/deals - best below-floor listings",
-      "/floor - floor snapshot across marketplaces",
       "/language - change language",
     ],
     sell: [
@@ -197,10 +188,6 @@ const BOT_I18N = {
       "/price - задать цену по listing id",
       "/received - покупатель подтверждает получение по order id",
       "/dispute - покупатель сообщает о проблеме по order id",
-      "/search - поиск подарков по маркетплейсам",
-      "/find - синоним /search",
-      "/deals - лучшие цены ниже пола",
-      "/floor - срез пола по маркетплейсам",
       "/language - сменить язык",
     ],
     sell: [
@@ -414,35 +401,6 @@ function amountPaidLabel(order) {
     return `${Math.round(uzs).toLocaleString("en-US").replace(/,/g, " ")} UZS (${ton} TON)`;
   }
   return `${ton} TON`;
-}
-
-function formatTon(value) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return "0";
-  return n.toLocaleString("en-US", { maximumFractionDigits: 4 });
-}
-
-function computeFloorDiffPct(priceTon, floorTon) {
-  const price = Number(priceTon);
-  const floor = Number(floorTon);
-  if (!Number.isFinite(price) || !Number.isFinite(floor) || floor <= 0) return null;
-  return Number((((floor - price) / floor) * 100).toFixed(2));
-}
-
-async function sendListingPreview(chatId, item, lines) {
-  const text = lines.join("\n");
-  if (item?.imageUrl) {
-    try {
-      await bot.sendPhoto(chatId, item.imageUrl, {
-        caption: text,
-        parse_mode: "HTML",
-      });
-      return;
-    } catch (e) {
-      console.warn("[telegram] search preview image failed", e?.message || e);
-    }
-  }
-  await bot.sendMessage(chatId, text, { parse_mode: "HTML" });
 }
 
 function logBusinessUpdate(update) {
@@ -1143,92 +1101,6 @@ export function initTelegramBot() {
       msg.chat.id,
       tr(lang, "sell")
     ).catch((e) => console.error("[telegram] sendMessage failed:", e?.message || e));
-  });
-
-  bot.onText(/\/(?:search|find)\s+(.+)/i, async (msg, match) => {
-    const query = String(match?.[1] || "").trim();
-    if (!query) {
-      await bot.sendMessage(msg.chat.id, "Usage: /search <gift name>");
-      return;
-    }
-    try {
-      const result = await searchAggregator({ q: query, sort: "price_asc", limit: 5 });
-      if (!result.items.length) {
-        await bot.sendMessage(msg.chat.id, `No listings found for "${query}".`);
-        return;
-      }
-
-      for (const item of result.items) {
-        const floorSummary = await getFloorSummary({ q: item.collection || item.giftName });
-        const floorTon = Number(floorSummary?.globalFloor?.priceTon || 0);
-        const diff = computeFloorDiffPct(item.priceTon, floorTon);
-        const lines = [
-          `<b>${item.giftName}</b>`,
-          `Marketplace: ${item.source}`,
-          `Price: ${formatTon(item.priceTon)} TON`,
-          diff == null
-            ? "Floor diff: n/a"
-            : `Floor diff: ${diff >= 0 ? "-" : "+"}${Math.abs(diff)}%`,
-          `<a href="${item.marketplaceUrl}">Open listing</a>`,
-        ];
-        await sendListingPreview(msg.chat.id, item, lines);
-      }
-    } catch (e) {
-      console.error("[telegram] /search failed:", e?.message || e);
-      await bot.sendMessage(msg.chat.id, "Search is temporarily unavailable.");
-    }
-  });
-
-  bot.onText(/\/deals\b/i, async (msg) => {
-    try {
-      const deals = await getBestDealsAcrossSources({ limit: 8 });
-      if (!deals.length) {
-        await bot.sendMessage(msg.chat.id, "No 10%+ deals found right now.");
-        return;
-      }
-
-      const lines = ["🔥 <b>Best deals across marketplaces</b>", ""];
-      for (const item of deals.slice(0, 8)) {
-        lines.push(
-          `• ${item.giftName} — ${formatTon(item.priceTon)} TON (${item.discountPct}% below floor)`,
-          `  ${item.source} · ${item.marketplaceUrl}`
-        );
-      }
-      await bot.sendMessage(msg.chat.id, lines.join("\n"), {
-        parse_mode: "HTML",
-        disable_web_page_preview: true,
-      });
-    } catch (e) {
-      console.error("[telegram] /deals failed:", e?.message || e);
-      await bot.sendMessage(msg.chat.id, "Deals are temporarily unavailable.");
-    }
-  });
-
-  bot.onText(/\/floor\s+(.+)/i, async (msg, match) => {
-    const query = String(match?.[1] || "").trim();
-    if (!query) {
-      await bot.sendMessage(msg.chat.id, "Usage: /floor <gift name>");
-      return;
-    }
-    try {
-      const floor = await getFloorSummary({ q: query, limit: 50 });
-      if (!floor.byMarketplace.length) {
-        await bot.sendMessage(msg.chat.id, `No floor data found for "${query}".`);
-        return;
-      }
-
-      const lines = [`<b>Floor snapshot: ${query}</b>`, ""];
-      for (const row of floor.byMarketplace) {
-        lines.push(`• ${row.source}: ${formatTon(row.priceTon)} TON`);
-      }
-      lines.push("", `Global floor: ${formatTon(floor.globalFloor?.priceTon || 0)} TON`);
-      lines.push(`Price spread: ${formatTon(floor.spreadTon)} TON`);
-
-      await bot.sendMessage(msg.chat.id, lines.join("\n"), { parse_mode: "HTML" });
-    } catch (e) {
-      console.error("[telegram] /floor failed:", e?.message || e);
-      await bot.sendMessage(msg.chat.id, "Floor lookup is temporarily unavailable.");
-    }
   });
 
   bot.onText(/\/price\s+(\S+)\s+([0-9]+(?:\.[0-9]+)?)/, async (msg, match) => {

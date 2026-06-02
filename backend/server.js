@@ -49,7 +49,6 @@ import {
   syncBusinessGifts,
   verifyGiftHeldByBusinessAccount,
 } from "./services/telegramGiftEscrow.js";
-import { searchAggregator } from "./services/giftAggregator.js";
 dotenv.config();
 
 const app = express();
@@ -248,26 +247,6 @@ app.post("/gifts", async (req, res, next) => {
       return res.status(result.error.status).json(result.error.body);
     }
     res.status(201).json(giftToApiResponse(result.gift));
-  } catch (e) {
-    next(e);
-  }
-});
-
-app.get("/aggregator/search", async (req, res, next) => {
-  try {
-    const result = await searchAggregator({
-      q: req.query.q,
-      collection: req.query.collection,
-      model: req.query.model,
-      symbol: req.query.symbol,
-      backdrop: req.query.backdrop,
-      minPrice: req.query.minPrice,
-      maxPrice: req.query.maxPrice,
-      sort: req.query.sort,
-      limit: req.query.limit,
-    });
-    res.set("Cache-Control", "public, max-age=20, stale-while-revalidate=60");
-    res.json(result);
   } catch (e) {
     next(e);
   }

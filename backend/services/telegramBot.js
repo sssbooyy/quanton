@@ -144,6 +144,7 @@ const BOT_I18N = {
     payoutRequiresBuyer: "Buyer confirmation is required before payout.",
     payoutRequiresAddress: "Seller payout address is required before payout.",
     paymentClaimAdmin: "Buyer claims payment sent\n\nOrder: {orderId}\nGift: {giftLines}\nSeller: {seller}\nBuyer: {buyer}\nAmount: {amount}\nWallet: {wallet}\nTx: {txHash}\nWallet app: {walletApp}",
+    paymePaymentClaimAdmin: "Buyer claims Payme payment sent\n\nOrder: {orderId}\nGift: {giftLines}\nBuyer: {buyer}\nSeller: {seller}\nAmount UZS: {amountUzs}\nAmount TON: {amountTon}\nPayment method: {paymentMethod}",
     confirmPaymentButton: "Confirm payment",
     rejectPaymentButton: "Reject payment",
     cbPaymentConfirmed: "Payment confirmed.",
@@ -255,6 +256,7 @@ const BOT_I18N = {
     payoutRequiresBuyer: "Для выплаты сначала нужно подтверждение покупателя.",
     payoutRequiresAddress: "Для выплаты нужен адрес выплаты продавца.",
     paymentClaimAdmin: "Покупатель сообщил об оплате\n\nЗаказ: {orderId}\nПодарок: {giftLines}\nПродавец: {seller}\nПокупатель: {buyer}\nСумма: {amount}\nКошелёк: {wallet}\nTx: {txHash}\nКошелёк app: {walletApp}",
+    paymePaymentClaimAdmin: "Покупатель сообщил об оплате Payme\n\nЗаказ: {orderId}\nПодарок: {giftLines}\nПокупатель: {buyer}\nПродавец: {seller}\nСумма UZS: {amountUzs}\nСумма TON: {amountTon}\nМетод оплаты: {paymentMethod}",
     confirmPaymentButton: "Подтвердить оплату",
     rejectPaymentButton: "Отклонить оплату",
     cbPaymentConfirmed: "Оплата подтверждена.",
@@ -387,6 +389,7 @@ function parsePayoutAddress(text) {
 }
 
 function paymentMethodLabel(order) {
+  if (order.paymentMethod === "payme_manual") return "Payme QR";
   if (order.paymentMethod === "card") {
     return order.cardProvider === "payme" ? "Payme / Humo / Uzcard" : "Click / Humo / Uzcard";
   }
@@ -396,11 +399,21 @@ function paymentMethodLabel(order) {
 
 function amountPaidLabel(order) {
   const ton = Number(order.totalTon);
-  const uzs = Number(order.totalUzs);
-  if (order.paymentMethod === "card" && Number.isFinite(uzs) && uzs > 0) {
+  const uzs = Number(order.amountUzs || order.totalUzs);
+  if (
+    (order.paymentMethod === "card" || order.paymentMethod === "payme_manual") &&
+    Number.isFinite(uzs) &&
+    uzs > 0
+  ) {
     return `${Math.round(uzs).toLocaleString("en-US").replace(/,/g, " ")} UZS (${ton} TON)`;
   }
   return `${ton} TON`;
+}
+
+function formatUzsAdminAmount(order) {
+  const uzs = Number(order.amountUzs || order.totalUzs);
+  if (!Number.isFinite(uzs) || uzs <= 0) return "—";
+  return `${Math.round(uzs).toLocaleString("en-US").replace(/,/g, " ")} UZS`;
 }
 
 function logBusinessUpdate(update) {
@@ -575,17 +588,29 @@ export async function notifyAdminPaymentClaim(order, gifts = []) {
       })
     : displayTelegramUser({ id: order.sellerTelegramId, username: order.sellerUsername });
   const adminLang = await getUserLanguageOrDefault(adminChatId());
+  const isPaymeManual = order.paymentMethod === "payme_manual" || order.manualPaymentProvider === "payme";
+  const text = isPaymeManual
+    ? tr(adminLang, "paymePaymentClaimAdmin", {
+        orderId: order.orderId,
+        giftLines: giftLines || "—",
+        seller,
+        buyer,
+        amountUzs: formatUzsAdminAmount(order),
+        amountTon: `${Number(order.totalTon) || 0} TON`,
+        paymentMethod: paymentMethodLabel(order),
+      })
+    : tr(adminLang, "paymentClaimAdmin", {
+        orderId: order.orderId,
+        giftLines: giftLines || "—",
+        seller,
+        buyer,
+        amount: amountPaidLabel(order),
+        wallet: order.marketplaceWalletAddress || "—",
+        txHash: order.txHash || "—",
+        walletApp: order.walletAppInfo || "—",
+      });
   await notifyAdmin(
-    tr(adminLang, "paymentClaimAdmin", {
-      orderId: order.orderId,
-      giftLines: giftLines || "—",
-      seller,
-      buyer,
-      amount: amountPaidLabel(order),
-      wallet: order.marketplaceWalletAddress || "—",
-      txHash: order.txHash || "—",
-      walletApp: order.walletAppInfo || "—",
-    }),
+    text,
     { reply_markup: adminPaymentReviewKeyboard(order.orderId, adminLang) },
     "admin_payment_claim"
   );
@@ -603,8 +628,10 @@ export async function confirmAdminTonPayment(orderId) {
   }
 
   order.paymentReviewStatus = "confirmed_by_admin";
-  order.paymentMethod = "ton_manual_admin";
-  if (!order.txHash) order.txHash = `admin_confirmed_${order.orderId}`;
+  if (order.paymentMethod !== "payme_manual") {
+    order.paymentMethod = "ton_manual_admin";
+    if (!order.txHash) order.txHash = `admin_confirmed_${order.orderId}`;
+  }
   await order.save();
 
   const completed = await handleManualEscrowAfterPayment(order, {

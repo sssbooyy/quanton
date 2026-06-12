@@ -4,10 +4,9 @@ import { beginCell, toNano } from "@ton/core";
 import {
   addGift,
   createOrder,
-  getCardPaymentProviders,
-  getCardPaymentStatus,
   getGifts,
   getTonUzsRate,
+  submitManualPayment,
   submitOrderPayment,
   verifyOrderPayment,
 } from "./api";
@@ -67,6 +66,10 @@ const MANUAL_LISTING_FALLBACK_ENABLED =
   (import.meta.env.VITE_ENABLE_MANUAL_LISTING_FALLBACK !== "false" &&
     import.meta.env.VITE_ENABLE_MANUAL_LISTING !== "false");
 
+const PAYME_QR_IMAGE_URL = String(import.meta.env.VITE_PAYME_QR_IMAGE_URL || "").trim();
+const PAYME_CARD_LABEL = String(import.meta.env.VITE_PAYME_CARD_LABEL || "").trim();
+const PAYME_RECEIVER_NAME = String(import.meta.env.VITE_PAYME_RECEIVER_NAME || "").trim();
+
 function getTelegramUser() {
   try {
     return window.Telegram?.WebApp?.initDataUnsafe?.user ?? null;
@@ -94,6 +97,10 @@ function checkoutStatusText(status) {
       return "Transaction sent. Submitting payment claim...";
     case "awaiting_admin_confirmation":
       return "Payment sent. Waiting for admin confirmation.";
+    case "manual_payment_submitted":
+      return "Payment submitted. Waiting for admin confirmation.";
+    case "payme_checkout":
+      return "Complete Payme payment in the modal.";
     case "payment_submitted":
       return "Payment submitted. Admin will confirm shortly.";
     case "verifying_payment":
@@ -159,11 +166,8 @@ export default function App() {
   const walletAddress = useTonAddress();
   const [checkoutState, setCheckoutState] = useState({ status: "idle", error: "", orderId: "" });
   const [paymentMethod, setPaymentMethod] = useState({ type: "ton", provider: "" });
-  const [cardProviders, setCardProviders] = useState({
-    click: { enabled: false, testMode: false, disabledReason: "Provider not configured" },
-    payme: { enabled: false, testMode: false, disabledReason: "Provider not configured" },
-  });
-  const [testPayment, setTestPayment] = useState(null);
+  const [paymeManualPayment, setPaymeManualPayment] = useState(null);
+  const [paymeSubmitting, setPaymeSubmitting] = useState(false);
   const [currency, setCurrency] = useState(() => {
     try {
       return window.localStorage.getItem(CURRENCY_STORAGE_KEY) === CURRENCIES.UZS ? CURRENCIES.UZS : CURRENCIES.TON;
@@ -201,20 +205,9 @@ export default function App() {
       window.Telegram.WebApp.expand();
     }
     loadGifts({ showSpinner: true });
-    getCardPaymentProviders()
-      .then((data) => {
-        setCardProviders((prev) => {
-          const next = { ...prev };
-          for (const p of data?.providers || []) {
-            if (p?.provider === "click" || p?.provider === "payme") next[p.provider] = p;
-          }
-          return next;
-        });
-      })
-      .catch((err) => console.warn("[payments] card providers unavailable", err?.message || err));
   }, []);
 
-  const anyModalOpen = giftModalOpen || Boolean(detailGift) || cartOpen || Boolean(testPayment);
+  const anyModalOpen = giftModalOpen || Boolean(detailGift) || cartOpen || Boolean(paymeManualPayment);
 
   useEffect(() => {
     if (!anyModalOpen) return;
@@ -229,8 +222,8 @@ export default function App() {
     if (!anyModalOpen) return;
     function onKey(e) {
       if (e.key !== "Escape") return;
-      if (testPayment) {
-        setTestPayment(null);
+      if (paymeManualPayment) {
+        setPaymeManualPayment(null);
         return;
       }
       if (cartOpen) {
@@ -247,7 +240,7 @@ export default function App() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [anyModalOpen, giftModalOpen, cartOpen, testPayment]);
+  }, [anyModalOpen, giftModalOpen, cartOpen, paymeManualPayment]);
 
   useEffect(() => {
     if (!successToast) return;
@@ -286,32 +279,6 @@ export default function App() {
   useEffect(() => {
     refreshTonUzsRate();
   }, []);
-
-  useEffect(() => {
-    if (!testPayment?.orderId) return undefined;
-    const id = window.setInterval(async () => {
-      try {
-        const data = await getCardPaymentStatus(testPayment.orderId);
-        const order = data?.order;
-        if (!order) return;
-        setTestPayment((prev) => (prev?.orderId === order.orderId ? { ...prev, order } : prev));
-        if (order.status === "paid") {
-          cart.clear();
-          setCheckoutState({ status: "confirmed", error: "", orderId: order.orderId });
-          setSuccessToast("Card payment confirmed. Gift listing updated.");
-          setTestPayment(null);
-          await loadGifts({ showSpinner: false });
-        } else if (order.status === "failed") {
-          setCheckoutState({ status: "failed", error: "Card payment was cancelled.", orderId: order.orderId });
-          setTestPayment(null);
-          await loadGifts({ showSpinner: false });
-        }
-      } catch (err) {
-        console.warn("[payments] card status unavailable", err?.message || err);
-      }
-    }, 2500);
-    return () => window.clearInterval(id);
-  }, [testPayment?.orderId, cart]);
 
   useEffect(() => {
     console.info("[currency]", {
@@ -464,14 +431,14 @@ export default function App() {
         payload: orderPayload,
       });
 
-      if (paymentMethod.type === "card") {
-        setCheckoutState({ status: "card_pending", error: "", orderId: order.orderId });
-        setTestPayment({
-          provider: order.cardProvider || paymentMethod.provider,
+      if (paymentMethod.type === "payme_manual") {
+        setCheckoutState({ status: "payme_checkout", error: "", orderId: order.orderId });
+        setPaymeManualPayment({
           order,
           orderId: order.orderId,
-          paymentUrl: order.paymentUrl,
+          amountUzs: Number(order.amountUzs || order.totalUzs) || 0,
         });
+        setCartOpen(false);
         return;
       }
 
@@ -533,6 +500,43 @@ export default function App() {
         error: typeof msg === "string" ? translateServerMessage(lang, msg) : "Payment failed. Please try again.",
         orderId: currentOrderId,
       });
+    }
+  }
+
+  async function handlePaymeManualPaid() {
+    if (!paymeManualPayment?.orderId) return;
+    const tgUser = getTelegramUser();
+    const amountUzs = Number(paymeManualPayment.amountUzs) || 0;
+    try {
+      setPaymeSubmitting(true);
+      await submitManualPayment(paymeManualPayment.orderId, {
+        paymentMethod: "payme_manual",
+        amountUzs,
+        buyerTelegramId: tgUser?.id ? String(tgUser.id) : "",
+        buyerUsername: tgUser?.username ? String(tgUser.username) : "",
+        telegramUser: tgUser || undefined,
+      });
+      setCheckoutState({
+        status: "manual_payment_submitted",
+        error: "",
+        orderId: paymeManualPayment.orderId,
+      });
+      setPaymeManualPayment(null);
+      setSuccessToast("Payment submitted. Waiting for admin confirmation.");
+    } catch (error) {
+      console.error(error);
+      const msg =
+        error.response?.data?.error ||
+        error.message ||
+        "Could not submit payment claim. Please try again.";
+      setCheckoutState((prev) => ({
+        ...prev,
+        status: "failed",
+        error: typeof msg === "string" ? translateServerMessage(lang, msg) : "Could not submit payment claim.",
+        orderId: paymeManualPayment.orderId,
+      }));
+    } finally {
+      setPaymeSubmitting(false);
     }
   }
 
@@ -733,16 +737,17 @@ export default function App() {
         walletAddress={walletAddress}
         paymentMethod={paymentMethod}
         onPaymentMethodChange={setPaymentMethod}
-        cardProviders={cardProviders}
         displayPrice={displayPrice}
         displayCurrency={currency}
         tk={tk}
       />
 
-      {testPayment ? (
-        <CardPaymentModal
-          payment={testPayment}
-          onClose={() => setTestPayment(null)}
+      {paymeManualPayment ? (
+        <PaymeManualPaymentModal
+          payment={paymeManualPayment}
+          submitting={paymeSubmitting}
+          onClose={() => setPaymeManualPayment(null)}
+          onPaid={handlePaymeManualPaid}
         />
       ) : null}
         </>
@@ -1308,7 +1313,6 @@ function CartDrawer({
   walletAddress,
   paymentMethod,
   onPaymentMethodChange,
-  cardProviders,
   displayPrice,
   displayCurrency,
   tk,
@@ -1316,16 +1320,14 @@ function CartDrawer({
   if (!open) return null;
 
   const totalStr = formatTonPrice(totalTon);
-  const selectedProvider = paymentMethod?.type === "card" ? paymentMethod.provider : "";
-  const selectedCardProvider = selectedProvider ? cardProviders?.[selectedProvider] : null;
-  const providerDisabledReason = selectedCardProvider && !selectedCardProvider.enabled ? selectedCardProvider.disabledReason || "Provider not configured" : "";
   const checkoutBusy = [
     "creating_order",
     "wallet_confirmation",
     "transaction_sent",
     "verifying_payment",
     "awaiting_admin_confirmation",
-    "card_pending",
+    "manual_payment_submitted",
+    "payme_checkout",
   ].includes(checkoutState?.status);
 
   return (
@@ -1404,8 +1406,20 @@ function CartDrawer({
           <div className="cartCheckoutPanel">
             <div className="cartCheckoutPanel__head">
               <span>Checkout</span>
-              <span className={paymentMethod.type === "ton" ? (walletAddress ? "text-bull" : "text-muted") : "text-bull"}>
-                {paymentMethod.type === "ton" ? (walletAddress ? "Wallet connected" : "Wallet required") : "Card checkout"}
+              <span
+                className={
+                  paymentMethod.type === "ton"
+                    ? walletAddress
+                      ? "text-bull"
+                      : "text-muted"
+                    : "text-bull"
+                }
+              >
+                {paymentMethod.type === "ton"
+                  ? walletAddress
+                    ? "Wallet connected"
+                    : "Wallet required"
+                  : "Payme QR"}
               </span>
             </div>
             <div className="paymentMethodList" role="radiogroup" aria-label="Payment method">
@@ -1414,32 +1428,18 @@ function CartDrawer({
                 className={paymentMethod.type === "ton" ? "paymentMethod active" : "paymentMethod"}
                 onClick={() => onPaymentMethodChange({ type: "ton", provider: "" })}
               >
-                <span>TON Wallet</span>
+                <span>TON</span>
                 <small>TON Connect</small>
               </button>
-              {[
-                ["click", "Click / Humo / Uzcard"],
-                ["payme", "Payme / Humo / Uzcard"],
-              ].map(([provider, label]) => {
-                const cfg = cardProviders?.[provider] || {};
-                const disabled = !cfg.enabled;
-                return (
-                  <button
-                    key={provider}
-                    type="button"
-                    className={paymentMethod.type === "card" && paymentMethod.provider === provider ? "paymentMethod active" : "paymentMethod"}
-                    onClick={() => !disabled && onPaymentMethodChange({ type: "card", provider })}
-                    disabled={disabled}
-                  >
-                    <span>{label}</span>
-                    <small>{disabled ? cfg.disabledReason || "Provider not configured" : "Available"}</small>
-                  </button>
-                );
-              })}
+              <button
+                type="button"
+                className={paymentMethod.type === "payme_manual" ? "paymentMethod active" : "paymentMethod"}
+                onClick={() => onPaymentMethodChange({ type: "payme_manual", provider: "" })}
+              >
+                <span>Payme QR</span>
+                <small>UZS transfer</small>
+              </button>
             </div>
-            {providerDisabledReason ? (
-              <p className="cartCheckoutStatus mono cartCheckoutStatus--failed">{providerDisabledReason}</p>
-            ) : null}
             <div className="tonConnectSlot tonConnectSlot--checkout">
               {paymentMethod.type === "ton" ? <TonConnectButton /> : null}
             </div>
@@ -1448,7 +1448,9 @@ function CartDrawer({
                 {checkoutState.error || checkoutStatusText(checkoutState.status)}
               </p>
             ) : null}
-            {checkoutState?.orderId && checkoutState.status === "awaiting_admin_confirmation" ? (
+            {(checkoutState?.orderId &&
+              (checkoutState.status === "awaiting_admin_confirmation" ||
+                checkoutState.status === "manual_payment_submitted")) ? (
               <p className="cartCheckoutStatus mono">Order ID: {checkoutState.orderId}</p>
             ) : null}
           </div>
@@ -1460,11 +1462,7 @@ function CartDrawer({
               type="button"
               className="cartBtnPrimary"
               onClick={onCheckout}
-              disabled={
-                items.length === 0 ||
-                checkoutBusy ||
-                (paymentMethod.type === "card" && (!paymentMethod.provider || !selectedCardProvider?.enabled))
-              }
+              disabled={items.length === 0 || checkoutBusy || (paymentMethod.type === "ton" && !walletAddress)}
             >
               {tk("cartCheckout")}
             </button>
@@ -1475,46 +1473,57 @@ function CartDrawer({
   );
 }
 
-function CardPaymentModal({ payment, onClose }) {
+function PaymeManualPaymentModal({ payment, submitting, onClose, onPaid }) {
   const order = payment?.order || {};
-  const providerName = order.cardProvider === "payme" ? "Payme" : "Click";
+  const amountUzs = Number(payment?.amountUzs || order.amountUzs || order.totalUzs) || 0;
 
   return (
     <div className="paymentTestOverlay" role="presentation">
       <button type="button" className="cartBackdrop" aria-label="Close payment" onClick={onClose} />
-      <div className="paymentTestSheet" role="dialog" aria-modal="true" aria-labelledby="card-payment-title">
+      <div className="paymentTestSheet paymeManualSheet" role="dialog" aria-modal="true" aria-labelledby="payme-manual-title">
         <header className="paymentTestHeader">
           <div>
-            <p className="paymentTestKicker mono">CARD CHECKOUT</p>
-            <h2 id="card-payment-title">{providerName}</h2>
+            <p className="paymentTestKicker mono">PAYME QR</p>
+            <h2 id="payme-manual-title">Pay with Payme</h2>
           </div>
           <button type="button" className="cartSheet__close" onClick={onClose} aria-label="Close payment">
             ×
           </button>
         </header>
-        <div className="paymentTestBody mono">
-          <div className="paymentTestRow">
-            <span>Provider</span>
-            <strong>{providerName}</strong>
-          </div>
-          <div className="paymentTestRow">
-            <span>Order ID</span>
-            <strong>{order.orderId}</strong>
-          </div>
-          <div className="paymentTestRow">
+        <div className="paymentTestBody">
+          {PAYME_QR_IMAGE_URL ? (
+            <div className="paymeManualQrWrap">
+              <img src={PAYME_QR_IMAGE_URL} alt="Payme QR code" className="paymeManualQr" />
+            </div>
+          ) : (
+            <p className="paymentTestNote mono">Payme QR image is not configured.</p>
+          )}
+          {PAYME_CARD_LABEL ? (
+            <div className="paymentTestRow mono">
+              <span>Card</span>
+              <strong>{PAYME_CARD_LABEL}</strong>
+            </div>
+          ) : null}
+          {PAYME_RECEIVER_NAME ? (
+            <div className="paymentTestRow mono">
+              <span>Receiver</span>
+              <strong>{PAYME_RECEIVER_NAME}</strong>
+            </div>
+          ) : null}
+          <div className="paymentTestRow mono">
             <span>Amount UZS</span>
-            <strong>{formatUzsPrice(order.totalUzs)}</strong>
+            <strong>{formatUzsPrice(amountUzs)}</strong>
           </div>
-          <div className="paymentTestRow">
-            <span>Amount TON</span>
-            <strong>{formatTonPrice(order.totalTon)}</strong>
+          <div className="paymentTestRow mono">
+            <span>Order ID</span>
+            <strong>{order.orderId || payment?.orderId}</strong>
           </div>
           <p className="paymentTestNote">
-            Continue in {providerName}. Quanton never asks for or stores card numbers.
+            Pay this exact amount via Payme. After payment, press I Paid.
           </p>
-          <p className="cartCheckoutStatus mono cartCheckoutStatus--card_pending">
-            Waiting for payment confirmation...
-          </p>
+          <button type="button" className="cartBtnPrimary paymeManualPaidBtn" onClick={onPaid} disabled={submitting}>
+            {submitting ? "Submitting…" : "I Paid"}
+          </button>
         </div>
       </div>
     </div>

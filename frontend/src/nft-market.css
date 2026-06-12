@@ -2388,6 +2388,29 @@
   padding: 0 16px max(16px, env(safe-area-inset-bottom, 0px));
 }
 
+.paymeManualQrWrap {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 4px;
+}
+
+.paymeManualQr {
+  width: min(220px, 72vw);
+  height: auto;
+  border-radius: 12px;
+  background: #fff;
+  padding: 8px;
+}
+
+.paymeManualPaidBtn {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.paymeManualSheet .paymentTestBody {
+  gap: 12px;
+}
+
 /* --- Portals-style gift detail modal --- */
 .nftDetailSheet--portals {
   max-width: 440px;

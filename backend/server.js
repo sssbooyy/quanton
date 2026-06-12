@@ -363,6 +363,9 @@ function publicOrder(order) {
     totalUzs: plain.totalUzs || 0,
     tonUzsRate: plain.tonUzsRate || 0,
     paymentMethod: plain.paymentMethod || "ton",
+    paymentCurrency: plain.paymentCurrency || "",
+    amountUzs: plain.amountUzs || plain.totalUzs || 0,
+    manualPaymentProvider: plain.manualPaymentProvider || "",
     cardProvider: plain.cardProvider || "",
     paymentUrl: plain.paymentUrl || "",
     cardPaymentStatus: plain.cardPaymentStatus || "none",
@@ -494,6 +497,8 @@ app.post("/orders/create", async (req, res, next) => {
       if (isProduction && !CARD_PAYMENT_TEST_MODE) {
         return res.status(503).json({ error: "Provider not configured." });
       }
+    } else if (paymentMethod === "payme_manual") {
+      /* UZS manual Payme QR — no wallet or card API */
     } else if (paymentMethod !== "ton") {
       return res.status(400).json({ error: "Unsupported payment method." });
     }
@@ -523,11 +528,13 @@ app.post("/orders/create", async (req, res, next) => {
     let totalUzs = 0;
     let tonUzsRate = 0;
     let paymentUrl = "";
-    if (paymentMethod === "card") {
+    if (paymentMethod === "card" || paymentMethod === "payme_manual") {
       const rate = await getTonUzsRateData();
       tonUzsRate = Number(rate.tonUzs) || 0;
       totalUzs = Math.round(totalTon * tonUzsRate);
-      paymentUrl = `/payment-test/${encodeURIComponent(orderId)}?provider=${encodeURIComponent(cardProvider)}`;
+      if (paymentMethod === "card") {
+        paymentUrl = `/payment-test/${encodeURIComponent(orderId)}?provider=${encodeURIComponent(cardProvider)}`;
+      }
     }
     const reserveFilter = reserveQueryForListings(listingIds);
     console.log("[orders] reserve listings query", {
@@ -572,6 +579,9 @@ app.post("/orders/create", async (req, res, next) => {
       totalUzs,
       tonUzsRate,
       paymentMethod,
+      paymentCurrency: paymentMethod === "payme_manual" ? "UZS" : "",
+      amountUzs: paymentMethod === "payme_manual" ? totalUzs : 0,
+      manualPaymentProvider: paymentMethod === "payme_manual" ? "payme" : "",
       cardProvider: paymentMethod === "card" ? cardProvider : "",
       paymentUrl,
       cardPaymentStatus: paymentMethod === "card" ? "pending" : "none",
@@ -670,6 +680,73 @@ app.post("/orders/:orderId/submit-payment", async (req, res, next) => {
       order: publicOrder(order),
       message: "Payment submitted. Admin will confirm shortly.",
       autoTonVerify: AUTO_TON_VERIFY,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+app.post("/orders/:orderId/submit-manual-payment", async (req, res, next) => {
+  try {
+    const orderId = String(req.params.orderId ?? "").trim();
+    if (!orderId) {
+      return res.status(400).json({ error: "orderId is required." });
+    }
+
+    const order = await Order.findOne({ orderId });
+    if (!order) {
+      return res.status(404).json({ error: "Order not found." });
+    }
+    if (order.paymentMethod !== "payme_manual") {
+      return res.status(400).json({
+        error: "Only Payme manual orders support this payment submission.",
+        order: publicOrder(order),
+      });
+    }
+    if (order.status === "paid") {
+      return res.json({ ok: true, order: publicOrder(order), message: "Order is already paid." });
+    }
+    if (order.status === "payment_rejected") {
+      return res.status(409).json({ error: "Payment was rejected for this order.", order: publicOrder(order) });
+    }
+    if (order.status !== "pending_payment") {
+      return res.status(409).json({ error: `Order is ${order.status}.`, order: publicOrder(order) });
+    }
+    if (order.paymentReviewStatus === "waiting_admin_confirmation") {
+      return res.json({
+        ok: true,
+        order: publicOrder(order),
+        message: "Payment submitted. Waiting for admin confirmation.",
+      });
+    }
+
+    const buyerIdentity = resolveBuyerFromRequest(req);
+    if (buyerIdentity.buyerTelegramId) {
+      order.buyerTelegramId = order.buyerTelegramId || buyerIdentity.buyerTelegramId;
+      order.buyerUsername = order.buyerUsername || buyerIdentity.buyerUsername;
+    }
+
+    const bodyAmountUzs = Number(req.body?.amountUzs);
+    const amountUzs =
+      Number.isFinite(bodyAmountUzs) && bodyAmountUzs > 0
+        ? Math.round(bodyAmountUzs)
+        : Math.round(Number(order.amountUzs || order.totalUzs) || 0);
+
+    order.paymentMethod = "payme_manual";
+    order.paymentCurrency = "UZS";
+    order.amountUzs = amountUzs;
+    order.manualPaymentProvider = "payme";
+    order.paymentReviewStatus = "waiting_admin_confirmation";
+    order.paymentClaimedAt = new Date();
+    await order.save();
+
+    const gifts = await Gift.find({ listingId: { $in: order.listingIds } });
+    await notifyAdminPaymentClaim(order, gifts);
+
+    res.json({
+      ok: true,
+      order: publicOrder(order),
+      message: "Payment submitted. Waiting for admin confirmation.",
     });
   } catch (e) {
     next(e);

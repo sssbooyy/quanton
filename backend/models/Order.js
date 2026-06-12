@@ -14,7 +14,15 @@ const orderSchema = new mongoose.Schema(
     totalTon: { type: Number, required: true, min: 0 },
     totalUzs: { type: Number, default: 0, min: 0 },
     tonUzsRate: { type: Number, default: 0, min: 0 },
-    paymentMethod: { type: String, enum: ["ton", "card", "ton_manual_admin"], default: "ton", index: true },
+    paymentMethod: {
+      type: String,
+      enum: ["ton", "card", "ton_manual_admin", "payme_manual"],
+      default: "ton",
+      index: true,
+    },
+    paymentCurrency: { type: String, default: "", trim: true },
+    amountUzs: { type: Number, default: 0, min: 0 },
+    manualPaymentProvider: { type: String, default: "", trim: true, index: true },
     paymentReviewStatus: {
       type: String,
       enum: ["none", "waiting_admin_confirmation", "confirmed_by_admin", "rejected_by_admin"],

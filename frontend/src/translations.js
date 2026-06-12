@@ -33,7 +33,7 @@ export const translations = {
     testDeskAlert: "Test alert",
 
     loadingText: "Loading…",
-    emptyFilter: "Nothing matches this filter.",
+    emptyFilter: "No gifts match your search.",
 
     closeDialogAria: "Close dialog",
     modalKicker: "New listing",
@@ -203,7 +203,7 @@ export const translations = {
     testDeskAlert: "Тест",
 
     loadingText: "Загрузка…",
-    emptyFilter: "Нет лотов по фильтру.",
+    emptyFilter: "По вашему запросу ничего не найдено.",
 
     closeDialogAria: "Закрыть окно",
     modalKicker: "Новый лот",

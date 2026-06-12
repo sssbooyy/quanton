@@ -31,13 +31,7 @@ import {
   t,
   translateServerMessage,
 } from "./translations";
-import {
-  giftMatchesAdvancedFilters,
-  giftMatchesListingStatus,
-  giftMatchesSearch,
-  sortGiftList,
-  uniqueCollections,
-} from "./marketplaceBrowse.js";
+import { giftMatchesSearch } from "./marketplaceBrowse.js";
 import { useMarketplaceCart } from "./useMarketplaceCart.js";
 import {
   CURRENCIES,
@@ -152,17 +146,7 @@ export default function App() {
   const [lang, setLang] = useState(getInitialLanguage);
   const [gifts, setGifts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [preset, setPreset] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortKey, setSortKey] = useState("newest");
-  const [listingStatusFilter, setListingStatusFilter] = useState("all");
-  const [advFilters, setAdvFilters] = useState({
-    minPrice: "",
-    maxPrice: "",
-    collection: "",
-    minRarity: "",
-    minScore: "",
-  });
   const [cartOpen, setCartOpen] = useState(false);
   const cart = useMarketplaceCart();
   const [giftModalOpen, setGiftModalOpen] = useState(false);
@@ -197,7 +181,6 @@ export default function App() {
   });
   const [tonUzsRateLoading, setTonUzsRateLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("market");
-  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   const tk = useMemo(() => (key) => t(lang, key), [lang]);
 
@@ -553,34 +536,10 @@ export default function App() {
     }
   }
 
-  const collections = useMemo(() => uniqueCollections(gifts), [gifts]);
-
-  const filteredGifts = useMemo(() => {
-    let list = gifts;
-    if (preset === "discount") {
-      list = list.filter((g) => (Number(g.undervaluedPercent) || 0) >= 15);
-    } else if (preset === "strong") {
-      list = list.filter((g) => (Number(g.aiScore) || 0) >= 80);
-    }
-    list = list.filter((g) => giftMatchesListingStatus(g, listingStatusFilter));
-    list = list.filter((g) => giftMatchesAdvancedFilters(g, advFilters));
-    list = list.filter((g) => giftMatchesSearch(g, searchQuery));
-    return sortGiftList(list, sortKey);
-  }, [gifts, preset, listingStatusFilter, advFilters, searchQuery, sortKey]);
-
-  function resetBrowseFilters() {
-    setPreset("all");
-    setSearchQuery("");
-    setSortKey("newest");
-    setListingStatusFilter("all");
-    setAdvFilters({
-      minPrice: "",
-      maxPrice: "",
-      collection: "",
-      minRarity: "",
-      minScore: "",
-    });
-  }
+  const filteredGifts = useMemo(
+    () => gifts.filter((gift) => giftMatchesSearch(gift, searchQuery)),
+    [gifts, searchQuery],
+  );
 
   return (
     <div className="shell shell--miniapp shell--withNav">
@@ -685,152 +644,17 @@ export default function App() {
       </header>
 
       <main className="app app--terminal">
-        <div className="marketBrowseBar">
-          <div className="marketSearchRow marketSearchRow--enhanced">
-            <input
-              type="search"
-              className="marketSearchInput mono"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={tk("searchPlaceholder")}
-              enterKeyHint="search"
-              autoComplete="off"
-              aria-label={tk("searchPlaceholder")}
-            />
-            <button
-              type="button"
-              className="marketFilterTrigger"
-              aria-expanded={filterSheetOpen}
-              onClick={() => setFilterSheetOpen((prev) => !prev)}
-            >
-              Filters
-            </button>
-          </div>
-
-          <div className="marketPresets" role="group" aria-label={tk("tabFilterAria")}>
-            <button
-              type="button"
-              className={preset === "all" ? "active" : ""}
-              aria-pressed={preset === "all"}
-              onClick={() => setPreset("all")}
-            >
-              {tk("presetAll")}
-            </button>
-            <button
-              type="button"
-              className={preset === "discount" ? "active" : ""}
-              aria-pressed={preset === "discount"}
-              onClick={() => setPreset("discount")}
-            >
-              {tk("presetDiscount")}
-            </button>
-          </div>
-
-          <details
-            className={`marketFiltersDetails ${filterSheetOpen ? "open" : ""}`}
-            open={filterSheetOpen}
-            onToggle={(e) => setFilterSheetOpen(e.currentTarget.open)}
-          >
-            <summary className="marketFiltersSummary">{tk("filterPanelTitle")}</summary>
-            <div className="marketFiltersGrid">
-              <label className="marketField">
-                <span className="marketField__label">{tk("sortLabel")}</span>
-                <select
-                  className="marketSelect mono"
-                  value={sortKey}
-                  onChange={(e) => setSortKey(e.target.value)}
-                >
-                  <option value="newest">{tk("sortNewest")}</option>
-                  <option value="price_asc">{tk("sortPriceLow")}</option>
-                  <option value="price_desc">{tk("sortPriceHigh")}</option>
-                  <option value="floor_diff">{tk("sortFloorDiff")}</option>
-                </select>
-              </label>
-
-              <div className="marketField marketField--status" role="group" aria-label={tk("filterListingStatusGroup")}>
-                <span className="marketField__label">{tk("filterListingStatusGroup")}</span>
-                <div className="marketStatusPills">
-                  {(
-                    [
-                      ["all", tk("filterStatusAll")],
-                      ["live", tk("filterStatusLive")],
-                      ["pending", tk("filterStatusPending")],
-                      ["sold", tk("filterStatusSold")],
-                    ]
-                  ).map(([val, label]) => (
-                    <button
-                      key={val}
-                      type="button"
-                      className={listingStatusFilter === val ? "active" : ""}
-                      aria-pressed={listingStatusFilter === val}
-                      onClick={() => setListingStatusFilter(val)}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <label className="marketField">
-                <span className="marketField__label">{tk("filterPriceMin")}</span>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  className="marketInput mono"
-                  value={advFilters.minPrice}
-                  onChange={(e) => setAdvFilters((p) => ({ ...p, minPrice: e.target.value }))}
-                  min="0"
-                  step="any"
-                />
-              </label>
-              <label className="marketField">
-                <span className="marketField__label">{tk("filterPriceMax")}</span>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  className="marketInput mono"
-                  value={advFilters.maxPrice}
-                  onChange={(e) => setAdvFilters((p) => ({ ...p, maxPrice: e.target.value }))}
-                  min="0"
-                  step="any"
-                />
-              </label>
-
-              <label className="marketField marketField--full">
-                <span className="marketField__label">{tk("filterCollection")}</span>
-                <select
-                  className="marketSelect mono"
-                  value={advFilters.collection}
-                  onChange={(e) => setAdvFilters((p) => ({ ...p, collection: e.target.value }))}
-                >
-                  <option value="">{tk("filterCollectionAll")}</option>
-                  {collections.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="marketField">
-                <span className="marketField__label">{tk("filterMinRarity")}</span>
-                <input
-                  type="number"
-                  className="marketInput mono"
-                  value={advFilters.minRarity}
-                  onChange={(e) => setAdvFilters((p) => ({ ...p, minRarity: e.target.value }))}
-                  min="1"
-                  max="100"
-                  step="1"
-                />
-              </label>
-              <div className="marketField marketField--full marketField--actions">
-                <button type="button" className="marketResetBtn" onClick={resetBrowseFilters}>
-                  {tk("filtersReset")}
-                </button>
-              </div>
-            </div>
-          </details>
+        <div className="marketSearchWrap">
+          <input
+            type="search"
+            className="marketSearchInput mono"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={tk("searchPlaceholder")}
+            enterKeyHint="search"
+            autoComplete="off"
+            aria-label={tk("searchPlaceholder")}
+          />
         </div>
 
         {loading ? (

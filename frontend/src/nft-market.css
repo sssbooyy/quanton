@@ -1433,7 +1433,7 @@
   font-size: 12px;
 }
 
-/* --- Marketplace browse: search, filters, cart, simplified cards --- */
+/* --- Marketplace browse: search + cart + cards --- */
 .nftCardCell {
   display: flex;
   flex-direction: column;
@@ -1515,27 +1515,21 @@
   }
 }
 
-.marketBrowseBar {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.marketSearchRow {
+.marketSearchWrap {
   width: 100%;
+  margin: 0 0 10px;
 }
 
 .marketSearchInput {
   width: 100%;
   box-sizing: border-box;
-  min-height: 44px;
-  padding: 10px 14px;
-  border-radius: 12px;
+  min-height: 48px;
+  padding: 12px 16px;
+  border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(255, 255, 255, 0.045);
   color: var(--text);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .marketSearchInput:focus {
@@ -1543,139 +1537,8 @@
   outline-offset: 1px;
 }
 
-.marketPresets {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.marketPresets button {
-  min-height: 40px;
-  padding: 8px 14px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(0, 0, 0, 0.25);
-  color: var(--text-dim);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
-.marketPresets button.active {
-  border-color: rgba(56, 189, 248, 0.45);
-  color: #bae6fd;
-  background: rgba(56, 189, 248, 0.1);
-}
-
-.marketFiltersDetails {
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(0, 0, 0, 0.28);
-  overflow: hidden;
-}
-
-.marketFiltersSummary {
-  list-style: none;
-  cursor: pointer;
-  padding: 12px 14px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  color: var(--text-dim);
-  user-select: none;
-}
-
-.marketFiltersSummary::-webkit-details-marker {
-  display: none;
-}
-
-.marketFiltersDetails[open] .marketFiltersSummary {
-  color: #e2e8f0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.marketFiltersGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 10px;
-  padding: 12px 14px 14px;
-}
-
-.marketField {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.marketField--full {
-  grid-column: 1 / -1;
-}
-
-.marketField--actions {
-  align-items: stretch;
-}
-
-.marketField__label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+.marketSearchInput::placeholder {
   color: var(--text-faint);
-}
-
-.marketInput,
-.marketSelect {
-  min-height: 40px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(0, 0, 0, 0.35);
-  color: var(--text);
-  font-size: 12px;
-}
-
-.marketStatusPills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.marketStatusPills button {
-  min-height: 36px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: transparent;
-  color: var(--text-dim);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
-.marketStatusPills button.active {
-  border-color: rgba(129, 140, 248, 0.5);
-  color: #c7d2fe;
-  background: rgba(99, 102, 241, 0.12);
-}
-
-.marketResetBtn {
-  min-height: 42px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: transparent;
-  color: var(--text-dim);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-  touch-action: manipulation;
 }
 
 .escrowOnboarding {
@@ -1870,72 +1733,8 @@
   border-color: rgba(255, 255, 255, 0.08);
 }
 
-.marketBrowseBar {
-  position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 10px;
-  margin: 0 0 18px;
-  padding: 10px;
-  border-radius: 22px;
-  background: rgba(12, 15, 23, 0.86);
-  border: 1px solid rgba(255, 255, 255, 0.075);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
-}
-
-.marketSearchInput {
-  min-height: 48px;
-  border-radius: 16px;
-  border-color: rgba(255, 255, 255, 0.095);
-  background: rgba(255, 255, 255, 0.045);
-  font-family: var(--font-sans);
-  font-size: 14px;
-}
-
-.marketPresets {
-  gap: 6px;
-  padding: 4px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 255, 255, 0.055);
-}
-
-.marketPresets button {
-  flex: 1 1 auto;
-  min-height: 40px;
-  padding-inline: 12px;
-  border-radius: 12px;
-  border-color: transparent;
-  background: transparent;
-}
-
-.marketPresets button.active {
-  color: #f8fafc;
-  border-color: rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.marketFiltersDetails {
-  border-radius: 16px;
-  border-color: rgba(255, 255, 255, 0.075);
-  background: rgba(255, 255, 255, 0.035);
-}
-
-.marketFiltersSummary {
-  padding: 13px 14px;
-  color: rgba(226, 232, 240, 0.74);
-}
-
-.marketFiltersGrid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.marketInput,
-.marketSelect {
-  min-height: 42px;
-  border-radius: 12px;
-  background: rgba(0, 0, 0, 0.22);
+.marketSearchWrap {
+  margin: 0 0 12px;
 }
 
 .toolbar {
@@ -2061,32 +1860,6 @@
 }
 
 @media (min-width: 900px) {
-  .marketBrowseBar {
-    grid-template-columns: minmax(260px, 1.1fr) minmax(340px, 1.2fr);
-    align-items: start;
-  }
-
-  .marketFiltersDetails {
-    grid-column: 1 / -1;
-  }
-
-  .marketFiltersGrid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
-
-  .marketField--full {
-    grid-column: span 2;
-  }
-
-  .marketField--status {
-    grid-column: span 2;
-  }
-
-  .marketField--actions {
-    grid-column: span 1;
-    align-self: end;
-  }
-
   .nftFeedGrid {
     grid-template-columns: repeat(auto-fill, minmax(188px, 1fr));
   }
@@ -3068,26 +2841,6 @@
   letter-spacing: -0.01em;
 }
 
-.marketSearchRow--enhanced {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
-}
-
-.marketFilterTrigger {
-  min-height: 44px;
-  padding: 0 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.06);
-  color: #e2e8f0;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
 .nftCardPriceSub {
   font-size: 10px;
   color: var(--text-faint);
@@ -3219,24 +2972,6 @@
 }
 
 @media (max-width: 767px) {
-  .marketFiltersDetails {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 120;
-    border-radius: 18px 18px 0 0;
-    transform: translateY(calc(100% - 56px));
-    transition: transform 0.2s ease;
-    box-shadow: 0 -18px 38px rgba(0, 0, 0, 0.4);
-    max-height: 72dvh;
-    overflow-y: auto;
-  }
-
-  .marketFiltersDetails.open {
-    transform: translateY(0);
-  }
-
   .nftFeedGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

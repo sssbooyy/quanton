@@ -976,28 +976,34 @@ function GiftCard({ gift, lang, tk, displayPrice, tonUzsRate, onOpen, onAddToCar
             ) : null}
           </div>
         </div>
-
-        <div className="nftCardMeta nftCardMeta--simple">
+      </button>
+      <div className="nftCardMeta nftCardMeta--simple">
+        <button
+          type="button"
+          className="nftCardTitleOpen"
+          onClick={onOpen}
+          aria-label={`${gift.name}, ${displayPrice(gift.priceTon)}`}
+        >
           <h3 className="nftCardTitle">{cardTitle}</h3>
           <p className="nftCardSubline mono">
             {modelLine || gift.collection || "Collection"} {gift?.giftNumber ? `• #${gift.giftNumber}` : ""}
           </p>
-          <div className="nftCardPriceRow">
-            <span className="nftCardPricePill" aria-hidden="true">
-              <span className="nftCardPricePillValue">{displayPrice(gift.priceTon)}</span>
+        </button>
+        <div className="nftCardPriceRow">
+          <span className="nftCardPricePill" aria-hidden="true">
+            <span className="nftCardPricePillValue">{displayPrice(gift.priceTon)}</span>
+          </span>
+          <span className="nftCardPriceSub mono">{uzsEq}</span>
+          {statusLabel ? (
+            <span className={nftStatusCardClass(gift.status)}>{statusLabel}</span>
+          ) : null}
+          {floorGapPct !== null ? (
+            <span className={`nftCardFloorGap mono ${floorGapPct >= 0 ? "nftCardFloorGap--below" : "nftCardFloorGap--above"}`}>
+              {floorGapPct >= 0 ? `${floorGapPct}% below floor` : `${Math.abs(floorGapPct)}% above floor`}
             </span>
-            <span className="nftCardPriceSub mono">{uzsEq}</span>
-            {statusLabel ? (
-              <span className={nftStatusCardClass(gift.status)}>{statusLabel}</span>
-            ) : null}
-            {floorGapPct !== null ? (
-              <span className={`nftCardFloorGap mono ${floorGapPct >= 0 ? "nftCardFloorGap--below" : "nftCardFloorGap--above"}`}>
-                {floorGapPct >= 0 ? `${floorGapPct}% below floor` : `${Math.abs(floorGapPct)}% above floor`}
-              </span>
-            ) : null}
-          </div>
+          ) : null}
         </div>
-      </button>
+      </div>
       <div className="nftCardCartRow">
         <button
           type="button"

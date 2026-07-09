@@ -44,6 +44,11 @@ import {
   resolveBackdropTraitSolid,
   resolveCollectibleHeroPresentation,
 } from "@shared/giftHeroResolve.js";
+import {
+  hapticImpact,
+  isTelegramMiniApp,
+  openExternalGiftLink,
+} from "./lib/telegramUser.js";
 import BottomNav from "./components/BottomNav.jsx";
 import TabPlaceholder from "./pages/TabPlaceholder.jsx";
 import { resolveGiftCollectibleVisualLayers } from "@shared/giftCollectibleLayers.js";
@@ -921,6 +926,24 @@ function GiftCard({ gift, lang, tk, displayPrice, tonUzsRate, onOpen, onAddToCar
     Number.isFinite(floorTon) && floorTon > 0 && Number.isFinite(tonPrice) && tonPrice > 0
       ? Math.round(((floorTon - tonPrice) / floorTon) * 100)
       : null;
+  const giftLink = String(gift?.giftLink ?? "").trim();
+
+  function handleGiftLinkClick(e) {
+    if (!giftLink) return;
+    hapticImpact("light");
+    if (openExternalGiftLink(giftLink)) {
+      e.preventDefault();
+    }
+  }
+
+  const titleBlock = (
+    <>
+      <h3 className="nftCardTitle">{cardTitle}</h3>
+      <p className="nftCardSubline mono">
+        {modelLine || gift.collection || "Collection"} {gift?.giftNumber ? `• #${gift.giftNumber}` : ""}
+      </p>
+    </>
+  );
 
   return (
     <article className="nftCardCell">
@@ -978,17 +1001,20 @@ function GiftCard({ gift, lang, tk, displayPrice, tonUzsRate, onOpen, onAddToCar
         </div>
       </button>
       <div className="nftCardMeta nftCardMeta--simple">
-        <button
-          type="button"
-          className="nftCardTitleOpen"
-          onClick={onOpen}
-          aria-label={`${gift.name}, ${displayPrice(gift.priceTon)}`}
-        >
-          <h3 className="nftCardTitle">{cardTitle}</h3>
-          <p className="nftCardSubline mono">
-            {modelLine || gift.collection || "Collection"} {gift?.giftNumber ? `• #${gift.giftNumber}` : ""}
-          </p>
-        </button>
+        {giftLink ? (
+          <a
+            href={giftLink}
+            className="nftCardTitleOpen"
+            target={isTelegramMiniApp() ? undefined : "_blank"}
+            rel={isTelegramMiniApp() ? undefined : "noopener noreferrer"}
+            onClick={handleGiftLinkClick}
+            aria-label={`Open ${cardTitle} on Telegram`}
+          >
+            {titleBlock}
+          </a>
+        ) : (
+          titleBlock
+        )}
         <div className="nftCardPriceRow">
           <span className="nftCardPricePill" aria-hidden="true">
             <span className="nftCardPricePillValue">{displayPrice(gift.priceTon)}</span>

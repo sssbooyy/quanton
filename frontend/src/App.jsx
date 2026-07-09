@@ -1145,6 +1145,22 @@ function GiftDetailSheet({ gift, lang, tk, displayPrice, displayCurrency, onClos
     };
   }, [gift.id, heroPoster, staticRaster]);
 
+  const giftLink = String(gift?.giftLink ?? "").trim();
+
+  function handleGiftLinkClick(e) {
+    if (!giftLink) return;
+    hapticImpact("light");
+    if (openExternalGiftLink(giftLink)) {
+      e.preventDefault();
+    }
+  }
+
+  const detailTitle = (
+    <h2 id="nft-detail-title" className="portalsTitle">
+      {gift.name}
+    </h2>
+  );
+
   return (
     <div className="nftDetailOverlay portalsDetailOverlay" role="presentation">
       <button type="button" className="nftDetailBackdrop" aria-label={tk("closeDialogAria")} onClick={onClose} />
@@ -1206,9 +1222,20 @@ function GiftDetailSheet({ gift, lang, tk, displayPrice, displayCurrency, onClos
                 />
               </div>
               <div className="portalsTitleBlock">
-                <h2 id="nft-detail-title" className="portalsTitle">
-                  {gift.name}
-                </h2>
+                {giftLink ? (
+                  <a
+                    href={giftLink}
+                    className="portalsTitleLink"
+                    target={isTelegramMiniApp() ? undefined : "_blank"}
+                    rel={isTelegramMiniApp() ? undefined : "noopener noreferrer"}
+                    onClick={handleGiftLinkClick}
+                    aria-label={`Open ${gift.name} on Telegram`}
+                  >
+                    {detailTitle}
+                  </a>
+                ) : (
+                  detailTitle
+                )}
               </div>
             </div>
 

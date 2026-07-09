@@ -215,6 +215,24 @@
       "glowColor": "rgba(150, 190, 255, 0.38)",
       "glowColorSoft": "rgba(50, 80, 180, 0.4)",
       "vignette": "radial-gradient(ellipse 88% 72% at 50% 46%, transparent 30%, rgba(0,15,60,0.52) 100%)"
+    },
+    "bling-binky": {
+      "label": "Bling Binky",
+      "background": "#800020",
+      "overlay": "transparent",
+      "symbolColor": "rgba(255,255,255,0.12)",
+      "glowColor": "rgba(128, 0, 32, 0.35)",
+      "glowColorSoft": "rgba(128, 0, 32, 0.2)",
+      "vignette": "transparent"
+    },
+    "malachite": {
+      "label": "Malachite",
+      "background": "linear-gradient(180deg, #4ef08a 0%, #0BDA51 48%, #067a38 100%)",
+      "overlay": "rgba(0,30,10,0.14)",
+      "symbolColor": "rgba(20,83,45,0.2)",
+      "glowColor": "rgba(120, 220, 160, 0.3)",
+      "glowColorSoft": "rgba(40, 90, 50, 0.45)",
+      "vignette": "radial-gradient(ellipse 88% 72% at 50% 46%, transparent 30%, rgba(0,25,10,0.58) 100%)"
     }
   }
 }

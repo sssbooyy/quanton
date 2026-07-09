@@ -58,9 +58,11 @@ export function inferBackdropKeyFromLabel(label) {
     [/champagne|ivory.?cream/, "champagne"],
     [/golden|amber(?!\w)|honey/, "golden"],
     [/emerald|jade(?!ite)/, "emerald"],
+    [/malachite/, "malachite"],
     [/forest|pine|hunter.?green/, "forest-green"],
     [/mint(?!ed)|seafoam|aqua(?!\w)/, "mint"],
     [/aquamarine|teal(?!ight)/, "aquamarine"],
+    [/\bbling[\s-]?binky\b/, "bling-binky"],
     [/crimson|wine|burgundy/, "crimson"],
     [/ruby|blood.?red|scarlet/, "ruby-red"],
     [/sky.?blue|baby.?blue|light.?blue/, "sky-blue"],
@@ -272,6 +274,8 @@ const THEME_KEY_TRAIT_SOLID = {
   "champagne": "#E8E4DC",
   "aquamarine": "#52D4C0",
   "lavender": "#9B7CFF",
+  "bling-binky": "#800020",
+  malachite: "#0BDA51",
   neutral: "#6A7380",
   /** Warm brown / copper (Telegram Chestnut); not in giftHeroThemes.json yet — key may come from API. */
   chestnut: "#A85B45",
@@ -283,6 +287,8 @@ const THEME_KEY_TRAIT_SOLID = {
  * @returns {{ hex: string; matched: string } | null}
  */
 function matchExplicitBackdropBlob(blob) {
+  if (/\bbling binky\b/.test(blob)) return { hex: "#800020", matched: "bling binky" };
+  if (/\bmalachite\b/.test(blob)) return { hex: "#0BDA51", matched: "malachite" };
   if (/\bonyx black\b/.test(blob) || /\bonyx\b/.test(blob)) return { hex: "#303637", matched: "onyx" };
   if (/\bnavy blue\b/.test(blob) || /\bnavy\b/.test(blob)) return { hex: "#394D8F", matched: "navy" };
   if (/\bcobalt blue\b/.test(blob) || /\bcobalt\b/.test(blob)) return { hex: "#5B73D6", matched: "cobalt" };

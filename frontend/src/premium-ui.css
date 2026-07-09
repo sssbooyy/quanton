@@ -1,0 +1,893 @@
+/* ==========================================================================
+   Quanton Premium Fintech Visual Layer
+   Visual-only overrides — no layout or structure changes.
+   ========================================================================== */
+
+/* --- Global scroll & scrollbar polish --- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .shell,
+  .app,
+  .modalBody,
+  .cartSheet__body,
+  .nftDetailSheet--portals {
+    scroll-behavior: smooth;
+  }
+}
+
+/* --- Shell & app container --- */
+.shell--miniapp .app--terminal {
+  padding-top: var(--space-1);
+}
+
+.shell--withNav .app--terminal {
+  padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+}
+
+.app {
+  padding: var(--space-1) clamp(14px, 3vw, 20px) max(var(--space-2), env(safe-area-inset-bottom, 0px));
+}
+
+/* --- Header / topbar --- */
+.topbar,
+.topbar--terminal {
+  padding: 12px clamp(14px, 3vw, 24px);
+  padding-top: max(12px, env(safe-area-inset-top, 0px));
+  background: rgba(8, 8, 8, 0.82);
+  border-bottom: 1px solid var(--border-subtle);
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: background var(--duration-normal) var(--ease-out);
+}
+
+.brandLogo {
+  border-radius: 11px;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 8px 20px rgba(0, 0, 0, 0.35);
+}
+
+.brandQuanton {
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.brandTagline {
+  letter-spacing: 0.2em;
+  color: var(--text-faint);
+}
+
+.langToggle {
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+}
+
+.langToggle button {
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
+}
+
+.langToggle button.active {
+  background: rgba(56, 189, 248, 0.16);
+  color: var(--text);
+}
+
+.currencyToggle {
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+}
+
+.currencyToggle button {
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
+}
+
+.currencyToggle button.active {
+  background: rgba(56, 189, 248, 0.14);
+  color: var(--text);
+}
+
+.cartHeaderBtn {
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .cartHeaderBtn:hover {
+    transform: scale(1.04);
+    background: rgba(255, 255, 255, 0.07);
+    border-color: var(--border-strong);
+  }
+}
+
+.cartHeaderBtn:active {
+  transform: scale(var(--tap-scale));
+}
+
+.cartHeaderBtn__badge {
+  background: var(--accent);
+  color: #080808;
+  box-shadow: 0 2px 8px rgba(56, 189, 248, 0.35);
+}
+
+/* --- Search --- */
+.marketSearchWrap {
+  margin: 0 0 12px;
+}
+
+.marketSearchInput {
+  min-height: 48px;
+  padding: 12px 18px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 15px;
+  font-weight: 450;
+  letter-spacing: -0.01em;
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.marketSearchInput::placeholder {
+  color: var(--text-faint);
+  font-weight: 400;
+}
+
+.marketSearchInput:focus {
+  outline: none;
+  border-color: rgba(56, 189, 248, 0.4);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow:
+    0 0 0 3px rgba(56, 189, 248, 0.12),
+    0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+/* --- Feed header --- */
+.feedHead {
+  margin-bottom: 16px;
+  padding: 20px 18px;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-card);
+}
+
+.feedHead__title {
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.feedHead__tagline {
+  font-weight: 450;
+  letter-spacing: -0.01em;
+}
+
+.feedHead__stats > span:not(.feedHead__sep) {
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.025);
+  padding: 8px 10px;
+}
+
+/* --- NFT cards --- */
+.nftCard,
+.nftCardCell {
+  border-radius: var(--radius-xl);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-card);
+  transition:
+    transform var(--duration-normal) var(--ease-out),
+    background var(--duration-normal) var(--ease-out),
+    border-color var(--duration-normal) var(--ease-out),
+    box-shadow var(--duration-normal) var(--ease-out);
+}
+
+.nftCardMediaWrap {
+  border-radius: 18px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 12px 28px rgba(0, 0, 0, 0.35);
+  transition: box-shadow var(--duration-normal) var(--ease-out);
+}
+
+.nftCardImg {
+  transition:
+    opacity 0.35s var(--ease-out),
+    transform var(--duration-normal) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .nftCard:hover,
+  .nftCardCell:hover {
+    transform: translateY(-4px);
+    background: var(--bg-card-hover);
+    border-color: var(--border);
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  .nftCard:hover .nftCardMediaWrap,
+  .nftCardCell:hover .nftCardMediaWrap {
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+      0 16px 36px rgba(0, 0, 0, 0.45),
+      0 0 32px rgba(56, 189, 248, 0.06);
+  }
+
+  .nftCard:hover .nftCardImg--loaded,
+  .nftCardCell:hover .nftCardImg--loaded {
+    transform: scale(1.03);
+  }
+}
+
+.nftCard:active,
+.nftCardCell:active {
+  transform: translateY(-1px) scale(var(--tap-scale));
+}
+
+.nftCard:focus-visible {
+  outline: 2px solid rgba(56, 189, 248, 0.5);
+  outline-offset: 2px;
+}
+
+.nftCardAddCart {
+  min-height: 42px;
+  border-radius: 14px;
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  background: rgba(56, 189, 248, 0.08);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .nftCardAddCart:hover:not(:disabled) {
+    transform: scale(1.02);
+    background: rgba(56, 189, 248, 0.14);
+    border-color: rgba(56, 189, 248, 0.4);
+    box-shadow: 0 4px 16px rgba(56, 189, 248, 0.12);
+  }
+}
+
+.nftCardAddCart:active:not(:disabled) {
+  transform: scale(var(--tap-scale));
+}
+
+.nftCardPricePillValue {
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.nftCardScore {
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+}
+
+/* --- Skeleton loading --- */
+.skeletonCard,
+.nftCardImgSkel {
+  background: linear-gradient(
+    90deg,
+    rgba(22, 22, 22, 0.95) 0%,
+    rgba(40, 40, 40, 0.6) 45%,
+    rgba(22, 22, 22, 0.95) 100%
+  );
+  background-size: 200% 100%;
+  animation: premiumShimmer 1.4s var(--ease-out) infinite;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+}
+
+@keyframes premiumShimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+/* --- Empty state --- */
+.empty {
+  margin: 32px 0;
+  padding: 32px 24px;
+  border-radius: var(--radius-xl);
+  border: 1px dashed var(--border);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-card);
+  font-weight: 450;
+  line-height: 1.55;
+}
+
+/* --- Buttons (global) --- */
+.addGiftTrigger,
+.submitGiftButton,
+.cartBtnPrimary,
+.paymeManualPaidBtn {
+  border-radius: 14px;
+  min-height: 48px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out),
+    opacity var(--duration-fast) var(--ease-out);
+}
+
+.addGiftTrigger,
+.submitGiftButton {
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.32);
+  color: #e0f2fe;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.cartBtnPrimary {
+  background: rgba(56, 189, 248, 0.16);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #e0f2fe;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.cartBtnSecondary,
+.formActionsSecondary {
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .addGiftTrigger:hover:not(:disabled),
+  .submitGiftButton:hover:not(:disabled),
+  .cartBtnPrimary:hover:not(:disabled),
+  .paymeManualPaidBtn:hover:not(:disabled) {
+    transform: scale(1.02);
+    background: rgba(56, 189, 248, 0.22);
+    box-shadow: 0 8px 24px rgba(56, 189, 248, 0.12);
+  }
+
+  .cartBtnSecondary:hover:not(:disabled),
+  .formActionsSecondary:hover:not(:disabled) {
+    transform: scale(1.02);
+    background: rgba(255, 255, 255, 0.06);
+    border-color: var(--border-strong);
+    color: var(--text);
+  }
+}
+
+.addGiftTrigger:active:not(:disabled),
+.submitGiftButton:active:not(:disabled),
+.cartBtnPrimary:active:not(:disabled),
+.cartBtnSecondary:active:not(:disabled),
+.paymeManualPaidBtn:active:not(:disabled) {
+  transform: scale(var(--tap-scale));
+}
+
+.alertButton {
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .alertButton:hover {
+    transform: scale(1.02);
+    border-color: rgba(56, 189, 248, 0.35);
+    background: rgba(56, 189, 248, 0.06);
+  }
+}
+
+/* --- Modals & sheets --- */
+.modalOverlay,
+.cartOverlay,
+.paymentTestOverlay,
+.nftDetailOverlay {
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(12px) saturate(1.1);
+  -webkit-backdrop-filter: blur(12px) saturate(1.1);
+  animation: premiumFadeIn var(--duration-normal) var(--ease-out);
+}
+
+@keyframes premiumFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modalSheet,
+.cartSheet,
+.paymentTestSheet,
+.nftDetailSheet {
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  border: 1px solid var(--border);
+  background: rgba(18, 18, 18, 0.96);
+  box-shadow: var(--shadow-elevated);
+  backdrop-filter: blur(32px) saturate(1.15);
+  -webkit-backdrop-filter: blur(32px) saturate(1.15);
+  animation: premiumSlideUp 0.28s var(--ease-out);
+}
+
+@keyframes premiumSlideUp {
+  from {
+    transform: translateY(16px);
+    opacity: 0.9;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modalSheetPremium::before {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), transparent 60%);
+}
+
+.modalClose,
+.cartSheet__close {
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .modalClose:hover,
+  .cartSheet__close:hover {
+    transform: scale(1.05);
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text);
+  }
+}
+
+/* --- Forms --- */
+.giftForm input,
+.giftForm textarea.formTextarea {
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
+}
+
+.giftForm input:focus,
+.giftForm textarea.formTextarea:focus {
+  outline: none;
+  border-color: rgba(56, 189, 248, 0.4);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1);
+}
+
+/* --- Cart drawer --- */
+.cartSheet__header {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.cartSheet__title {
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.cartWalletPanel,
+.cartCheckoutPanel {
+  border-radius: 16px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.025);
+  backdrop-filter: blur(8px);
+}
+
+.cartRow {
+  border-radius: 14px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.02);
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .cartRow:hover {
+    background: rgba(255, 255, 255, 0.04);
+  }
+}
+
+.cartRow__thumb {
+  border-radius: 12px;
+}
+
+.cartSheet__footer {
+  border-top: 1px solid var(--border-subtle);
+  background: rgba(8, 8, 8, 0.9);
+  backdrop-filter: blur(16px);
+}
+
+.cartTotal strong {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.paymentMethod {
+  border-radius: 14px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.02);
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
+}
+
+.paymentMethod.active {
+  border-color: rgba(56, 189, 248, 0.35);
+  background: rgba(56, 189, 248, 0.08);
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.1);
+}
+
+@media (hover: hover) {
+  .paymentMethod:hover:not(:disabled) {
+    transform: scale(1.02);
+    border-color: var(--border);
+    background: rgba(255, 255, 255, 0.04);
+  }
+}
+
+/* --- Payme payment modal --- */
+.paymeManualQr {
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.paymentTestRow {
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-subtle);
+}
+
+/* --- Gift detail (Portals modal) --- */
+.nftDetailSheet--collectibleProfile.nftDetailSheet--portals {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-elevated);
+}
+
+.nftDetailSheet--portals .tgCollectibleHero--portalsSlot {
+  border-radius: 24px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 20px 48px rgba(0, 0, 0, 0.4);
+  transition: box-shadow var(--duration-normal) var(--ease-out);
+}
+
+.portalsGlassSection {
+  border-radius: 18px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.025);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.portalsFloorCard,
+.portalsFloorCard--floorSecondary {
+  border-radius: 16px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+}
+
+.portalsBtnOffer,
+.portalsBtnFloor,
+.portalsBtnCart,
+.detailAddCartBtn {
+  border-radius: 14px;
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.portalsBtnCart {
+  border: 1px solid rgba(56, 189, 248, 0.32);
+  background: rgba(56, 189, 248, 0.1);
+}
+
+@media (hover: hover) {
+  .portalsBtnCart:hover:not(:disabled) {
+    transform: scale(1.02);
+    background: rgba(56, 189, 248, 0.16);
+    box-shadow: 0 6px 20px rgba(56, 189, 248, 0.1);
+  }
+
+  .detailAddCartBtn:hover:not(:disabled) {
+    transform: scale(1.02);
+    box-shadow: 0 6px 20px rgba(56, 189, 248, 0.1);
+  }
+}
+
+.portalsBtnCart:active:not(:disabled),
+.detailAddCartBtn:active:not(:disabled) {
+  transform: scale(var(--tap-scale));
+}
+
+.portalsSectionTitle {
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+/* --- Bottom navigation --- */
+.bottomNav {
+  left: 12px;
+  right: 12px;
+  bottom: max(10px, env(safe-area-inset-bottom, 0px));
+  width: auto;
+  border-radius: 20px;
+  padding: 6px 8px;
+  background: rgba(18, 18, 18, 0.88);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.bottomNav__item {
+  min-height: 52px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  background: transparent;
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.bottomNav__item--active {
+  color: var(--text);
+  border-color: rgba(56, 189, 248, 0.25);
+  background: rgba(56, 189, 248, 0.1);
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.08);
+}
+
+@media (hover: hover) {
+  .bottomNav__item:hover:not(.bottomNav__item--active) {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-dim);
+  }
+}
+
+.bottomNav__item:active {
+  transform: scale(var(--tap-scale));
+}
+
+.bottomNav__label {
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+/* --- Tab placeholders --- */
+.tabPlaceholder {
+  padding: 24px 16px 120px;
+}
+
+.tabPlaceholder__card {
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-card);
+  padding: 24px;
+}
+
+.tabPlaceholder__title {
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.tabPlaceholder__tile {
+  border-radius: 16px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.02);
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .tabPlaceholder__tile:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.04);
+    border-color: var(--border);
+  }
+}
+
+.tabPlaceholder__tileTitle {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* --- Toast --- */
+.successToast {
+  border-radius: 16px;
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  background: rgba(22, 22, 22, 0.95);
+  backdrop-filter: blur(16px);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(52, 211, 153, 0.1);
+  animation: premiumToastIn 0.35s var(--ease-out);
+}
+
+@keyframes premiumToastIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+/* --- Escrow onboarding banner --- */
+.escrowOnboarding {
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-card);
+}
+
+.escrowOnboarding__button {
+  border-radius: 14px;
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .escrowOnboarding__button:hover {
+    transform: scale(1.02);
+    background: rgba(56, 189, 248, 0.22);
+  }
+}
+
+/* --- Legacy card grid (if visible) --- */
+.card,
+.card--gift {
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-card);
+  transition:
+    transform var(--duration-normal) var(--ease-out),
+    box-shadow var(--duration-normal) var(--ease-out),
+    border-color var(--duration-normal) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .card--gift:hover {
+    transform: translateY(-4px);
+    border-color: var(--border);
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  .card--gift:hover .cardImg--loaded {
+    transform: scale(1.03);
+  }
+}
+
+.cardImg {
+  transition:
+    opacity 0.4s var(--ease-out),
+    transform var(--duration-normal) var(--ease-out);
+}
+
+/* --- Metric ribbon & tabs --- */
+.metricCell,
+.tickerChip {
+  border-radius: 14px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .metricCell:hover,
+  .tickerChip:hover {
+    transform: translateY(-2px);
+    border-color: var(--border);
+  }
+}
+
+.tabs {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+}
+
+.tabs button {
+  border-radius: 10px;
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.tabs button.active {
+  background: rgba(56, 189, 248, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+/* --- Reduced motion --- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

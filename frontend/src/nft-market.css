@@ -1,12 +1,12 @@
 /* Premium mobile-first NFT marketplace layer (Fragment / Portals / Tensor style) */
 
 :root {
-  --nft-card-media-radius: 26px;
-  --nft-media-radius: 24px;
-  --nft-card-radius: 18px;
-  --nft-price-bg: linear-gradient(135deg, rgba(14, 165, 233, 0.22), rgba(99, 102, 241, 0.18));
-  --nft-price-border: rgba(56, 189, 248, 0.28);
-  --nft-sheet-bg: #0a0c12;
+  --nft-card-media-radius: 20px;
+  --nft-media-radius: 20px;
+  --nft-card-radius: 20px;
+  --nft-price-bg: rgba(56, 189, 248, 0.08);
+  --nft-price-border: rgba(56, 189, 248, 0.2);
+  --nft-sheet-bg: #121212;
 }
 
 /* --- Feed density (Telegram Mini App) --- */

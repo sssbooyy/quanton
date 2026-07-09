@@ -10,6 +10,7 @@ import {
 import App from "./App.jsx";
 import "./styles.css";
 import "./nft-market.css";
+import "./premium-ui.css";
 
 if (import.meta.env.PROD && !hasExplicitApiUrlFromEnv()) {
   console.info(

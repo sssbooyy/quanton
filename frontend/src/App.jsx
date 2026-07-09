@@ -897,7 +897,11 @@ function GiftCard({ gift, lang, tk, displayPrice, tonUzsRate, onOpen, onAddToCar
 
   const backdropSolidDebug = useMemo(() => {
     const pres = resolveCollectibleHeroPresentation(gift);
-    return resolveBackdropTraitSolid(pres.backdropTheme, extractBackdropLabelFromGift(gift));
+    return resolveBackdropTraitSolid(
+      pres.backdropTheme,
+      extractBackdropLabelFromGift(gift),
+      String(gift.collection ?? "").trim(),
+    );
   }, [gift]);
 
   const backdropLabelDebug = useMemo(() => extractBackdropLabelFromGift(gift), [gift]);

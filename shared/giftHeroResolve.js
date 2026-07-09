@@ -838,21 +838,21 @@ export function resolveCollectibleHeroPresentation(gift) {
         listingId: String(gift?.id ?? gift?.listingId ?? ""),
       });
       if (recomputed.backdropTheme.key !== NEUTRAL_KEY) {
-        return {
+        return applyCollectionBackdropHeroOverrides(gift, {
           backdropTheme: recomputed.backdropTheme,
           heroBackground: recomputed.heroBackground,
           symbolPattern: mergeSymbolPatternFromGift(gift, recomputed.symbolPattern),
           fromApi: false,
-        };
+        });
       }
     }
 
-    return {
+    return applyCollectionBackdropHeroOverrides(gift, {
       backdropTheme: gift.backdropTheme,
       heroBackground: gift.heroBackground,
       symbolPattern: mergeSymbolPatternFromGift(gift, gift.symbolPattern),
       fromApi: true,
-    };
+    });
   }
 
   return {

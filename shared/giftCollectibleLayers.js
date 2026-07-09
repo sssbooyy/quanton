@@ -55,7 +55,11 @@ export function resolveBackdropPaintLayer(gift) {
   }
   const backdropLabel = extractBackdropLabelFromGift(gift) || String(gift.backdrop || "").trim();
   const pres = resolveCollectibleHeroPresentation(gift);
-  const backdropColor = getBackdropTraitSolidColor(pres.backdropTheme, backdropLabel);
+  const backdropColor = getBackdropTraitSolidColor(
+    pres.backdropTheme,
+    backdropLabel,
+    String(gift.collection ?? "").trim(),
+  );
   return { backdropColor, backdropLabel, backdropTheme: pres.backdropTheme };
 }
 

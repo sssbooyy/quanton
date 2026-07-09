@@ -119,7 +119,7 @@ export function giftImageFieldsForDebug(gift, runtime = {}) {
 
   const backdropLabel = extractBackdropLabelFromGift(gift) || String(gift.backdrop || "").trim();
   const pres = resolveCollectibleHeroPresentation(gift);
-  const solid = resolveBackdropTraitSolid(pres.backdropTheme, backdropLabel);
+  const solid = resolveBackdropTraitSolid(pres.backdropTheme, backdropLabel, String(gift.collection ?? "").trim());
 
   const symbolUrl = layers.symbolPatternUrl;
   const symTrait = resolveSymbolPattern(extractSymbolLabelFromGift(gift));

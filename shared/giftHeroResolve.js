@@ -283,6 +283,68 @@ const THEME_KEY_TRAIT_SOLID = {
 };
 
 /**
+ * Gift collection + backdrop trait overrides (e.g. Bling Binky + Burgundy).
+ * Keys are normalized via {@link normalizeTraitKey}.
+ */
+const COLLECTION_BACKDROP_TRAIT_SOLID = {
+  "bling-binky": {
+    burgundy: "#800020",
+  },
+};
+
+/** Optional hero background override; falls back to trait solid hex when omitted. */
+const COLLECTION_BACKDROP_THEME_BACKGROUND = {
+  "bling-binky": {
+    burgundy: "#800020",
+  },
+};
+
+/**
+ * @param {string} collection
+ * @param {string} backdropLabel
+ * @returns {{ hex: string; collectionKey: string; backdropKey: string } | null}
+ */
+function matchCollectionBackdropSolid(collection, backdropLabel) {
+  const ck = normalizeTraitKey(collection);
+  const bk = normalizeTraitKey(backdropLabel);
+  if (!ck || !bk) return null;
+  const row = COLLECTION_BACKDROP_TRAIT_SOLID[ck];
+  if (!row) return null;
+  const hex = row[bk];
+  if (!hex) return null;
+  return { hex, collectionKey: ck, backdropKey: bk };
+}
+
+/**
+ * @param {Record<string, unknown> | null | undefined} gift
+ * @param {Record<string, unknown>} presentation
+ */
+function applyCollectionBackdropHeroOverrides(gift, presentation) {
+  if (!gift || typeof gift !== "object" || !presentation || typeof presentation !== "object") return presentation;
+  const collection = String(gift.collection ?? "").trim();
+  const backdrop = extractBackdropLabelFromGift(gift) || String(gift.backdrop ?? "").trim();
+  const match = matchCollectionBackdropSolid(collection, backdrop);
+  if (!match) return presentation;
+
+  const bg =
+    COLLECTION_BACKDROP_THEME_BACKGROUND[match.collectionKey]?.[match.backdropKey] || match.hex;
+  const backdropTheme =
+    presentation.backdropTheme && typeof presentation.backdropTheme === "object"
+      ? presentation.backdropTheme
+      : {};
+  const heroBackground =
+    presentation.heroBackground && typeof presentation.heroBackground === "object"
+      ? presentation.heroBackground
+      : {};
+
+  return {
+    ...presentation,
+    backdropTheme: { ...backdropTheme, background: bg },
+    heroBackground: { ...heroBackground, gradient: bg },
+  };
+}
+
+/**
  * @param {string} blob normalized "label keywords" string
  * @returns {{ hex: string; matched: string } | null}
  */
@@ -342,7 +404,7 @@ function matchExplicitBackdropBlob(blob) {
  *   labelNorm: string;
  *   themeKey: string;
  *   backdropLabelUsedForColor: string;
- *   backdropColorMatchPath: "gift_label" | "theme_key" | "theme_label" | "derived";
+ *   backdropColorMatchPath: "gift_label" | "theme_key" | "theme_label" | "collection_backdrop" | "derived";
  * }} BackdropTraitSolidResult
  */
 
@@ -351,9 +413,10 @@ function matchExplicitBackdropBlob(blob) {
  * Priority: (a) gift backdrop label, (b) theme key, (c) backdropTheme.label, (d) derived gradient.
  * @param {{ key?: unknown; label?: unknown; background?: unknown } | null | undefined} backdropTheme
  * @param {string | null | undefined} [backdropLabelFromGift] from {@link extractBackdropLabelFromGift} (includes cachedMetadata.backdropName)
+ * @param {string | null | undefined} [giftCollection] gift collection name for collection+backdrop overrides
  * @returns {BackdropTraitSolidResult}
  */
-export function resolveBackdropTraitSolid(backdropTheme, backdropLabelFromGift) {
+export function resolveBackdropTraitSolid(backdropTheme, backdropLabelFromGift, giftCollection) {
   const themeKey = String(backdropTheme?.key ?? "").trim().toLowerCase();
   const keyWords = themeKey.replace(/-/g, " ").trim();
   const nk = normalizeTraitKey(themeKey);
@@ -363,6 +426,21 @@ export function resolveBackdropTraitSolid(backdropTheme, backdropLabelFromGift) 
 
   const apiLabelRaw = String(backdropTheme?.label ?? "").trim();
   const apiNorm = normalizeBackdropLabelForMatch(backdropTheme?.label);
+
+  const collectionRaw = String(giftCollection ?? "").trim();
+  if (collectionRaw && giftRaw) {
+    const collectionMatch = matchCollectionBackdropSolid(collectionRaw, giftRaw);
+    if (collectionMatch) {
+      return {
+        hex: collectionMatch.hex,
+        source: "explicit",
+        labelNorm: normalizeBackdropLabelForMatch(`${collectionRaw} ${giftRaw}`),
+        themeKey,
+        backdropLabelUsedForColor: giftRaw,
+        backdropColorMatchPath: "collection_backdrop",
+      };
+    }
+  }
 
   // (a) Gift-extracted backdrop label (matches UI BACKGROUND / traits)
   if (giftNorm) {
@@ -444,10 +522,11 @@ export function resolveBackdropTraitSolid(backdropTheme, backdropLabelFromGift) 
 /**
  * @param {{ key?: unknown; label?: unknown; background?: unknown } | null | undefined} backdropTheme
  * @param {string | null | undefined} [backdropLabelFromGift]
+ * @param {string | null | undefined} [giftCollection]
  * @returns {string}
  */
-export function getBackdropTraitSolidColor(backdropTheme, backdropLabelFromGift) {
-  return resolveBackdropTraitSolid(backdropTheme, backdropLabelFromGift).hex;
+export function getBackdropTraitSolidColor(backdropTheme, backdropLabelFromGift, giftCollection) {
+  return resolveBackdropTraitSolid(backdropTheme, backdropLabelFromGift, giftCollection).hex;
 }
 
 /**
@@ -710,13 +789,16 @@ export function extractSymbolLabelFromGift(gift) {
  * @param {Record<string, unknown> | null | undefined} gift
  */
 export function buildHeroPresentationFieldsFromGift(gift) {
-  return buildHeroPresentationFields({
-    backdrop: extractBackdropLabelFromGift(gift),
-    symbol: extractSymbolLabelFromGift(gift),
-    model: String(gift?.model ?? ""),
-    collection: String(gift?.collection ?? ""),
-    listingId: String(gift?.id ?? gift?.listingId ?? ""),
-  });
+  return applyCollectionBackdropHeroOverrides(
+    gift,
+    buildHeroPresentationFields({
+      backdrop: extractBackdropLabelFromGift(gift),
+      symbol: extractSymbolLabelFromGift(gift),
+      model: String(gift?.model ?? ""),
+      collection: String(gift?.collection ?? ""),
+      listingId: String(gift?.id ?? gift?.listingId ?? ""),
+    }),
+  );
 }
 
 /**
